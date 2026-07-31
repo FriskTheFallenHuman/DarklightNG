@@ -17,9 +17,10 @@ the renderer while that map is loaded.
 
 static const int LM_ATLAS_SIZE = 1024;
 static const int LM_PADDING = 4;
-static const float LM_DEFAULT_SCALE = 16.0f;
+static const float LM_DEFAULT_SCALE = 4.0f;
 static const float LM_DEFAULT_AMBIENT = 0.025f;
 static const float LM_DEFAULT_DIRECT_SCALE = 2.0f;
+static const int LM_DEFAULT_SHADOW_SAMPLES = 9;
 
 typedef struct {
 	idVec3 a;
@@ -68,11 +69,14 @@ static idList<int> lmOccluderOrder;
 static idList<lmTraceNode_t> lmTraceNodes;
 static float lmAmbient;
 static float lmDirectScale;
+static int lmShadowSamples;
 static unsigned __int64 lmShadePoints;
 static unsigned __int64 lmLightTests;
 static unsigned __int64 lmLightsInVolume;
 static unsigned __int64 lmLightsOccluded;
 static unsigned __int64 lmLightsContributing;
+static unsigned __int64 lmShadowRays;
+static unsigned __int64 lmMixedShadowTests;
 static int lmExternalOccluders;
 
 static int LM_ClampByte( float value ) {
@@ -319,8 +323,51 @@ static bool LM_PointInLight( const mapLight_t *light, const idVec3 &point, float
 	return true;
 }
 
+static float LM_ShadowVisibility( const idVec3 &point, const idVec3 &normal,
+		const idVec3 &footprintS, const idVec3 &footprintT, const idVec3 &lightDirection,
+		const idVec3 &lightOrigin, bool parallel ) {
+	// The first five samples cover the texel with a rotated quincunx.  Mixed
+	// results get four corner samples, concentrating the extra rays on shadow
+	// silhouettes while still catching shadows thinner than one luxel.
+	static const idVec2 sampleOffsets[9] = {
+		idVec2( 0.0f, 0.0f ),
+		idVec2( -0.4f, -0.1f ), idVec2( -0.1f, 0.4f ),
+		idVec2( 0.4f, 0.1f ), idVec2( 0.1f, -0.4f ),
+		idVec2( -0.35f, -0.35f ), idVec2( -0.35f, 0.35f ),
+		idVec2( 0.35f, -0.35f ), idVec2( 0.35f, 0.35f )
+	};
+
+	const int primarySamples = lmShadowSamples == 1 ? 1 : 5;
+	int occludedSamples = 0;
+	for ( int sample = 0; sample < primarySamples; sample++ ) {
+		const idVec3 samplePoint = point + footprintS * sampleOffsets[sample][0] + footprintT * sampleOffsets[sample][1];
+		const idVec3 traceEnd = parallel ? samplePoint + lightDirection * 65536.0f : lightOrigin;
+		lmShadowRays++;
+		if ( LM_Occluded( samplePoint + normal * 0.5f, traceEnd ) ) {
+			occludedSamples++;
+		}
+	}
+
+	int totalSamples = primarySamples;
+	if ( lmShadowSamples == 9 && occludedSamples > 0 && occludedSamples < primarySamples ) {
+		lmMixedShadowTests++;
+		for ( int sample = primarySamples; sample < 9; sample++ ) {
+			const idVec3 samplePoint = point + footprintS * sampleOffsets[sample][0] + footprintT * sampleOffsets[sample][1];
+			const idVec3 traceEnd = parallel ? samplePoint + lightDirection * 65536.0f : lightOrigin;
+			lmShadowRays++;
+			if ( LM_Occluded( samplePoint + normal * 0.5f, traceEnd ) ) {
+				occludedSamples++;
+			}
+		}
+		totalSamples = 9;
+	}
+
+	return 1.0f - (float)occludedSamples / totalSamples;
+}
+
 static void LM_ShadePoint( const idVec3 &point, const idVec3 &normal, const idVec3 &tangent,
-		const idVec3 &bitangent, idVec3 &irradiance, idVec3 &deluxeDirection ) {
+		const idVec3 &bitangent, const idVec3 &footprintS, const idVec3 &footprintT,
+		idVec3 &irradiance, idVec3 &deluxeDirection ) {
 	irradiance.Set( lmAmbient, lmAmbient, lmAmbient );
 	idVec3 directionSum( 0.0f, 0.0f, 0.0f );
 	float directionWeight = 0.0f;
@@ -339,14 +386,11 @@ static void LM_ShadePoint( const idVec3 &point, const idVec3 &normal, const idVe
 		lmLightsInVolume++;
 
 		idVec3 lightDirection;
-		idVec3 traceEnd;
 		if ( light->def.parms.parallel ) {
 			lightDirection = -light->def.parms.axis[2];
 			lightDirection.Normalize();
-			traceEnd = point + lightDirection * 65536.0f;
 		} else {
-			traceEnd = light->def.globalLightOrigin;
-			lightDirection = traceEnd - point;
+			lightDirection = light->def.globalLightOrigin - point;
 			if ( lightDirection.Normalize() == 0.0f ) {
 				continue;
 			}
@@ -356,12 +400,19 @@ static void LM_ShadePoint( const idVec3 &point, const idVec3 &normal, const idVe
 		if ( lambert <= 0.0f ) {
 			continue;
 		}
-		if ( !light->def.parms.noShadows && LM_Occluded( point + normal * 0.5f, traceEnd ) ) {
-			lmLightsOccluded++;
-			continue;
+		float visibility = 1.0f;
+		if ( !light->def.parms.noShadows ) {
+			visibility = LM_ShadowVisibility( point, normal, footprintS, footprintT, lightDirection,
+				light->def.globalLightOrigin, light->def.parms.parallel );
+			if ( visibility < 1.0f ) {
+				lmLightsOccluded++;
+			}
+			if ( visibility <= 0.0f ) {
+				continue;
+			}
 		}
 
-		const float weight = attenuation * lambert * lmDirectScale;
+		const float weight = attenuation * lambert * lmDirectScale * visibility;
 		idVec3 color( light->def.parms.shaderParms[SHADERPARM_RED],
 			light->def.parms.shaderParms[SHADERPARM_GREEN],
 			light->def.parms.shaderParms[SHADERPARM_BLUE] );
@@ -400,6 +451,10 @@ static void LM_RasterizeSurface( const lmSurface_t *surface ) {
 		if ( idMath::Fabs( denominator ) < 0.000001f ) {
 			continue;
 		}
+		const idVec3 footprintS = ( a.xyz - c.xyz ) * ( ( tb[1] - tc[1] ) / denominator ) +
+			( b.xyz - c.xyz ) * ( ( tc[1] - ta[1] ) / denominator );
+		const idVec3 footprintT = ( a.xyz - c.xyz ) * ( ( tc[0] - tb[0] ) / denominator ) +
+			( b.xyz - c.xyz ) * ( ( ta[0] - tc[0] ) / denominator );
 
 		int minX = idMath::ClampInt( 0, LM_ATLAS_SIZE - 1, (int)floorf( Min( ta[0], Min( tb[0], tc[0] ) ) ) );
 		int maxX = idMath::ClampInt( 0, LM_ATLAS_SIZE - 1, (int)ceilf( Max( ta[0], Max( tb[0], tc[0] ) ) ) );
@@ -454,7 +509,8 @@ static void LM_RasterizeSurface( const lmSurface_t *surface ) {
 
 				idVec3 irradiance;
 				idVec3 deluxeDirection;
-				LM_ShadePoint( point, normal, localTangent, localBitangent, irradiance, deluxeDirection );
+				LM_ShadePoint( point, normal, localTangent, localBitangent, footprintS, footprintT,
+					irradiance, deluxeDirection );
 
 				const int pixel = y * LM_ATLAS_SIZE + x;
 				atlas->lightmap[pixel * 4 + 0] = (byte)LM_ClampByte( irradiance[0] );
@@ -514,22 +570,146 @@ static void LM_DilateAtlas( lmAtlas_t *atlas ) {
 	}
 }
 
-static void LM_MakeTGA( const idList<byte> &rgba, idList<byte> &tga ) {
-	const int imageBytes = LM_ATLAS_SIZE * LM_ATLAS_SIZE * 4;
-	tga.SetNum( 18 + imageBytes );
-	memset( tga.Ptr(), 0, 18 );
-	tga[2] = 2;
-	tga[12] = LM_ATLAS_SIZE & 255;
-	tga[13] = ( LM_ATLAS_SIZE >> 8 ) & 255;
-	tga[14] = LM_ATLAS_SIZE & 255;
-	tga[15] = ( LM_ATLAS_SIZE >> 8 ) & 255;
-	tga[16] = 32;
-	tga[17] = 1 << 5;
-	for ( int i = 0; i < imageBytes; i += 4 ) {
-		tga[18 + i + 0] = rgba[i + 2];
-		tga[18 + i + 1] = rgba[i + 1];
-		tga[18 + i + 2] = rgba[i + 0];
-		tga[18 + i + 3] = rgba[i + 3];
+static unsigned short LM_PackRGB565( const byte *rgb ) {
+	return (unsigned short)( ( ( rgb[0] * 31 + 127 ) / 255 ) << 11 |
+		( ( rgb[1] * 63 + 127 ) / 255 ) << 5 |
+		( ( rgb[2] * 31 + 127 ) / 255 ) );
+}
+
+static void LM_UnpackRGB565( unsigned short color, byte *rgb ) {
+	const int r = ( color >> 11 ) & 31;
+	const int g = ( color >> 5 ) & 63;
+	const int b = color & 31;
+	rgb[0] = (byte)( ( r << 3 ) | ( r >> 2 ) );
+	rgb[1] = (byte)( ( g << 2 ) | ( g >> 4 ) );
+	rgb[2] = (byte)( ( b << 3 ) | ( b >> 2 ) );
+}
+
+static void LM_CompressDXT1Block( const byte pixels[16][4], byte output[8] ) {
+	idVec3 mean( 0.0f, 0.0f, 0.0f );
+	for ( int i = 0; i < 16; i++ ) {
+		mean[0] += pixels[i][0];
+		mean[1] += pixels[i][1];
+		mean[2] += pixels[i][2];
+	}
+	mean *= 1.0f / 16.0f;
+
+	float covariance[3][3];
+	memset( covariance, 0, sizeof( covariance ) );
+	for ( int i = 0; i < 16; i++ ) {
+		const idVec3 delta( pixels[i][0] - mean[0], pixels[i][1] - mean[1], pixels[i][2] - mean[2] );
+		for ( int row = 0; row < 3; row++ ) {
+			for ( int column = 0; column < 3; column++ ) {
+				covariance[row][column] += delta[row] * delta[column];
+			}
+		}
+	}
+
+	idVec3 axis( 1.0f, 1.0f, 1.0f );
+	axis.Normalize();
+	for ( int iteration = 0; iteration < 4; iteration++ ) {
+		idVec3 next;
+		for ( int row = 0; row < 3; row++ ) {
+			next[row] = covariance[row][0] * axis[0] + covariance[row][1] * axis[1] + covariance[row][2] * axis[2];
+		}
+		if ( next.Normalize() == 0.0f ) {
+			break;
+		}
+		axis = next;
+	}
+
+	int minimumPixel = 0;
+	int maximumPixel = 0;
+	float minimumProjection = idMath::INFINITY;
+	float maximumProjection = -idMath::INFINITY;
+	for ( int i = 0; i < 16; i++ ) {
+		const float projection = pixels[i][0] * axis[0] + pixels[i][1] * axis[1] + pixels[i][2] * axis[2];
+		if ( projection < minimumProjection ) {
+			minimumProjection = projection;
+			minimumPixel = i;
+		}
+		if ( projection > maximumProjection ) {
+			maximumProjection = projection;
+			maximumPixel = i;
+		}
+	}
+
+	unsigned short color0 = LM_PackRGB565( pixels[maximumPixel] );
+	unsigned short color1 = LM_PackRGB565( pixels[minimumPixel] );
+	if ( color0 < color1 ) {
+		idSwap( color0, color1 );
+	}
+
+	byte palette[4][3];
+	LM_UnpackRGB565( color0, palette[0] );
+	LM_UnpackRGB565( color1, palette[1] );
+	for ( int component = 0; component < 3; component++ ) {
+		palette[2][component] = (byte)( ( 2 * palette[0][component] + palette[1][component] + 1 ) / 3 );
+		palette[3][component] = (byte)( ( palette[0][component] + 2 * palette[1][component] + 1 ) / 3 );
+	}
+
+	unsigned int indices = 0;
+	const int paletteCount = color0 == color1 ? 2 : 4;
+	for ( int i = 0; i < 16; i++ ) {
+		int bestIndex = 0;
+		int bestError = INT_MAX;
+		for ( int paletteIndex = 0; paletteIndex < paletteCount; paletteIndex++ ) {
+			const int dr = (int)pixels[i][0] - palette[paletteIndex][0];
+			const int dg = (int)pixels[i][1] - palette[paletteIndex][1];
+			const int db = (int)pixels[i][2] - palette[paletteIndex][2];
+			const int error = dr * dr + dg * dg + db * db;
+			if ( error < bestError ) {
+				bestError = error;
+				bestIndex = paletteIndex;
+			}
+		}
+		indices |= bestIndex << ( i * 2 );
+	}
+
+	output[0] = (byte)( color0 & 255 );
+	output[1] = (byte)( color0 >> 8 );
+	output[2] = (byte)( color1 & 255 );
+	output[3] = (byte)( color1 >> 8 );
+	output[4] = (byte)( indices & 255 );
+	output[5] = (byte)( ( indices >> 8 ) & 255 );
+	output[6] = (byte)( ( indices >> 16 ) & 255 );
+	output[7] = (byte)( ( indices >> 24 ) & 255 );
+}
+
+static void LM_MakeDDS( const idList<byte> &rgba, idList<byte> &dds ) {
+	const int blockWidth = ( LM_ATLAS_SIZE + 3 ) / 4;
+	const int blockHeight = ( LM_ATLAS_SIZE + 3 ) / 4;
+	const int compressedBytes = blockWidth * blockHeight * 8;
+	ddsFileHeader_t header;
+	memset( &header, 0, sizeof( header ) );
+	header.dwSize = sizeof( header );
+	header.dwFlags = DDSF_CAPS | DDSF_HEIGHT | DDSF_WIDTH | DDSF_PIXELFORMAT | DDSF_LINEARSIZE;
+	header.dwHeight = LM_ATLAS_SIZE;
+	header.dwWidth = LM_ATLAS_SIZE;
+	header.dwPitchOrLinearSize = compressedBytes;
+	header.ddspf.dwSize = sizeof( header.ddspf );
+	header.ddspf.dwFlags = DDSF_FOURCC;
+	header.ddspf.dwFourCC = DDS_MAKEFOURCC( 'D', 'X', 'T', '1' );
+	header.dwCaps1 = DDSF_TEXTURE;
+
+	dds.SetNum( 4 + sizeof( header ) + compressedBytes );
+	memcpy( dds.Ptr(), "DDS ", 4 );
+	memcpy( dds.Ptr() + 4, &header, sizeof( header ) );
+	byte *compressed = dds.Ptr() + 4 + sizeof( header );
+	for ( int blockY = 0; blockY < blockHeight; blockY++ ) {
+		for ( int blockX = 0; blockX < blockWidth; blockX++ ) {
+			byte block[16][4];
+			for ( int y = 0; y < 4; y++ ) {
+				// Compressed rows are uploaded directly, and already match the proc lightmap T coordinates.
+				const int sourceY = idMath::ClampInt( 0, LM_ATLAS_SIZE - 1, blockY * 4 + y );
+				for ( int x = 0; x < 4; x++ ) {
+					const int sourceX = idMath::ClampInt( 0, LM_ATLAS_SIZE - 1, blockX * 4 + x );
+					memcpy( block[y * 4 + x], &rgba[( sourceY * LM_ATLAS_SIZE + sourceX ) * 4], 4 );
+				}
+			}
+			LM_CompressDXT1Block( block, compressed );
+			compressed += 8;
+		}
 	}
 }
 
@@ -613,21 +793,27 @@ void Lightmap_Begin( const char *mapFileBase ) {
 	lmMapFileBase = mapFileBase;
 	lmAmbient = LM_DEFAULT_AMBIENT;
 	lmDirectScale = LM_DEFAULT_DIRECT_SCALE;
+	lmShadowSamples = LM_DEFAULT_SHADOW_SAMPLES;
 	if ( dmapGlobals.uEntities && dmapGlobals.num_entities > 0 && dmapGlobals.uEntities[0].mapEntity ) {
 		const idDict &worldSpawn = dmapGlobals.uEntities[0].mapEntity->epairs;
 		worldSpawn.GetFloat( "lightmapAmbient", "0.025", lmAmbient );
 		worldSpawn.GetFloat( "lightmapDirectScale", "2.0", lmDirectScale );
+		worldSpawn.GetInt( "lightmapShadowSamples", "9", lmShadowSamples );
 	}
 	lmAmbient = idMath::ClampFloat( 0.0f, 1.0f, lmAmbient );
 	lmDirectScale = idMath::ClampFloat( 0.0f, 16.0f, lmDirectScale );
+	lmShadowSamples = lmShadowSamples <= 1 ? 1 : ( lmShadowSamples <= 5 ? 5 : 9 );
 	lmShadePoints = 0;
 	lmLightTests = 0;
 	lmLightsInVolume = 0;
 	lmLightsOccluded = 0;
 	lmLightsContributing = 0;
+	lmShadowRays = 0;
+	lmMixedShadowTests = 0;
 	lmExternalOccluders = 0;
 	LM_AddExternalModelOccluders();
-	common->Printf( "----- BakeLightmaps (ambient %.3f, direct scale %.3f) -----\n", lmAmbient, lmDirectScale );
+	common->Printf( "----- BakeLightmaps (ambient %.3f, direct scale %.3f, adaptive shadow samples %i) -----\n",
+		lmAmbient, lmDirectScale, lmShadowSamples );
 	common->Printf( "%i external static-model occluder triangles\n", lmExternalOccluders );
 }
 
@@ -754,13 +940,17 @@ void Lightmap_End( void ) {
 	const float averageLightByte = validTexels ? (float)( (double)lightByteSum / ( validTexels * 3.0 ) ) : 0.0f;
 	common->Printf( "lightmap samples: %llu points, %llu light tests, %llu in volume, %llu shadowed, %llu contributing\n",
 		lmShadePoints, lmLightTests, lmLightsInVolume, lmLightsOccluded, lmLightsContributing );
+	common->Printf( "%llu shadow rays, %llu mixed-coverage shadow tests refined\n",
+		lmShadowRays, lmMixedShadowTests );
 	common->Printf( "%llu valid luxels, average light %.1f / 255\n", validTexels, averageLightByte );
 
-	manifest = "lightmapArchiveVersion 2\n";
+	manifest = "lightmapArchiveVersion 3\n";
 	manifest += va( "procFileId %s\n", PROC_FILE_ID );
 	manifest += "lightingComplete 1\n";
+	manifest += "atlasFormat DDS_DXT1\n";
 	manifest += va( "atlasSize %i\n", LM_ATLAS_SIZE );
 	manifest += va( "sampleScale %g\n", LM_DEFAULT_SCALE );
+	manifest += va( "shadowSamples %i\n", lmShadowSamples );
 	manifest += va( "ambient %g\n", lmAmbient );
 	manifest += va( "directScale %g\n", lmDirectScale );
 	manifest += va( "averageLightByte %g\n", averageLightByte );
@@ -782,14 +972,14 @@ void Lightmap_End( void ) {
 
 	for ( int i = 0; i < lmAtlases.Num(); i++ ) {
 		LM_DilateAtlas( lmAtlases[i] );
-		idList<byte> tga;
+		idList<byte> dds;
 		idStr imageName;
-		LM_MakeTGA( lmAtlases[i]->lightmap, tga );
-		imageName = va( "%s/lightmap_%03i.tga", lmMapFileBase.c_str(), i );
-		LM_ZipAdd( entries, imageName, tga.Ptr(), tga.Num() );
-		LM_MakeTGA( lmAtlases[i]->deluxemap, tga );
-		imageName = va( "%s/deluxemap_%03i.tga", lmMapFileBase.c_str(), i );
-		LM_ZipAdd( entries, imageName, tga.Ptr(), tga.Num() );
+		LM_MakeDDS( lmAtlases[i]->lightmap, dds );
+		imageName = va( "dds/%s/lightmap_%03i.dds", lmMapFileBase.c_str(), i );
+		LM_ZipAdd( entries, imageName, dds.Ptr(), dds.Num() );
+		LM_MakeDDS( lmAtlases[i]->deluxemap, dds );
+		imageName = va( "dds/%s/deluxemap_%03i.dds", lmMapFileBase.c_str(), i );
+		LM_ZipAdd( entries, imageName, dds.Ptr(), dds.Num() );
 	}
 
 	idStr archiveName = lmMapFileBase;

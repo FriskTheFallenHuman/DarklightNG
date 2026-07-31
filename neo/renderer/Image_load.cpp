@@ -1583,6 +1583,19 @@ void	idImage::ActuallyLoadImage( bool checkForPrecompressed, bool fromBackEnd ) 
 		return;
 	}
 
+	// Baked map atlases are authored directly as DDS/DXT and deliberately have
+	// no source TGA.  Load them through the native compressed path regardless of
+	// image_usePrecompressedTextures so a user's global texture setting cannot
+	// disable map lighting.
+	if ( forcePrecompressedFile ) {
+		if ( CheckPrecompressedImage( true ) ) {
+			return;
+		}
+		common->Warning( "Couldn't load required DDS/DXT image: %s", imgName.c_str() );
+		MakeDefault();
+		return;
+	}
+
 	// if we are a partial image, we are only going to load from a compressed file
 	if ( isPartialImage ) {
 		if ( CheckPrecompressedImage( false ) ) {

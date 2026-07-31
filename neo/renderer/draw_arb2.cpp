@@ -330,29 +330,31 @@ RB_ARB2_DrawBakedStage
 ==================
 */
 static void RB_ARB2_DrawBakedStage( const drawSurf_t *surf, idImage *bumpImage, const idVec4 bumpMatrix[2],
-		const shaderStage_t *diffuseStage ) {
+		const shaderStage_t *stage ) {
 	const srfTriangles_t *tri = surf->geo;
-	idImage *diffuseImage;
-	idVec4 diffuseMatrix[2];
-	float diffuseColor[4];
+	idImage *stageImage;
+	idVec4 stageMatrix[2];
+	float stageColor[4];
 	static const float zero[4] = { 0, 0, 0, 0 };
 	static const float one[4] = { 1, 1, 1, 1 };
 	static const float negativeOne[4] = { -1, -1, -1, -1 };
+	static const float diffuseMode[4] = { 1, 0, 0, 0 };
+	static const float specularMode[4] = { 0, 1, 0, 0 };
 
-	R_SetDrawInteraction( diffuseStage, surf->shaderRegisters, &diffuseImage, diffuseMatrix, diffuseColor );
-	if ( !diffuseImage || diffuseColor[0] + diffuseColor[1] + diffuseColor[2] <= 0.0f ) {
+	R_SetDrawInteraction( stage, surf->shaderRegisters, &stageImage, stageMatrix, stageColor );
+	if ( !stageImage || stageColor[0] + stageColor[1] + stageColor[2] <= 0.0f ) {
 		return;
 	}
 	const float bakedScale = r_bakedLightmapScale.GetFloat();
-	diffuseColor[0] *= bakedScale;
-	diffuseColor[1] *= bakedScale;
-	diffuseColor[2] *= bakedScale;
+	stageColor[0] *= bakedScale;
+	stageColor[1] *= bakedScale;
+	stageColor[2] *= bakedScale;
 
 	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 0, bumpMatrix[0].ToFloatPtr() );
 	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 1, bumpMatrix[1].ToFloatPtr() );
-	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 2, diffuseMatrix[0].ToFloatPtr() );
-	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 3, diffuseMatrix[1].ToFloatPtr() );
-	switch ( diffuseStage->vertexColor ) {
+	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 2, stageMatrix[0].ToFloatPtr() );
+	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 3, stageMatrix[1].ToFloatPtr() );
+	switch ( stage->vertexColor ) {
 	case SVC_MODULATE:
 		qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 4, one );
 		qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 5, zero );
@@ -366,16 +368,20 @@ static void RB_ARB2_DrawBakedStage( const drawSurf_t *surf, idImage *bumpImage, 
 		qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 5, one );
 		break;
 	}
-	qglProgramEnvParameter4fvARB( GL_FRAGMENT_PROGRAM_ARB, 0, diffuseColor );
+	qglProgramEnvParameter4fvARB( GL_FRAGMENT_PROGRAM_ARB, 0, stageColor );
+	qglProgramEnvParameter4fvARB( GL_FRAGMENT_PROGRAM_ARB, 1,
+		stage->lighting == SL_SPECULAR ? specularMode : diffuseMode );
 
 	GL_SelectTextureNoClient( 0 );
 	( r_skipBump.GetBool() ? globalImages->flatNormalMap : bumpImage )->Bind();
 	GL_SelectTextureNoClient( 1 );
-	diffuseImage->Bind();
+	stageImage->Bind();
 	GL_SelectTextureNoClient( 2 );
 	tri->bakedLightmap->Bind();
 	GL_SelectTextureNoClient( 3 );
 	tri->bakedDeluxemap->Bind();
+	GL_SelectTextureNoClient( 4 );
+	globalImages->specularTableImage->Bind();
 
 	RB_DrawElementsWithCounters( tri );
 }
@@ -414,6 +420,10 @@ static void RB_ARB2_DrawBakedSurface( const drawSurf_t *surf ) {
 	qglVertexPointer( 3, GL_FLOAT, sizeof( idDrawVert ), ambient->xyz.ToFloatPtr() );
 	idVec2 *lightmap = (idVec2 *)vertexCache.Position( tri->lightmapCache );
 	qglVertexAttribPointerARB( 12, 2, GL_FLOAT, false, sizeof( idVec2 ), lightmap->ToFloatPtr() );
+	idVec3 localViewOrigin;
+	R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewDef->renderView.vieworg, localViewOrigin );
+	idVec4 viewOrigin( localViewOrigin[0], localViewOrigin[1], localViewOrigin[2], 1.0f );
+	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 6, viewOrigin.ToFloatPtr() );
 
 	bumpMatrix[0].Set( 1, 0, 0, 0 );
 	bumpMatrix[1].Set( 0, 1, 0, 0 );
@@ -427,6 +437,10 @@ static void RB_ARB2_DrawBakedSurface( const drawSurf_t *surf ) {
 			continue;
 		}
 		if ( stage->lighting == SL_DIFFUSE && !r_skipDiffuse.GetBool() ) {
+			RB_ARB2_DrawBakedStage( surf, bumpImage, bumpMatrix, stage );
+			continue;
+		}
+		if ( stage->lighting == SL_SPECULAR && !r_skipSpecular.GetBool() ) {
 			RB_ARB2_DrawBakedStage( surf, bumpImage, bumpMatrix, stage );
 		}
 	}
@@ -479,7 +493,7 @@ void RB_ARB2_DrawBakedLightmaps( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	qglDisableVertexAttribArrayARB( 10 );
 	qglDisableVertexAttribArrayARB( 9 );
 	qglDisableVertexAttribArrayARB( 8 );
-	for ( int unit = 3; unit >= 0; unit-- ) {
+	for ( int unit = 4; unit >= 0; unit-- ) {
 		GL_SelectTextureNoClient( unit );
 		globalImages->BindNull();
 	}

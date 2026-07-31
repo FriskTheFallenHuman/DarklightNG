@@ -187,17 +187,19 @@ idRenderModel *idRenderWorldLocal::ParseModel( idLexer *src, bool hasLightmapUVs
 
 		if ( hasBakedLightmaps && tri->lightmapAtlas >= 0 ) {
 			idStr imageName;
-			imageName = va( "%s/lightmap_%03i.tga", mapName.c_str(), tri->lightmapAtlas );
-			tri->bakedLightmap = globalImages->ImageFromFile( imageName, TF_LINEAR, false, TR_CLAMP, TD_HIGH_QUALITY );
+			imageName = va( "%s/lightmap_%03i", mapName.c_str(), tri->lightmapAtlas );
+			tri->bakedLightmap = globalImages->ImageFromFile( imageName, TF_LINEAR, false, TR_CLAMP,
+				TD_HIGH_QUALITY, CF_2D, true );
 			if ( bakedAtlasImages.FindIndex( tri->bakedLightmap ) < 0 ) {
 				bakedAtlasImages.Append( tri->bakedLightmap );
-				tri->bakedLightmap->Reload( false, true );
+				tri->bakedLightmap->Reload( true, true );
 			}
-			imageName = va( "%s/deluxemap_%03i.tga", mapName.c_str(), tri->lightmapAtlas );
-			tri->bakedDeluxemap = globalImages->ImageFromFile( imageName, TF_LINEAR, false, TR_CLAMP, TD_HIGH_QUALITY );
+			imageName = va( "%s/deluxemap_%03i", mapName.c_str(), tri->lightmapAtlas );
+			tri->bakedDeluxemap = globalImages->ImageFromFile( imageName, TF_LINEAR, false, TR_CLAMP,
+				TD_HIGH_QUALITY, CF_2D, true );
 			if ( bakedAtlasImages.FindIndex( tri->bakedDeluxemap ) < 0 ) {
 				bakedAtlasImages.Append( tri->bakedDeluxemap );
-				tri->bakedDeluxemap->Reload( false, true );
+				tri->bakedDeluxemap->Reload( true, true );
 			}
 			bakedSurfaceCount++;
 		}
@@ -563,13 +565,18 @@ bool idRenderWorldLocal::InitFromMap( const char *name ) {
 		bool validManifest = false;
 		if ( manifestLength > 0 && manifestBuffer ) {
 			const idStr manifestText( (const char *)manifestBuffer );
-			validManifest = manifestText.Find( "lightmapArchiveVersion 2" ) >= 0 &&
+			validManifest = manifestText.Find( "lightmapArchiveVersion 3" ) >= 0 &&
+				manifestText.Find( "atlasFormat DDS_DXT1" ) >= 0 &&
 				manifestText.Find( "lightingComplete 1" ) >= 0 &&
 				manifestText.Find( va( "procFileId %s", PROC_FILE_ID ) ) >= 0;
+			if ( validManifest && !glConfig.textureCompressionAvailable ) {
+				common->Warning( "Map lightmap archive %s requires DXT1 texture support; using realtime lights", archiveName.c_str() );
+				validManifest = false;
+			}
 			fileSystem->FreeFile( manifestBuffer );
 		}
 		if ( !validManifest ) {
-			common->Warning( "Map lightmap archive %s is missing a complete version 2 manifest; using realtime lights", archiveName.c_str() );
+			common->Warning( "Map lightmap archive %s is missing a complete version 3 DDS/DXT1 manifest; using realtime lights", archiveName.c_str() );
 			fileSystem->UnmountMapArchive();
 			hasBakedLightmaps = false;
 		}

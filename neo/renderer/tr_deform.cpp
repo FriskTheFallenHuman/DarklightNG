@@ -85,7 +85,7 @@ static void R_AutospriteDeform( drawSurf_t *surf ) {
 	tri = surf->geo;
 
 	if ( tri->numVerts & 3 ) {
-		common->Warning( "R_AutospriteDeform: shader had odd vertex count" );
+//		common->Warning( "R_AutospriteDeform: shader had odd vertex count" );
 		return;
 	}
 	if ( tri->numIndexes != ( tri->numVerts >> 2 ) * 6 ) {

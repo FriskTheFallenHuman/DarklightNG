@@ -237,6 +237,7 @@ public:
 	bool				referencedOutsideLevelLoad;
 	bool				levelLoadReferenced;	// for determining if it needs to be purged
 	bool				precompressedFile;		// true when it was loaded from a .d3t file
+	bool				forcePrecompressedFile;	// source image is intentionally DDS-only, independent of the global cvar
 	bool				defaulted;				// true if the default image was generated because a file couldn't be loaded
 	bool				isMonochrome;			// so the NV20 path can use a reduced pass count
 	ID_TIME_T				timestamp;				// the most recent of all images used in creation, for reloadImages command
@@ -277,6 +278,7 @@ ID_INLINE idImage::idImage() {
 	referencedOutsideLevelLoad = false;
 	levelLoadReferenced = false;
 	precompressedFile = false;
+	forcePrecompressedFile = false;
 	defaulted = false;
 	timestamp = 0;
 	bindCount = 0;
@@ -310,7 +312,8 @@ public:
 	// Will automatically resample non-power-of-two images and execute image programs if needed.
 	idImage *			ImageFromFile( const char *name,
 							 textureFilter_t filter, bool allowDownSize,
-							 textureRepeat_t repeat, textureDepth_t depth, cubeFiles_t cubeMap = CF_2D );
+							 textureRepeat_t repeat, textureDepth_t depth, cubeFiles_t cubeMap = CF_2D,
+							 bool forcePrecompressed = false );
 
 	// look for a loaded image, whatever the parameters
 	idImage *			GetImage( const char *name ) const;
@@ -493,4 +496,3 @@ IMAGEPROGRAM
 
 void R_LoadImageProgram( const char *name, byte **pic, int *width, int *height, ID_TIME_T *timestamp, textureDepth_t *depth = NULL );
 const char *R_ParsePastImageProgram( idLexer &src );
-

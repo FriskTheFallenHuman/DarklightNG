@@ -1479,7 +1479,7 @@ Loading of the image may be deferred for dynamic loading.
 ==============
 */
 idImage	*idImageManager::ImageFromFile( const char *_name, textureFilter_t filter, bool allowDownSize,
-						 textureRepeat_t repeat, textureDepth_t depth, cubeFiles_t cubeMap ) {
+						 textureRepeat_t repeat, textureDepth_t depth, cubeFiles_t cubeMap, bool forcePrecompressed ) {
 	idStr name;
 	idImage	*image;
 	int hash;
@@ -1507,6 +1507,9 @@ idImage	*idImageManager::ImageFromFile( const char *_name, textureFilter_t filte
 			}
 			if ( image->cubeFiles != cubeMap ) {
 				common->Error( "Image '%s' has been referenced with conflicting cube map states", _name );
+			}
+			if ( image->forcePrecompressedFile != forcePrecompressed ) {
+				continue;
 			}
 
 			if ( image->filter != filter || image->repeat != repeat ) {
@@ -1573,6 +1576,7 @@ idImage	*idImageManager::ImageFromFile( const char *_name, textureFilter_t filte
 	image->type = TT_2D;
 	image->cubeFiles = cubeMap;
 	image->filter = filter;
+	image->forcePrecompressedFile = forcePrecompressed;
 	
 	image->levelLoadReferenced = true;
 
@@ -1587,6 +1591,7 @@ idImage	*idImageManager::ImageFromFile( const char *_name, textureFilter_t filte
 		image->partialImage->type = TT_2D;
 		image->partialImage->cubeFiles = cubeMap;
 		image->partialImage->filter = filter;
+		image->partialImage->forcePrecompressedFile = forcePrecompressed;
 
 		image->partialImage->levelLoadReferenced = true;
 
