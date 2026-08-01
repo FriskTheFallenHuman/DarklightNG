@@ -85,19 +85,28 @@ If you have questions concerning this license or the applicable additional terms
 
 #define	COLINEAR_EPSILON	( 1.8 * VERTEX_EPSILON )
 
-#define	HASH_BINS	16
+#define	HASH_BINS	64
 
 typedef struct hashVert_s {
 	struct hashVert_s	*next;
 	idVec3				v;
 	int					iv[3];
+	unsigned int		visitStamp;
 } hashVert_t;
 
 static idBounds	hashBounds;
 static idVec3	hashScale;
 static hashVert_t	*hashVerts[HASH_BINS][HASH_BINS][HASH_BINS];
+static idList<int>	hashUsedBuckets;
 static int		numHashVerts, numTotalVerts;
 static int		hashIntMins[3], hashIntScale[3];
+static unsigned int hashVisitStamp;
+static unsigned __int64 numTJunctionCandidates;
+
+static int HashBlockForInt( int axis, int value ) {
+	int block = ( value - hashIntMins[axis] ) / hashIntScale[axis];
+	return idMath::ClampInt( 0, HASH_BINS - 1, block );
+}
 
 /*
 ===============
@@ -117,46 +126,51 @@ struct hashVert_s	*GetHashVert( idVec3 &v ) {
 	// snap the vert to integral values
 	for ( i = 0 ; i < 3 ; i++ ) {
 		iv[i] = floor( ( v[i] + 0.5/SNAP_FRACTIONS ) * SNAP_FRACTIONS );
-		block[i] = ( iv[i] - hashIntMins[i] ) / hashIntScale[i];
-		if ( block[i] < 0 ) {
-			block[i] = 0;
-		} else if ( block[i] >= HASH_BINS ) {
-			block[i] = HASH_BINS - 1;
-		}
+		block[i] = HashBlockForInt( i, iv[i] );
 	}
 
 	// see if a vertex near enough already exists
-	// this could still fail to find a near neighbor right at the hash block boundary
-	for ( hv = hashVerts[block[0]][block[1]][block[2]] ; hv ; hv = hv->next ) {
-#if 0
-		if ( hv->iv[0] == iv[0] && hv->iv[1] == iv[1] && hv->iv[2] == iv[2] ) {
-			VectorCopy( hv->v, v );
-			return hv;
-		}
-#else
-		for ( i = 0 ; i < 3 ; i++ ) {
-			int	d;
-			d = hv->iv[i] - iv[i];
-			if ( d < -1 || d > 1 ) {
-				break;
+	// Search the few adjacent buckets reached by the epsilon, so subdivision of
+	// the hash cannot separate two vertices that should snap together.
+	int blockMins[3];
+	int blockMaxs[3];
+	for ( i = 0; i < 3; i++ ) {
+		blockMins[i] = HashBlockForInt( i, iv[i] - 1 );
+		blockMaxs[i] = HashBlockForInt( i, iv[i] + 1 );
+	}
+	for ( int blockX = blockMins[0]; blockX <= blockMaxs[0]; blockX++ ) {
+		for ( int blockY = blockMins[1]; blockY <= blockMaxs[1]; blockY++ ) {
+			for ( int blockZ = blockMins[2]; blockZ <= blockMaxs[2]; blockZ++ ) {
+				for ( hv = hashVerts[blockX][blockY][blockZ] ; hv ; hv = hv->next ) {
+					for ( i = 0 ; i < 3 ; i++ ) {
+						int	d;
+						d = hv->iv[i] - iv[i];
+						if ( d < -1 || d > 1 ) {
+							break;
+						}
+					}
+					if ( i == 3 ) {
+						VectorCopy( hv->v, v );
+						return hv;
+					}
+				}
 			}
 		}
-		if ( i == 3 ) {
-			VectorCopy( hv->v, v );
-			return hv;
-		}
-#endif
 	}
 
 	// create a new one 
 	hv = (hashVert_t *)Mem_Alloc( sizeof( *hv ) );
 
+	if ( hashVerts[block[0]][block[1]][block[2]] == NULL ) {
+		hashUsedBuckets.Append( ( block[0] * HASH_BINS + block[1] ) * HASH_BINS + block[2] );
+	}
 	hv->next = hashVerts[block[0]][block[1]][block[2]];
 	hashVerts[block[0]][block[1]][block[2]] = hv;
 
 	hv->iv[0] = iv[0];
 	hv->iv[1] = iv[1];
 	hv->iv[2] = iv[2];
+	hv->visitStamp = 0;
 
 	hv->v[0] = (float)iv[0] / SNAP_FRACTIONS;
 	hv->v[1] = (float)iv[1] / SNAP_FRACTIONS;
@@ -172,31 +186,33 @@ struct hashVert_s	*GetHashVert( idVec3 &v ) {
 
 /*
 ==================
-HashBlocksForTri
+HashBlocksForEdge
 
 Returns an inclusive bounding box of hash
-bins that should hold the triangle
+bins that can contain a vertex on the edge
 ==================
 */
-static void HashBlocksForTri( const mapTri_t *tri, int blocks[2][3] ) {
+static void HashBlocksForEdge( const idVec3 &start, const idVec3 &end, int blocks[2][3] ) {
 	idBounds	bounds;
 	int			i;
 
 	bounds.Clear();
-	bounds.AddPoint( tri->v[0].xyz );
-	bounds.AddPoint( tri->v[1].xyz );
-	bounds.AddPoint( tri->v[2].xyz );
+	bounds.AddPoint( start );
+	bounds.AddPoint( end );
 
-	// add a 1.0 slop margin on each side
+	// FixTriangleAgainstHashVert rejects anything farther than this from the
+	// edge.  Keeping the hash query to the same narrow band avoids testing all
+	// vertices inside a large triangle's three-dimensional bounding box.
+	const float slop = COLINEAR_EPSILON + VERTEX_EPSILON;
 	for ( i = 0 ; i < 3 ; i++ ) {
-		blocks[0][i] = ( bounds[0][i] - 1.0 - hashBounds[0][i] ) / hashScale[i];
+		blocks[0][i] = ( bounds[0][i] - slop - hashBounds[0][i] ) / hashScale[i];
 		if ( blocks[0][i] < 0 ) {
 			blocks[0][i] = 0;
 		} else if ( blocks[0][i] >= HASH_BINS ) {
 			blocks[0][i] = HASH_BINS - 1;
 		}
 
-		blocks[1][i] = ( bounds[1][i] + 1.0 - hashBounds[0][i] ) / hashScale[i];
+		blocks[1][i] = ( bounds[1][i] + slop - hashBounds[0][i] ) / hashScale[i];
 		if ( blocks[1][i] < 0 ) {
 			blocks[1][i] = 0;
 		} else if ( blocks[1][i] >= HASH_BINS ) {
@@ -221,9 +237,11 @@ void HashTriangles( optimizeGroup_t *groupList ) {
 
 	// clear the hash tables
 	memset( hashVerts, 0, sizeof( hashVerts ) );
+	hashUsedBuckets.Clear();
 
 	numHashVerts = 0;
 	numTotalVerts = 0;
+	numTJunctionCandidates = 0;
 
 	// bound all the triangles to determine the bucket size
 	hashBounds.Clear();
@@ -271,20 +289,21 @@ after t junction processing
 =================
 */
 void FreeTJunctionHash( void ) {
-	int			i, j, k;
 	hashVert_t	*hv, *next;
 
-	for ( i = 0 ; i < HASH_BINS ; i++ ) {
-		for ( j = 0 ; j < HASH_BINS ; j++ ) {
-			for ( k = 0 ; k < HASH_BINS ; k++ ) {
-				for ( hv = hashVerts[i][j][k] ; hv ; hv = next ) {
-					next = hv->next;
-					Mem_Free( hv );
-				}
-			}
+	for ( int bucketIndex = 0; bucketIndex < hashUsedBuckets.Num(); bucketIndex++ ) {
+		int flat = hashUsedBuckets[bucketIndex];
+		const int k = flat % HASH_BINS;
+		flat /= HASH_BINS;
+		const int j = flat % HASH_BINS;
+		const int i = flat / HASH_BINS;
+		for ( hv = hashVerts[i][j][k] ; hv ; hv = next ) {
+			next = hv->next;
+			Mem_Free( hv );
 		}
+		hashVerts[i][j][k] = NULL;
 	}
-	memset( hashVerts, 0, sizeof( hashVerts ) );
+	hashUsedBuckets.Clear();
 }
 
 
@@ -383,6 +402,26 @@ static mapTri_t *FixTriangleAgainstHashVert( const mapTri_t *a, const hashVert_t
 	return NULL;
 }
 
+static mapTri_t *FixTriangleListAgainstHashVert( mapTri_t *fixed, const hashVert_t *hv ) {
+	mapTri_t *test = fixed;
+	fixed = NULL;
+	while ( test ) {
+		mapTri_t *next = test->next;
+		mapTri_t *split = FixTriangleAgainstHashVert( test, hv );
+		if ( split ) {
+			// cut into two triangles
+			split->next->next = fixed;
+			fixed = split;
+			FreeTri( test );
+		} else {
+			test->next = fixed;
+			fixed = test;
+		}
+		test = next;
+	}
+	return fixed;
+}
+
 
 
 /*
@@ -394,8 +433,6 @@ Potentially splits a triangle into a list of triangles based on tjunctions
 */
 static mapTri_t	*FixTriangleAgainstHash( const mapTri_t *tri ) {
 	mapTri_t		*fixed;
-	mapTri_t		*a;
-	mapTri_t		*test, *next;
 	int				blocks[2][3];
 	int				i, j, k;
 	hashVert_t		*hv;
@@ -412,25 +449,33 @@ static mapTri_t	*FixTriangleAgainstHash( const mapTri_t *tri ) {
 	fixed = CopyMapTri( tri );
 	fixed->next = NULL;
 
-	HashBlocksForTri( tri, blocks );
-	for ( i = blocks[0][0] ; i <= blocks[1][0] ; i++ ) {
-		for ( j = blocks[0][1] ; j <= blocks[1][1] ; j++ ) {
-			for ( k = blocks[0][2] ; k <= blocks[1][2] ; k++ ) {
-				for ( hv = hashVerts[i][j][k] ; hv ; hv = hv->next ) {
-					// fix all triangles in the list against this point
-					test = fixed;
-					fixed = NULL;
-					for ( ; test ; test = next ) {
-						next = test->next;
-						a = FixTriangleAgainstHashVert( test, hv );
-						if ( a ) {
-							// cut into two triangles
-							a->next->next = fixed;
-							fixed = a;
-							FreeTri( test );
-						} else {
-							test->next = fixed;
-							fixed = test;
+	// A T-junction can only occur on one of the original boundary edges.
+	// Gather each nearby hash vertex once, then retain the existing splitter.
+	hashVisitStamp++;
+	if ( hashVisitStamp == 0 ) {
+		// The wrap is practically unreachable, but zero is reserved for newly
+		// allocated vertices.
+		for ( i = 0; i < HASH_BINS; i++ ) {
+			for ( j = 0; j < HASH_BINS; j++ ) {
+				for ( k = 0; k < HASH_BINS; k++ ) {
+					for ( hv = hashVerts[i][j][k]; hv; hv = hv->next ) {
+						hv->visitStamp = 0;
+					}
+				}
+			}
+		}
+		hashVisitStamp = 1;
+	}
+	for ( int edge = 0; edge < 3; edge++ ) {
+		HashBlocksForEdge( tri->v[edge].xyz, tri->v[( edge + 1 ) % 3].xyz, blocks );
+		for ( i = blocks[0][0] ; i <= blocks[1][0] ; i++ ) {
+			for ( j = blocks[0][1] ; j <= blocks[1][1] ; j++ ) {
+				for ( k = blocks[0][2] ; k <= blocks[1][2] ; k++ ) {
+					for ( hv = hashVerts[i][j][k] ; hv ; hv = hv->next ) {
+						if ( hv->visitStamp != hashVisitStamp ) {
+							hv->visitStamp = hashVisitStamp;
+							numTJunctionCandidates++;
+							fixed = FixTriangleListAgainstHashVert( fixed, hv );
 						}
 					}
 				}
@@ -505,6 +550,8 @@ void	FixAreaGroupsTjunctions( optimizeGroup_t *groupList ) {
 	endCount = CountGroupListTris( groupList );
 	if ( dmapGlobals.verbose ) {
 		common->Printf( "%6i triangles out\n", endCount );
+		common->Printf( "%6i unique vertices, %llu edge candidates tested\n",
+			numHashVerts, numTJunctionCandidates );
 	}
 }
 
@@ -539,9 +586,11 @@ void	FixGlobalTjunctions( uEntity_t *e ) {
 
 	// clear the hash tables
 	memset( hashVerts, 0, sizeof( hashVerts ) );
+	hashUsedBuckets.Clear();
 
 	numHashVerts = 0;
 	numTotalVerts = 0;
+	numTJunctionCandidates = 0;
 
 	// bound all the triangles to determine the bucket size
 	hashBounds.Clear();
@@ -662,5 +711,7 @@ void	FixGlobalTjunctions( uEntity_t *e ) {
 
 
 	// done
+	common->Printf( "%i unique vertices, %llu edge candidates tested\n",
+		numHashVerts, numTJunctionCandidates );
 	FreeTJunctionHash();
 }
