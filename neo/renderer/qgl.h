@@ -138,14 +138,6 @@ extern	PFNGLALPHAFRAGMENTOP2ATIPROC	qglAlphaFragmentOp2ATI;
 extern	PFNGLALPHAFRAGMENTOP3ATIPROC	qglAlphaFragmentOp3ATI;
 extern	PFNGLSETFRAGMENTSHADERCONSTANTATIPROC	qglSetFragmentShaderConstantATI;
 
-// EXT_stencil_two_side
-extern	PFNGLACTIVESTENCILFACEEXTPROC	qglActiveStencilFaceEXT;
-
-
-// ATI_separate_stencil
-extern	PFNGLSTENCILOPSEPARATEATIPROC		qglStencilOpSeparateATI;
-extern	PFNGLSTENCILFUNCSEPARATEATIPROC		qglStencilFuncSeparateATI;
-
 // ARB_texture_compression
 extern	PFNGLCOMPRESSEDTEXIMAGE2DARBPROC	qglCompressedTexImage2DARB;
 extern	PFNGLGETCOMPRESSEDTEXIMAGEARBPROC	qglGetCompressedTexImageARB;
@@ -161,7 +153,6 @@ extern PFNGLPROGRAMENVPARAMETER4FVARBPROC	qglProgramEnvParameter4fvARB;
 extern PFNGLPROGRAMLOCALPARAMETER4FVARBPROC	qglProgramLocalParameter4fvARB;
 
 // GL_EXT_depth_bounds_test
-extern PFNGLDEPTHBOUNDSEXTPROC              qglDepthBoundsEXT;
 
 //===========================================================================
 

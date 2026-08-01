@@ -47,7 +47,6 @@ idScreenRect::Clear
 void idScreenRect::Clear() {
 	x1 = y1 = 32000;
 	x2 = y2 = -32000;
-	zmin = 0.0f; zmax = 1.0f;
 }
 
 /*
@@ -155,11 +154,6 @@ idScreenRect R_ScreenRectFromViewFrustumBounds( const idBounds &bounds ) {
 	screenRect.x2 = idMath::FtoiFast( 0.5f * ( 1.0f - bounds[0].y ) * ( tr.viewDef->viewport.x2 - tr.viewDef->viewport.x1 ) );
 	screenRect.y1 = idMath::FtoiFast( 0.5f * ( 1.0f + bounds[0].z ) * ( tr.viewDef->viewport.y2 - tr.viewDef->viewport.y1 ) );
 	screenRect.y2 = idMath::FtoiFast( 0.5f * ( 1.0f + bounds[1].z ) * ( tr.viewDef->viewport.y2 - tr.viewDef->viewport.y1 ) );
-
-	if ( r_useDepthBoundsTest.GetInteger() ) {
-		R_TransformEyeZToWin( -bounds[0].x, tr.viewDef->projectionMatrix, screenRect.zmin );
-		R_TransformEyeZToWin( -bounds[1].x, tr.viewDef->projectionMatrix, screenRect.zmax );
-	}
 
 	return screenRect;
 }
@@ -1126,17 +1120,12 @@ void R_RenderView( viewDef_t *parms ) {
 	// constrain the view frustum to the view lights and entities
 	R_ConstrainViewFrustum();
 
-	// make sure that interactions exist for all light / entity combinations
-	// that are visible
-	// add any pre-generated light shadows, and calculate the light shader values
+	// Evaluate visible lights and make sure their realtime interactions exist.
 	R_AddLightSurfaces();
 
 	// adds ambient surfaces and create any necessary interaction surfaces to add to the light
 	// lists
 	R_AddModelSurfaces();
-
-	// any viewLight that didn't have visible surfaces can have it's shadows removed
-	R_RemoveUnecessaryViewLights();
 
 	// sort all the ambient surfaces for translucency ordering
 	R_SortDrawSurfs();

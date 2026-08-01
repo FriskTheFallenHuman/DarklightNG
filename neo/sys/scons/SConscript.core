@@ -93,7 +93,6 @@ renderer_string = ' \
 	Image_load.cpp \
 	Image_process.cpp \
 	Image_program.cpp \
-	Interaction.cpp \
 	Material.cpp \
 	MegaTexture.cpp \
 	Model.cpp \
@@ -117,18 +116,13 @@ renderer_string = ' \
 	RenderWorld_load.cpp \
 	RenderWorld_portals.cpp \
 	VertexCache.cpp \
-	cg_explicit.cpp \
-	draw_arb.cpp \
 	draw_arb2.cpp \
 	draw_common.cpp \
-	draw_exp_stub.cpp \
-	draw_nv10.cpp \
-	draw_nv20.cpp \
-	draw_r200.cpp \
 	tr_backend.cpp \
 	tr_deform.cpp \
 	tr_font.cpp \
 	tr_guisurf.cpp \
+	tr_interaction.cpp \
 	tr_light.cpp \
 	tr_lightrun.cpp \
 	tr_main.cpp \
@@ -136,12 +130,9 @@ renderer_string = ' \
 	tr_polytope.cpp \
 	tr_render.cpp \
 	tr_rendertools.cpp \
-	tr_shadowbounds.cpp \
-	tr_stencilshadow.cpp \
 	tr_subview.cpp \
 	tr_trace.cpp \
-	tr_trisurf.cpp \
-	tr_turboshadow.cpp'
+	tr_trisurf.cpp'
 
 renderer_list = scons_utils.BuildList( 'renderer', renderer_string )
 
@@ -199,7 +190,6 @@ dmap_string = ' \
 	optimize.cpp \
 	output.cpp \
 	portals.cpp \
-	shadowopt3.cpp \
 	tritjunction.cpp \
 	tritools.cpp \
 	ubrush.cpp \

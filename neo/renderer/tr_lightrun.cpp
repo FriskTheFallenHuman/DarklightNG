@@ -31,77 +31,8 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "tr_local.h"
 
-/*
-
-
-Prelight models
-
-"_prelight_<lightname>", ie "_prelight_light1"
-
-Static surfaces available to dmap will be processed to optimized
-shadow and lit surface geometry
-
-Entity models are never prelighted.
-
-Light entity can have a "noPrelight 1" key set to avoid the preprocessing
-and carving of the world.  A light that will move should usually have this
-set.
-
-Prelight models will usually have multiple surfaces
-
-Shadow volume surfaces will have the material "_shadowVolume"
-
-The exact same vertexes as the ambient surfaces will be used for the
-non-shadow surfaces, so there is opportunity to share
-
-
-Reference their parent surfaces?
-Reference their parent area?
-
-
-If we don't track parts that are in different areas, there will be huge
-losses when an areaportal closed door has a light poking slightly
-through it.
-
-There is potential benefit to splitting even the shadow volumes
-at area boundaries, but it would involve the possibility of an
-extra plane of shadow drawing at the area boundary.
-
-
-interaction	lightName	numIndexes
-
-Shadow volume surface
-
-Surfaces in the world cannot have "no self shadow" properties, because all
-the surfaces are considered together for the optimized shadow volume.  If
-you want no self shadow on a static surface, you must still make it into an
-entity so it isn't considered in the prelight.
-
-
-r_hidePrelights
-r_hideNonPrelights
-
-
-
-each surface could include prelight indexes
-
-generation procedure in dmap:
-
-carve original surfaces into areas
-
-for each light
-	build shadow volume and beam tree
-	cut all potentially lit surfaces into the beam tree
-		move lit fragments into a new optimize group
-
-optimize groups
-
-build light models
-
-
-
-
-*/
+/* Runtime lights retain persistent entity/light interaction records. Static
+   world lighting is supplied by the baked lightmap and deluxemap pass. */
 
 /*
 =================================================================================
@@ -433,9 +364,6 @@ void R_DeriveLightData( idRenderLightLocal *light ) {
 
 	light->frustumTris = R_PolytopeSurface( 6, light->frustum, light->frustumWindings );
 
-	// a projected light will have one shadowFrustum, a point light will have
-	// six unless the light center is outside the box
-	R_MakeShadowFrustums( light );
 }
 
 /*
@@ -466,29 +394,13 @@ void R_CreateLightRefs( idRenderLightLocal *light ) {
 			,tri->bounds[1][1] - tri->bounds[0][1] );
 	}
 
-	// determine the areaNum for the light origin, which may let us
-	// cull the light if it is behind a closed door
-	// it is debatable if we want to use the entity origin or the center offset origin,
-	// but we definitely don't want to use a parallel offset origin
-	light->areaNum = light->world->PointInArea( light->globalLightOrigin );
-	if ( light->areaNum == -1 ) {
-		light->areaNum = light->world->PointInArea( light->parms.origin );
-	}
-
 	// bump the view count so we can tell if an
 	// area already has a reference
 	tr.viewCount++;
 
-	// if we have a prelight model that includes all the shadows for the major world occluders,
-	// we can limit the area references to those visible through the portals from the light center.
-	// We can't do this in the normal case, because shadows are cast from back facing triangles, which
-	// may be in areas not directly visible to the light projection center.
-	if ( light->parms.prelightModel && r_useLightPortalFlow.GetBool() && light->lightShader->LightCastsShadows() ) {
-		light->world->FlowLightThroughPortals( light );
-	} else {
-		// push these points down the BSP tree into areas
-		light->world->PushVolumeIntoTree( NULL, light, tri->numVerts, points );
-	}
+	// Push the light volume into every touched area.  The old portal-flow shortcut
+	// depended on a precomputed stencil occluder model.
+	light->world->PushVolumeIntoTree( NULL, light, tri->numVerts, points );
 }
 
 /*

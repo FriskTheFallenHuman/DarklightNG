@@ -449,7 +449,7 @@ void idRenderWorldLocal::UpdateLightDef( qhandle_t lightHandle, const renderLigh
 	if (!justUpdate) {
 		R_DeriveLightData( light );
 		const bool useBakedSurfaceLighting = hasBakedLightmaps && !r_skipBakedLightmaps.GetBool() &&
-			tr.backEndRenderer == BE_ARB2 && light->parms.bakedLight && !light->lightHasMoved;
+			light->parms.bakedLight && !light->lightHasMoved;
 		if ( light->parms.bakedLight && light->lightHasMoved ) {
 			bakedLightMovedCount++;
 		}

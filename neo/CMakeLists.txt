@@ -109,9 +109,6 @@ list(APPEND ENGINE_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/sys/win32/rc/CreateResourceIDs.cpp"
 )
 list(REMOVE_ITEM ENGINE_SOURCES
-	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/cg_explicit.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/draw_exp.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/draw_exp_stub.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/jpeg-6/jcapistd.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/jpeg-6/jctrans.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/jpeg-6/jload.c"

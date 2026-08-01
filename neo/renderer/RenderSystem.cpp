@@ -48,23 +48,20 @@ static void R_PerformanceCounters( void ) {
 		float megaBytes = globalImages->SumOfUsedImages() / ( 1024*1024.0 );
 
 		if ( r_showPrimitives.GetInteger() > 1 ) {
-			common->Printf( "v:%i ds:%i t:%i/%i v:%i/%i st:%i sv:%i image:%5.1f MB\n",
+			common->Printf( "v:%i ds:%i t:%i/%i v:%i/%i image:%5.1f MB\n",
 				tr.pc.c_numViews,
-				backEnd.pc.c_drawElements + backEnd.pc.c_shadowElements,
+				backEnd.pc.c_drawElements,
 				backEnd.pc.c_drawIndexes / 3,
 				( backEnd.pc.c_drawIndexes - backEnd.pc.c_drawRefIndexes ) / 3,
 				backEnd.pc.c_drawVertexes,
 				( backEnd.pc.c_drawVertexes - backEnd.pc.c_drawRefVertexes ),
-				backEnd.pc.c_shadowIndexes / 3,
-				backEnd.pc.c_shadowVertexes,
 				megaBytes
 				);
 		} else {
-			common->Printf( "views:%i draws:%i tris:%i (shdw:%i) (vbo:%i) image:%5.1f MB\n",
+			common->Printf( "views:%i draws:%i tris:%i (vbo:%i) image:%5.1f MB\n",
 				tr.pc.c_numViews,
-				backEnd.pc.c_drawElements + backEnd.pc.c_shadowElements,
-				( backEnd.pc.c_drawIndexes + backEnd.pc.c_shadowIndexes ) / 3,
-				backEnd.pc.c_shadowIndexes / 3,
+				backEnd.pc.c_drawElements,
+				backEnd.pc.c_drawIndexes / 3,
 				backEnd.pc.c_vboIndexes / 3,
 				megaBytes
 				);
@@ -93,12 +90,12 @@ static void R_PerformanceCounters( void ) {
 	}
 
 	if ( r_showInteractions.GetBool() ) {
-		common->Printf( "createInteractions:%i createLightTris:%i createShadowVolumes:%i\n",
-			tr.pc.c_createInteractions, tr.pc.c_createLightTris, tr.pc.c_createShadowVolumes );
+		common->Printf( "createInteractions:%i createLightTris:%i\n",
+			tr.pc.c_createInteractions, tr.pc.c_createLightTris );
  	}
 	if ( r_showDefs.GetBool() ) {
-		common->Printf( "viewEntities:%i  shadowEntities:%i  viewLights:%i\n", tr.pc.c_visibleViewEntities,
-			tr.pc.c_shadowViewEntities, tr.pc.c_viewLights );
+		common->Printf( "viewEntities:%i  viewLights:%i\n",
+			tr.pc.c_visibleViewEntities, tr.pc.c_viewLights );
 	}
 	if ( r_showUpdates.GetBool() ) {
 		common->Printf( "entityUpdates:%i  entityRefs:%i  lightUpdates:%i  lightRefs:%i\n", 
@@ -537,84 +534,15 @@ void idRenderSystemLocal::SetBackEndRenderer() {
 	if ( !r_renderer.IsModified() ) {
 		return;
 	}
-
-	bool oldVPstate = backEndRendererHasVertexPrograms;
-
-	backEndRenderer = BE_BAD;
-
-	if ( idStr::Icmp( r_renderer.GetString(), "arb" ) == 0 ) {
-		backEndRenderer = BE_ARB;
-	} else if ( idStr::Icmp( r_renderer.GetString(), "arb2" ) == 0 ) {
-		if ( glConfig.allowARB2Path ) {
-			backEndRenderer = BE_ARB2;
-		}
-	} else if ( idStr::Icmp( r_renderer.GetString(), "nv10" ) == 0 ) {
-		if ( glConfig.allowNV10Path ) {
-			backEndRenderer = BE_NV10;
-		}
-	} else if ( idStr::Icmp( r_renderer.GetString(), "nv20" ) == 0 ) {
-		if ( glConfig.allowNV20Path ) {
-			backEndRenderer = BE_NV20;
-		}
-	} else if ( idStr::Icmp( r_renderer.GetString(), "r200" ) == 0 ) {
-		if ( glConfig.allowR200Path ) {
-			backEndRenderer = BE_R200;
-		}
+	if ( !glConfig.isInitialized ) {
+		return;
 	}
 
-	// fallback
-	if ( backEndRenderer == BE_BAD ) {
-		// choose the best
-		if ( glConfig.allowARB2Path ) {
-			backEndRenderer = BE_ARB2;
-		} else if ( glConfig.allowR200Path ) {
-			backEndRenderer = BE_R200;
-		} else if ( glConfig.allowNV20Path ) {
-			backEndRenderer = BE_NV20;
-		} else if ( glConfig.allowNV10Path ) {
-			backEndRenderer = BE_NV10;
-		} else {
-			// the others are considered experimental
-			backEndRenderer = BE_ARB;
-		}
+	if ( !glConfig.allowARB2Path ) {
+		common->FatalError( "The forward renderer requires ARB vertex and fragment programs" );
 	}
 
-	backEndRendererHasVertexPrograms = false;
-	backEndRendererMaxLight = 1.0;
-
-	switch( backEndRenderer ) {
-	case BE_ARB:
-		common->Printf( "using ARB renderSystem\n" );
-		break;
-	case BE_NV10:
-		common->Printf( "using NV10 renderSystem\n" );
-		break;
-	case BE_NV20:
-		common->Printf( "using NV20 renderSystem\n" );
-		backEndRendererHasVertexPrograms = true;
-		break;
-	case BE_R200:
-		common->Printf( "using R200 renderSystem\n" );
-		backEndRendererHasVertexPrograms = true;
-		break;
-	case BE_ARB2:
-		common->Printf( "using ARB2 renderSystem\n" );
-		backEndRendererHasVertexPrograms = true;
-		backEndRendererMaxLight = 999;
-		break;
-	default:
-		common->FatalError( "SetbackEndRenderer: bad back end" );
-	}
-
-	// clear the vertex cache if we are changing between
-	// using vertex programs and not, because specular and
-	// shadows will be different data
-	if ( oldVPstate != backEndRendererHasVertexPrograms ) {
-		vertexCache.PurgeAll();
-		if ( primaryWorld ) {
-			primaryWorld->FreeInteractions();
-		}
-	}
+	common->Printf( "using ARB2 forward renderSystem\n" );
 
 	r_renderer.ClearModified();
 }

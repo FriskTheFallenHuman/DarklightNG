@@ -31,15 +31,6 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "tr_local.h"
 
-#include "cg_explicit.h"
-
-CGcontext cg_context;
-
-static void cg_error_callback( void ) {
-	CGerror i = cgGetError();
-	common->Printf( "Cg error (%d): %s\n", i, cgGetErrorString(i) );
-}
-
 /*
 =========================================================================================
 
@@ -242,14 +233,11 @@ RB_ARB2_DrawInteractions
 */
 void RB_ARB2_DrawInteractions( void ) {
 	viewLight_t		*vLight;
-	const idMaterial	*lightShader;
 
 	GL_SelectTexture( 0 );
 	qglDisableClientState( GL_TEXTURE_COORD_ARRAY );
 
-	//
-	// for each light, perform adding and shadowing
-	//
+	// Add the realtime lights after the z-prepass and baked lighting pass.
 	for ( vLight = backEnd.viewDef->viewLights ; vLight ; vLight = vLight->next ) {
 		backEnd.vLight = vLight;
 
@@ -261,62 +249,21 @@ void RB_ARB2_DrawInteractions( void ) {
 			continue;
 		}
 
-		if ( !vLight->localInteractions && !vLight->globalInteractions
-			&& !vLight->translucentInteractions ) {
+		if ( !vLight->interactions && !vLight->translucentInteractions ) {
 			continue;
 		}
 
-		lightShader = vLight->lightShader;
+		RB_ARB2_CreateDrawInteractions( vLight->interactions );
 
-		// clear the stencil buffer if needed
-		if ( vLight->globalShadows || vLight->localShadows ) {
-			backEnd.currentScissor = vLight->scissorRect;
-			if ( r_useScissor.GetBool() ) {
-				qglScissor( backEnd.viewDef->viewport.x1 + backEnd.currentScissor.x1, 
-					backEnd.viewDef->viewport.y1 + backEnd.currentScissor.y1,
-					backEnd.currentScissor.x2 + 1 - backEnd.currentScissor.x1,
-					backEnd.currentScissor.y2 + 1 - backEnd.currentScissor.y1 );
-			}
-			qglClear( GL_STENCIL_BUFFER_BIT );
-		} else {
-			// no shadows, so no need to read or write the stencil buffer
-			// we might in theory want to use GL_ALWAYS instead of disabling
-			// completely, to satisfy the invarience rules
-			qglStencilFunc( GL_ALWAYS, 128, 255 );
-		}
-
-		if ( r_useShadowVertexProgram.GetBool() ) {
-			qglEnable( GL_VERTEX_PROGRAM_ARB );
-			qglBindProgramARB( GL_VERTEX_PROGRAM_ARB, VPROG_STENCIL_SHADOW );
-			RB_StencilShadowPass( vLight->globalShadows );
-			RB_ARB2_CreateDrawInteractions( vLight->localInteractions );
-			qglEnable( GL_VERTEX_PROGRAM_ARB );
-			qglBindProgramARB( GL_VERTEX_PROGRAM_ARB, VPROG_STENCIL_SHADOW );
-			RB_StencilShadowPass( vLight->localShadows );
-			RB_ARB2_CreateDrawInteractions( vLight->globalInteractions );
-			qglDisable( GL_VERTEX_PROGRAM_ARB );	// if there weren't any globalInteractions, it would have stayed on
-		} else {
-			RB_StencilShadowPass( vLight->globalShadows );
-			RB_ARB2_CreateDrawInteractions( vLight->localInteractions );
-			RB_StencilShadowPass( vLight->localShadows );
-			RB_ARB2_CreateDrawInteractions( vLight->globalInteractions );
-		}
-
-		// translucent surfaces never get stencil shadowed
 		if ( r_skipTranslucent.GetBool() ) {
 			continue;
 		}
-
-		qglStencilFunc( GL_ALWAYS, 128, 255 );
 
 		backEnd.depthFunc = GLS_DEPTHFUNC_LESS;
 		RB_ARB2_CreateDrawInteractions( vLight->translucentInteractions );
 
 		backEnd.depthFunc = GLS_DEPTHFUNC_EQUAL;
 	}
-
-	// disable stencil shadow test
-	qglStencilFunc( GL_ALWAYS, 128, 255 );
 
 	GL_SelectTexture( 0 );
 	qglEnableClientState( GL_TEXTURE_COORD_ARRAY );
@@ -463,7 +410,6 @@ void RB_ARB2_DrawBakedLightmaps( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 	RB_LogComment( "---------- RB_ARB2_DrawBakedLightmaps ----------\n" );
 	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | GLS_DEPTHFUNC_EQUAL );
-	qglStencilFunc( GL_ALWAYS, 128, 255 );
 	qglBindProgramARB( GL_VERTEX_PROGRAM_ARB, VPROG_BAKED_LIGHT );
 	qglBindProgramARB( GL_FRAGMENT_PROGRAM_ARB, FPROG_BAKED_LIGHT );
 	qglEnable( GL_VERTEX_PROGRAM_ARB );
@@ -529,12 +475,6 @@ static progDef_t	progs[MAX_GLPROGS] = {
 	{ GL_FRAGMENT_PROGRAM_ARB, FPROG_BUMPY_ENVIRONMENT, "bumpyEnvironment.vfp" },
 	{ GL_VERTEX_PROGRAM_ARB, VPROG_AMBIENT, "ambientLight.vfp" },
 	{ GL_FRAGMENT_PROGRAM_ARB, FPROG_AMBIENT, "ambientLight.vfp" },
-	{ GL_VERTEX_PROGRAM_ARB, VPROG_STENCIL_SHADOW, "shadow.vp" },
-	{ GL_VERTEX_PROGRAM_ARB, VPROG_R200_INTERACTION, "R200_interaction.vp" },
-	{ GL_VERTEX_PROGRAM_ARB, VPROG_NV20_BUMP_AND_LIGHT, "nv20_bumpAndLight.vp" },
-	{ GL_VERTEX_PROGRAM_ARB, VPROG_NV20_DIFFUSE_COLOR, "nv20_diffuseColor.vp" },
-	{ GL_VERTEX_PROGRAM_ARB, VPROG_NV20_SPECULAR_COLOR, "nv20_specularColor.vp" },
-	{ GL_VERTEX_PROGRAM_ARB, VPROG_NV20_DIFFUSE_AND_SPECULAR_COLOR, "nv20_diffuseAndSpecularColor.vp" },
 	{ GL_VERTEX_PROGRAM_ARB, VPROG_ENVIRONMENT, "environment.vfp" },
 	{ GL_FRAGMENT_PROGRAM_ARB, FPROG_ENVIRONMENT, "environment.vfp" },
 	{ GL_VERTEX_PROGRAM_ARB, VPROG_GLASSWARP, "arbVP_glasswarp.txt" },

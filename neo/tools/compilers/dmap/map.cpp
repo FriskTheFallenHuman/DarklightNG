@@ -560,10 +560,8 @@ static void CreateMapLight( const idMapEntity *mapEnt ) {
 	mapLight_t	*light;
 	bool	dynamic;
 
-	// designers can add the "noPrelight" flag to signal that
-	// the lights will move around, so we don't want
-	// to bother chopping up the surfaces under it or creating
-	// shadow volumes
+	// Designers can add "noPrelight" to moving lights so dmap does not
+	// bother chopping static surfaces at their light boundaries.
 	mapEnt->epairs.GetBool( "noPrelight", "0", dynamic );
 	if ( dynamic ) {
 		return;
@@ -571,7 +569,6 @@ static void CreateMapLight( const idMapEntity *mapEnt ) {
 
 	light = new mapLight_t;
 	light->name[0] = '\0';
-	light->shadowTris = NULL;
 	light->mapEntity = mapEnt;
 
 	// parse parms exactly as the game do
@@ -582,7 +579,7 @@ static void CreateMapLight( const idMapEntity *mapEnt ) {
 
 	R_DeriveLightData( &light->def );
 
-	// get the name for naming the shadow surfaces
+	// Keep the map name for baked-light diagnostics and manifests.
 	const char	*name;
 
 	mapEnt->epairs.GetString( "name", "", &name );

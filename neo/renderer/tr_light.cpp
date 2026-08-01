@@ -81,116 +81,8 @@ Returns false if the cache couldn't be allocated, in which case the surface shou
 ==================
 */
 bool R_CreateLightingCache( const idRenderEntityLocal *ent, const idRenderLightLocal *light, srfTriangles_t *tri ) {
-	idVec3		localLightOrigin;
-
-	// fogs and blends don't need light vectors
-	if ( light->lightShader->IsFogLight() || light->lightShader->IsBlendLight() ) {
-		return true;
-	}
-
-	// not needed if we have vertex programs
-	if ( tr.backEndRendererHasVertexPrograms ) {
-		return true;
-	}
-
-	R_GlobalPointToLocal( ent->modelMatrix, light->globalLightOrigin, localLightOrigin );
-
-	int	size = tri->ambientSurface->numVerts * sizeof( lightingCache_t );
-	lightingCache_t *cache = (lightingCache_t *)_alloca16( size );
-
-#if 1
-
-	SIMDProcessor->CreateTextureSpaceLightVectors( &cache[0].localLightVector, localLightOrigin,
-												tri->ambientSurface->verts, tri->ambientSurface->numVerts, tri->indexes, tri->numIndexes );
-
-#else
-
-	bool *used = (bool *)_alloca16( tri->ambientSurface->numVerts * sizeof( used[0] ) );
-	memset( used, 0, tri->ambientSurface->numVerts * sizeof( used[0] ) );
-
-	// because the interaction may be a very small subset of the full surface,
-	// it makes sense to only deal with the verts used
-	for ( int j = 0; j < tri->numIndexes; j++ ) {
-		int i = tri->indexes[j];
-		if ( used[i] ) {
-			continue;
-		}
-		used[i] = true;
-
-		idVec3 lightDir;
-		const idDrawVert *v;
-
-		v = &tri->ambientSurface->verts[i];
-
-		lightDir = localLightOrigin - v->xyz;
-
-		cache[i].localLightVector[0] = lightDir * v->tangents[0];
-		cache[i].localLightVector[1] = lightDir * v->tangents[1];
-		cache[i].localLightVector[2] = lightDir * v->normal;
-	}
-
-#endif
-
-	vertexCache.Alloc( cache, size, &tri->lightingCache );
-	if ( !tri->lightingCache ) {
-		return false;
-	}
+	// The sole backend computes light vectors in the interaction vertex program.
 	return true;
-}
-
-/*
-==================
-R_CreatePrivateShadowCache
-
-This is used only for a specific light
-==================
-*/
-void R_CreatePrivateShadowCache( srfTriangles_t *tri ) {
-	if ( !tri->shadowVertexes ) {
-		return;
-	}
-
-	vertexCache.Alloc( tri->shadowVertexes, tri->numVerts * sizeof( *tri->shadowVertexes ), &tri->shadowCache );
-}
-
-/*
-==================
-R_CreateVertexProgramShadowCache
-
-This is constant for any number of lights, the vertex program
-takes care of projecting the verts to infinity.
-==================
-*/
-void R_CreateVertexProgramShadowCache( srfTriangles_t *tri ) {
-	if ( tri->verts == NULL ) {
-		return;
-	}
-
-	shadowCache_t *temp = (shadowCache_t *)_alloca16( tri->numVerts * 2 * sizeof( shadowCache_t ) );
-
-#if 1
-
-	SIMDProcessor->CreateVertexProgramShadowCache( &temp->xyz, tri->verts, tri->numVerts );
-
-#else
-
-	int numVerts = tri->numVerts;
-	const idDrawVert *verts = tri->verts;
-	for ( int i = 0; i < numVerts; i++ ) {
-		const float *v = verts[i].xyz.ToFloatPtr();
-		temp[i*2+0].xyz[0] = v[0];
-		temp[i*2+1].xyz[0] = v[0];
-		temp[i*2+0].xyz[1] = v[1];
-		temp[i*2+1].xyz[1] = v[1];
-		temp[i*2+0].xyz[2] = v[2];
-		temp[i*2+1].xyz[2] = v[2];
-		temp[i*2+0].xyz[3] = 1.0f;		// on the model surface
-		temp[i*2+1].xyz[3] = 0.0f;		// will be projected to infinity
-	}
-
-#endif
-
-	vertexCache.Alloc( temp, tri->numVerts * 2 * sizeof( shadowCache_t ), &tri->shadowCache );
 }
 
 /*
@@ -404,7 +296,7 @@ viewEntity_t *R_SetEntityDefViewEntity( idRenderEntityLocal *def ) {
 
 	R_AxisToModelMatrix( def->parms.axis, def->parms.origin, vModel->modelMatrix );
 
-	// we may not have a viewDef if we are just creating shadows at entity creation time
+	// GenerateAllInteractions may create records outside a rendered view.
 	if ( tr.viewDef ) {
 		myGlMultMatrix( vModel->modelMatrix, tr.viewDef->worldSpace.modelViewMatrix, vModel->modelViewMatrix );
 
@@ -415,44 +307,6 @@ viewEntity_t *R_SetEntityDefViewEntity( idRenderEntityLocal *def ) {
 	def->viewEntity = vModel;
 
 	return vModel;
-}
-
-/*
-====================
-R_TestPointInViewLight
-====================
-*/
-static const float INSIDE_LIGHT_FRUSTUM_SLOP = 32;
-// this needs to be greater than the dist from origin to corner of near clip plane
-static bool R_TestPointInViewLight( const idVec3 &org, const idRenderLightLocal *light ) {
-	int		i;
-	idVec3	local;
-
-	for ( i = 0 ; i < 6 ; i++ ) {
-		float d = light->frustum[i].Distance( org );
-		if ( d > INSIDE_LIGHT_FRUSTUM_SLOP ) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
-/*
-===================
-R_PointInFrustum
-
-Assumes positive sides face outward
-===================
-*/
-static bool R_PointInFrustum( idVec3 &p, idPlane *planes, int numPlanes ) {
-	for ( int i = 0 ; i < numPlanes ; i++ ) {
-		float d = planes[i].Distance( p );
-		if ( d > 0 ) {
-			return false;
-		}
-	}
-	return true;
 }
 
 /*
@@ -477,24 +331,6 @@ viewLight_t *R_SetLightDefViewLight( idRenderLightLocal *light ) {
 
 	// the scissorRect will be expanded as the light bounds is accepted into visible portal chains
 	vLight->scissorRect.Clear();
-
-	// calculate the shadow cap optimization states
-	vLight->viewInsideLight = R_TestPointInViewLight( tr.viewDef->renderView.vieworg, light );
-	if ( !vLight->viewInsideLight ) {
-		vLight->viewSeesShadowPlaneBits = 0;
-		for ( int i = 0 ; i < light->numShadowFrustums ; i++ ) {
-			float d = light->shadowFrustums[i].planes[5].Distance( tr.viewDef->renderView.vieworg );
-			if ( d < INSIDE_LIGHT_FRUSTUM_SLOP ) {
-				vLight->viewSeesShadowPlaneBits|= 1 << i;
-			}
-		}
-	} else {
-		// this should not be referenced in this case
-		vLight->viewSeesShadowPlaneBits = 63;
-	}
-
-	// see if the light center is in view, which will allow us to cull invisible shadows
-	vLight->viewSeesGlobalLightOrigin = R_PointInFrustum( light->globalLightOrigin, tr.viewDef->frustum, 4 );
 
 	// copy data used by backend
 	vLight->globalLightOrigin = light->globalLightOrigin;
@@ -529,20 +365,17 @@ the ones that may effect the current view are generated. so it does need to be c
 
 This does not cause entityDefs to create dynamic models, all work is done on the referenceBounds.
 
-All entities that have non-empty interactions with viewLights will
-have viewEntities made for them and be put on the viewEntity list,
-even if their surfaces aren't visible, because they may need to cast shadows.
+Only entities visible in the current view need active realtime interactions.
 
 Interactions are usually removed when a entityDef or lightDef is modified, unless the change
 is known to not effect them, so there is no danger of getting a stale interaction, we just need to
 check that needed ones are created.
 
-An interaction can be at several levels:
+An interaction can be at three levels:
 
 Don't interact (but share an area) (numSurfaces = 0)
 Entity reference bounds touches light frustum, but surfaces haven't been generated (numSurfaces = -1)
-Shadow surfaces have been generated, but light surfaces have not.  The shadow surface may still be empty due to bounds being conservative.
-Both shadow and light surfaces have been generated.  Either or both surfaces may still be empty due to conservative bounds.
+Light surfaces have been generated and may still be empty due to conservative bounds.
 
 =================
 */
@@ -564,21 +397,10 @@ void idRenderWorldLocal::CreateLightDefInteractions( idRenderLightLocal *ldef ) 
 			// but we don't want to instantiate dynamic models yet, so we can't check that on
 			// most things
 
-			// if the entity isn't viewed
+			// Off-screen entities do not participate in this view's realtime pass.
+			// GenerateAllInteractions still runs without a viewDef.
 			if ( tr.viewDef && edef->viewCount != tr.viewCount ) {
-				// if the light doesn't cast shadows, skip
-				if ( !ldef->lightShader->LightCastsShadows() ) {
-					continue;
-				}
-				// if we are suppressing its shadow in this view, skip
-				if ( !r_skipSuppress.GetBool() ) {
-					if ( edef->parms.suppressShadowInViewID && edef->parms.suppressShadowInViewID == tr.viewDef->renderView.viewID ) {
-						continue;
-					}
-					if ( edef->parms.suppressShadowInLightID && edef->parms.suppressShadowInLightID == ldef->parms.lightId ) {
-						continue;
-					}
-				}
+				continue;
 			}
 
 			// some big outdoor meshes are flagged to not create any dynamic interactions
@@ -595,11 +417,6 @@ void idRenderWorldLocal::CreateLightDefInteractions( idRenderLightLocal *ldef ) 
 				int index = ldef->index * this->interactionTableWidth + edef->index;
 				inter = this->interactionTable[ index ];
 				if ( inter ) {
-					// if this entity wasn't in view already, the scissor rect will be empty,
-					// so it will only be used for shadow casting
-					if ( !inter->IsEmpty() ) {
-						R_SetEntityDefViewEntity( edef );
-					}
 					continue;
 				}
 			} else {
@@ -616,11 +433,6 @@ void idRenderWorldLocal::CreateLightDefInteractions( idRenderLightLocal *ldef ) 
 
 				// if we already have an interaction, we don't need to do anything
 				if ( inter != NULL ) {
-					// if this entity wasn't in view already, the scissor rect will be empty,
-					// so it will only be used for shadow casting
-					if ( !inter->IsEmpty() ) {
-						R_SetEntityDefViewEntity( edef );
-					}
 					continue;
 				}
 			}
@@ -649,9 +461,6 @@ void idRenderWorldLocal::CreateLightDefInteractions( idRenderLightLocal *ldef ) 
 
 			// we will do a more precise per-surface check when we are checking the entity
 
-			// if this entity wasn't in view already, the scissor rect will be empty,
-			// so it will only be used for shadow casting
-			R_SetEntityDefViewEntity( edef );
 		}
 	}
 }
@@ -664,7 +473,7 @@ R_LinkLightSurf
 =================
 */
 void R_LinkLightSurf( const drawSurf_t **link, const srfTriangles_t *tri, const viewEntity_t *space, 
-				   const idRenderLightLocal *light, const idMaterial *shader, const idScreenRect &scissor, bool viewInsideShadow ) {
+				   const idMaterial *shader, const idScreenRect &scissor ) {
 	drawSurf_t		*drawSurf;
 
 	if ( !space ) {
@@ -677,13 +486,8 @@ void R_LinkLightSurf( const drawSurf_t **link, const srfTriangles_t *tri, const 
 	drawSurf->space = space;
 	drawSurf->material = shader;
 	drawSurf->scissorRect = scissor;
-	drawSurf->dsFlags = 0;
-	if ( viewInsideShadow ) {
-		drawSurf->dsFlags |= DSF_VIEW_INSIDE_SHADOW;
-	}
 
 	if ( !shader ) {
-		// shadows won't have a shader
 		drawSurf->shaderRegisters = NULL;
 	} else {
 		// process the shader expressions for conditionals / color / texcoords
@@ -696,15 +500,6 @@ void R_LinkLightSurf( const drawSurf_t **link, const srfTriangles_t *tri, const 
 			float *regs = (float *)R_FrameAlloc( shader->GetNumRegisters() * sizeof( float ) );
 			drawSurf->shaderRegisters = regs;
 			shader->EvaluateRegisters( regs, space->entityDef->parms.shaderParms, tr.viewDef, space->entityDef->parms.referenceSound );
-		}
-
-		// calculate the specular coordinates if we aren't using vertex programs
-		if ( !tr.backEndRendererHasVertexPrograms && !r_skipSpecular.GetBool() && tr.backEndRenderer != BE_ARB ) {
-			R_SpecularTexGen( drawSurf, light->globalLightOrigin, tr.viewDef->renderView.vieworg );
-			// if we failed to allocate space for the specular calculations, drop the surface
-			if ( !drawSurf->dynamicTexCoords ) {
-				return;
-			}
 		}
 	}
 
@@ -869,10 +664,6 @@ R_AddLightSurfaces
 Calc the light shader values, removing any light from the viewLight list
 if it is determined to not have any visible effect due to being flashed off or turned off.
 
-Adds entities to the viewEntity list if they are needed for shadow casting.
-
-Add any precomputed shadow volumes.
-
 Removes lights from the viewLights list if they are completely
 turned off, or completely off screen.
 
@@ -957,8 +748,7 @@ void R_AddLightSurfaces( void ) {
 			if ( lightStageNum == lightShader->GetNumStages() ) {
 				// we went through all the stages and didn't find one that adds anything
 				// remove the light from the viewLights list, and change its frame marker
-				// so interaction generation doesn't think the light is visible and
-				// create a shadow for it
+				// so interaction generation doesn't think the light is visible
 				*ptr = vLight->next;
 				light->viewCount = -1;
 				continue;
@@ -989,17 +779,8 @@ void R_AddLightSurfaces( void ) {
 		// this one stays on the list
 		ptr = &vLight->next;
 
-		// if we are doing a soft-shadow novelty test, regenerate the light with
-		// a random offset every time
-		if ( r_lightSourceRadius.GetFloat() != 0.0f ) {
-			for ( int i = 0 ; i < 3 ; i++ ) {
-				light->globalLightOrigin[i] += r_lightSourceRadius.GetFloat() * ( -1 + 2 * (rand()&0xfff)/(float)0xfff );
-			}
-		}
-
-		// create interactions with all entities the light may touch, and add viewEntities
-		// that may cast shadows, even if they aren't directly visible.  Any real work
-		// will be deferred until we walk through the viewEntities
+		// Create interactions with visible entities the light may touch. Any
+		// per-surface work is deferred until we walk through the viewEntities.
 		tr.viewDef->renderWorld->CreateLightDefInteractions( light );
 		tr.pc.c_viewLights++;
 
@@ -1016,45 +797,6 @@ void R_AddLightSurfaces( void ) {
 			vertexCache.Touch( light->frustumTris->ambientCache );
 		}
 
-		// add the prelight shadows for the static world geometry
-		if ( light->parms.prelightModel && r_useOptimizedShadows.GetBool() ) {
-
-			if ( !light->parms.prelightModel->NumSurfaces() ) {
-				common->Error( "no surfs in prelight model '%s'", light->parms.prelightModel->Name() );
-			}
-
-			srfTriangles_t	*tri = light->parms.prelightModel->Surface( 0 )->geometry;
-			if ( !tri->shadowVertexes ) {
-				common->Error( "R_AddLightSurfaces: prelight model '%s' without shadowVertexes", light->parms.prelightModel->Name() );
-			}
-
-			// these shadows will all have valid bounds, and can be culled normally
-			if ( r_useShadowCulling.GetBool() ) {
-				if ( R_CullLocalBox( tri->bounds, tr.viewDef->worldSpace.modelMatrix, 5, tr.viewDef->frustum ) ) {
-					continue;
-				}
-			}
-
-			// if we have been purged, re-upload the shadowVertexes
-			if ( !tri->shadowCache ) {
-				R_CreatePrivateShadowCache( tri );
-				if ( !tri->shadowCache ) {
-					continue;
-				}
-			}
-
-			// touch the shadow surface so it won't get purged
-			vertexCache.Touch( tri->shadowCache );
-
-			if ( !tri->indexCache && r_useIndexBuffers.GetBool() ) {
-				vertexCache.Alloc( tri->indexes, tri->numIndexes * sizeof( tri->indexes[0] ), &tri->indexCache, true );
-			}
-			if ( tri->indexCache ) {
-				vertexCache.Touch( tri->indexCache );
-			}
-
-			R_LinkLightSurf( &vLight->globalShadows, tri, NULL, light, NULL, vLight->scissorRect, true /* FIXME? */ );
-		}
 	}
 }
 
@@ -1201,7 +943,6 @@ void R_AddDrawSurf( const srfTriangles_t *tri, const viewEntity_t *space, const 
 	drawSurf->material = shader;
 	drawSurf->scissorRect = scissor;
 	drawSurf->sort = shader->GetSort() + tr.sortOffset;
-	drawSurf->dsFlags = 0;
 
 	// bumping this offset each time causes surfaces with equal sort orders to still
 	// deterministically draw in the order they are added
@@ -1458,11 +1199,10 @@ idScreenRect R_CalcEntityScissorRectangle( viewEntity_t *vEntity ) {
 ===================
 R_AddModelSurfaces
 
-Here is where dynamic models actually get instantiated, and necessary
-interactions get created.  This is all done on a sort-by-model basis
-to keep source data in cache (most likely L2) as any interactions and
-shadows are generated, since dynamic models will typically be lit by
-two or more lights.
+Here is where dynamic models actually get instantiated and necessary
+realtime interactions are created. This is done on a sort-by-model basis
+to keep source data in cache (most likely L2), since dynamic models will
+typically be lit by two or more lights.
 ===================
 */
 void R_AddModelSurfaces( void ) {
@@ -1474,8 +1214,7 @@ void R_AddModelSurfaces( void ) {
 	tr.viewDef->numDrawSurfs = 0;
 	tr.viewDef->maxDrawSurfs = 0;	// will be set to INITIAL_DRAWSURFS on R_AddDrawSurf
 
-	// go through each entity that is either visible to the view, or to
-	// any light that intersects the view (for shadows)
+	// Go through each entity visible to the view.
 	for ( vEntity = tr.viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
 
 		if ( r_useEntityScissors.GetBool() ) {
@@ -1529,8 +1268,6 @@ void R_AddModelSurfaces( void ) {
 
 			R_AddAmbientDrawsurfs( vEntity );
 			tr.pc.c_visibleViewEntities++;
-		} else {
-			tr.pc.c_shadowViewEntities++;
 		}
 
 		//
@@ -1567,61 +1304,5 @@ void R_AddModelSurfaces( void ) {
 			tr.viewDef->renderView.time = oldTime;
 		}
 
-	}
-}
-
-/*
-=====================
-R_RemoveUnecessaryViewLights
-=====================
-*/
-void R_RemoveUnecessaryViewLights( void ) {
-	viewLight_t		*vLight;
-
-	// go through each visible light
-	for ( vLight = tr.viewDef->viewLights ; vLight ; vLight = vLight->next ) {
-		// if the light didn't have any lit surfaces visible, there is no need to
-		// draw any of the shadows.  We still keep the vLight for debugging
-		// draws
-		if ( !vLight->localInteractions && !vLight->globalInteractions && !vLight->translucentInteractions ) {
-			vLight->localShadows = NULL;
-			vLight->globalShadows = NULL;
-		}
-	}
-
-	if ( r_useShadowSurfaceScissor.GetBool() ) {
-		// shrink the light scissor rect to only intersect the surfaces that will actually be drawn.
-		// This doesn't seem to actually help, perhaps because the surface scissor
-		// rects aren't actually the surface, but only the portal clippings.
-		for ( vLight = tr.viewDef->viewLights ; vLight ; vLight = vLight->next ) {
-			const drawSurf_t	*surf;
-			idScreenRect	surfRect;
-
-			if ( !vLight->lightShader->LightCastsShadows() ) {
-				continue;
-			}
-
-			surfRect.Clear();
-
-			for ( surf = vLight->globalInteractions ; surf ; surf = surf->nextOnLight ) {
-				surfRect.Union( surf->scissorRect );
-			}
-			for ( surf = vLight->localShadows ; surf ; surf = surf->nextOnLight ) {
-				const_cast<drawSurf_t *>(surf)->scissorRect.Intersect( surfRect );
-			}
-
-			for ( surf = vLight->localInteractions ; surf ; surf = surf->nextOnLight ) {
-				surfRect.Union( surf->scissorRect );
-			}
-			for ( surf = vLight->globalShadows ; surf ; surf = surf->nextOnLight ) {
-				const_cast<drawSurf_t *>(surf)->scissorRect.Intersect( surfRect );
-			}
-
-			for ( surf = vLight->translucentInteractions ; surf ; surf = surf->nextOnLight ) {
-				surfRect.Union( surf->scissorRect );
-			}
-
-			vLight->scissorRect.Intersect( surfRect );
-		}
 	}
 }

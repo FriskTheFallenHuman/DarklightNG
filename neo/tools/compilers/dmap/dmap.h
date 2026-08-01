@@ -179,8 +179,7 @@ typedef struct tree_s {
 
 typedef struct {
 	idRenderLightLocal	def;
-	char		name[MAX_QPATH];		// for naming the shadow volume surface and interactions
-	srfTriangles_t	*shadowTris;
+	char		name[MAX_QPATH];
 	const idMapEntity *mapEntity;		// source epairs used by the offline light baker
 	bool		bake;
 } mapLight_t;
@@ -223,15 +222,6 @@ typedef struct optimizeGroup_s {
 
 // dmap.cpp
 
-typedef enum {
-	SO_NONE,			// 0
-	SO_MERGE_SURFACES,	// 1
-	SO_CULL_OCCLUDED,	// 2
-	SO_CLIP_OCCLUDERS,	// 3
-	SO_CLIP_SILS,		// 4
-	SO_SIL_OPTIMIZE		// 5
-} shadowOptLevel_t;
-
 typedef struct {
 	// mapFileBase will contain the qpath without any extension: "maps/test_box"
 	char		mapFileBase[1024];
@@ -260,14 +250,8 @@ typedef struct {
 	bool	noFlood;
 	bool	noClipSides;		// don't cut sides by solid leafs, use the entire thing
 	bool	noLightCarve;		// extra triangle subdivision by light frustums
-	shadowOptLevel_t	shadowOptLevel;
-	bool	noShadow;			// don't create optimized shadow volumes
-
 	idBounds	drawBounds;
 	bool	drawflag;
-
-	int		totalShadowTriangles;
-	int		totalShadowVerts;
 } dmapGlobals_t;
 
 extern dmapGlobals_t dmapGlobals;
@@ -484,9 +468,6 @@ void Lightmap_End( void );
 
 //=============================================================================
 
-// shadowopt.cpp
-
-srfTriangles_t *CreateLightShadow( optimizeGroup_t *shadowerGroups, const mapLight_t *light );
 void		FreeBeamTree( struct beamTree_s *beamTree );
 
 void		CarveTriByBeamTree( const struct beamTree_s *beamTree, const mapTri_t *tri, mapTri_t **lit, mapTri_t **unLit );

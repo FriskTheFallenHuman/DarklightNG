@@ -108,36 +108,6 @@ void RB_DrawElementsWithCounters( const srfTriangles_t *tri ) {
 }
 
 /*
-================
-RB_DrawShadowElementsWithCounters
-
-May not use all the indexes in the surface if caps are skipped
-================
-*/
-void RB_DrawShadowElementsWithCounters( const srfTriangles_t *tri, int numIndexes ) {
-	backEnd.pc.c_shadowElements++;
-	backEnd.pc.c_shadowIndexes += numIndexes;
-	backEnd.pc.c_shadowVertexes += tri->numVerts;
-
-	if ( tri->indexCache && r_useIndexBuffers.GetBool() ) {
-		qglDrawElements( GL_TRIANGLES, 
-						r_singleTriangle.GetBool() ? 3 : numIndexes,
-						GL_INDEX_TYPE,
-						(int *)vertexCache.Position( tri->indexCache ) );
-		backEnd.pc.c_vboIndexes += numIndexes;
-	} else {
-		if ( r_useIndexBuffers.GetBool() ) {
-			vertexCache.UnbindIndex();
-		}
-		qglDrawElements( GL_TRIANGLES, 
-						r_singleTriangle.GetBool() ? 3 : numIndexes,
-						GL_INDEX_TYPE,
-						tri->indexes );
-	}
-}
-
-
-/*
 ===============
 RB_RenderTriangleSurface
 
@@ -515,8 +485,7 @@ void RB_DetermineLightScale( void ) {
 	for ( vLight = backEnd.viewDef->viewLights ; vLight ; vLight = vLight->next ) {
 		// lights with no surfaces or shaderparms may still be present
 		// for debug display
-		if ( !vLight->localInteractions && !vLight->globalInteractions
-			&& !vLight->translucentInteractions ) {
+		if ( !vLight->interactions && !vLight->translucentInteractions ) {
 			continue;
 		}
 
@@ -533,13 +502,14 @@ void RB_DetermineLightScale( void ) {
 		}
 	}
 
+	const float maxLight = 999.0f;
 	backEnd.pc.maxLightValue = max;
-	if ( max <= tr.backEndRendererMaxLight ) {
+	if ( max <= maxLight ) {
 		backEnd.lightScale = r_lightScale.GetFloat();
 		backEnd.overBright = 1.0;
 	} else {
-		backEnd.lightScale = r_lightScale.GetFloat() * tr.backEndRendererMaxLight / max;
-		backEnd.overBright = max / tr.backEndRendererMaxLight;
+		backEnd.lightScale = r_lightScale.GetFloat() * maxLight / max;
+		backEnd.overBright = max / maxLight;
 	}
 }
 
@@ -573,18 +543,15 @@ void RB_BeginDrawingView (void) {
 
 	// ensures that depth writes are enabled for the depth clear
 	GL_State( GLS_DEFAULT );
+	qglDisable( GL_STENCIL_TEST );
 
-	// we don't have to clear the depth / stencil buffer for 2D rendering
+	// We only need a depth target for the z-prepass.  Stencil is not part of
+	// the forward lightmap/realtime-lighting pipeline.
 	if ( backEnd.viewDef->viewEntitys ) {
-		qglStencilMask( 0xff );
-		// some cards may have 7 bit stencil buffers, so don't assume this
-		// should be 128
-		qglClearStencil( 1<<(glConfig.stencilBits-1) );
-		qglClear( GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
+		qglClear( GL_DEPTH_BUFFER_BIT );
 		qglEnable( GL_DEPTH_TEST );
 	} else {
 		qglDisable( GL_DEPTH_TEST );
-		qglDisable( GL_STENCIL_TEST );
 	}
 
 	backEnd.glState.faceCulling = -1;		// force face culling to set next time
@@ -767,7 +734,7 @@ void RB_CreateSingleDrawInteractions( const drawSurf_t *surf, void (*DrawInterac
 		float lightColor[4];
 
 		// backEnd.lightScale is calculated so that lightColor[] will never exceed
-		// tr.backEndRendererMaxLight
+		// the forward renderer's interaction range
 		lightColor[0] = backEnd.lightScale * lightRegs[ lightStage->color.registers[0] ];
 		lightColor[1] = backEnd.lightScale * lightRegs[ lightStage->color.registers[1] ];
 		lightColor[2] = backEnd.lightScale * lightRegs[ lightStage->color.registers[2] ];

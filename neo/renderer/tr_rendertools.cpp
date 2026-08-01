@@ -321,10 +321,7 @@ void RB_ShowOverdraw( void ) {
 
 	int interactions = 0;
 	for ( vLight = backEnd.viewDef->viewLights; vLight; vLight = vLight->next ) {
-		for ( surf = vLight->localInteractions; surf; surf = surf->nextOnLight ) {
-			interactions++;
-		}
-		for ( surf = vLight->globalInteractions; surf; surf = surf->nextOnLight ) {
+		for ( surf = vLight->interactions; surf; surf = surf->nextOnLight ) {
 			interactions++;
 		}
 	}
@@ -340,16 +337,11 @@ void RB_ShowOverdraw( void ) {
 	}
 
 	for ( vLight = backEnd.viewDef->viewLights; vLight; vLight = vLight->next ) {
-		for ( surf = vLight->localInteractions; surf; surf = surf->nextOnLight ) {
+		for ( surf = vLight->interactions; surf; surf = surf->nextOnLight ) {
 			const_cast<drawSurf_t *>(surf)->material = material;
 			newDrawSurfs[i++] = const_cast<drawSurf_t *>(surf);
 		}
-		for ( surf = vLight->globalInteractions; surf; surf = surf->nextOnLight ) {
-			const_cast<drawSurf_t *>(surf)->material = material;
-			newDrawSurfs[i++] = const_cast<drawSurf_t *>(surf);
-		}
-		vLight->localInteractions = NULL;
-		vLight->globalInteractions = NULL;
+		vLight->interactions = NULL;
 	}
 
 	switch( r_showOverDraw.GetInteger() ) {
@@ -511,17 +503,15 @@ void RB_ShowLightCount( void ) {
 	globalImages->defaultImage->Bind();
 
 	for ( vLight = backEnd.viewDef->viewLights ; vLight ; vLight = vLight->next ) {
-		for ( i = 0 ; i < 2 ; i++ ) {
-			for ( surf = i ? vLight->localInteractions: vLight->globalInteractions; surf; surf = (drawSurf_t *)surf->nextOnLight ) {
-				RB_SimpleSurfaceSetup( surf );
-				if ( !surf->geo->ambientCache ) {
-					continue;
-				}
-
-				const idDrawVert	*ac = (idDrawVert *)vertexCache.Position( surf->geo->ambientCache );
-				qglVertexPointer( 3, GL_FLOAT, sizeof( idDrawVert ), &ac->xyz );
-				RB_DrawElementsWithCounters( surf->geo );
+		for ( surf = vLight->interactions; surf; surf = (drawSurf_t *)surf->nextOnLight ) {
+			RB_SimpleSurfaceSetup( surf );
+			if ( !surf->geo->ambientCache ) {
+				continue;
 			}
+
+			const idDrawVert	*ac = (idDrawVert *)vertexCache.Position( surf->geo->ambientCache );
+			qglVertexPointer( 3, GL_FLOAT, sizeof( idDrawVert ), &ac->xyz );
+			RB_DrawElementsWithCounters( surf->geo );
 		}
 	}
 
@@ -531,172 +521,6 @@ void RB_ShowLightCount( void ) {
 	if ( r_showLightCount.GetInteger() > 2 ) {
 		RB_CountStencilBuffer();
 	}
-}
-
-
-/*
-=================
-RB_ShowSilhouette
-
-Blacks out all edges, then adds color for each edge that a shadow
-plane extends from, allowing you to see doubled edges
-=================
-*/
-void RB_ShowSilhouette( void ) {
-	int		i;
-	const drawSurf_t	*surf;
-	const viewLight_t	*vLight;
-
-	if ( !r_showSilhouette.GetBool() ) {
-		return;
-	}
-
-	//
-	// clear all triangle edges to black
-	//
-	qglDisableClientState( GL_TEXTURE_COORD_ARRAY );
-	globalImages->BindNull();
-	qglDisable( GL_TEXTURE_2D );
-	qglDisable( GL_STENCIL_TEST );
-
-	qglColor3f( 0, 0, 0 );
-
-	GL_State( GLS_POLYMODE_LINE );
-
-	GL_Cull( CT_TWO_SIDED );
-	qglDisable( GL_DEPTH_TEST );
-
-	RB_RenderDrawSurfListWithFunction( backEnd.viewDef->drawSurfs, backEnd.viewDef->numDrawSurfs, 
-		RB_T_RenderTriangleSurface );
-
-
-	//
-	// now blend in edges that cast silhouettes
-	//
-	RB_SimpleWorldSetup();
-	qglColor3f( 0.5, 0, 0 );
-	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
-
-	for ( vLight = backEnd.viewDef->viewLights ; vLight ; vLight = vLight->next ) {
-		for ( i = 0 ; i < 2 ; i++ ) {
-			for ( surf = i ? vLight->localShadows : vLight->globalShadows
-				; surf ; surf = (drawSurf_t *)surf->nextOnLight ) {
-				RB_SimpleSurfaceSetup( surf );
-
-				const srfTriangles_t	*tri = surf->geo;
-
-				qglVertexPointer( 3, GL_FLOAT, sizeof( shadowCache_t ), vertexCache.Position( tri->shadowCache ) );
-				qglBegin( GL_LINES );
-
-				for ( int j = 0 ; j < tri->numIndexes ; j+=3 ) {
-					int		i1 = tri->indexes[j+0];
-					int		i2 = tri->indexes[j+1];
-					int		i3 = tri->indexes[j+2];
-
-					if ( (i1 & 1) + (i2 & 1) + (i3 & 1) == 1 ) {
-						if ( (i1 & 1) + (i2 & 1) == 0 ) {
-							qglArrayElement( i1 );
-							qglArrayElement( i2 );
-						} else if ( (i1 & 1 ) + (i3 & 1) == 0 ) {
-							qglArrayElement( i1 );
-							qglArrayElement( i3 );
-						}
-					}
-				}
-				qglEnd();
-
-			}
-		}
-	}
-
-	qglEnable( GL_DEPTH_TEST );
-
-	GL_State( GLS_DEFAULT );
-	qglColor3f( 1,1,1 );
-	GL_Cull( CT_FRONT_SIDED );
-}
-
-
-
-/*
-=================
-RB_ShowShadowCount
-
-This is a debugging tool that will draw only the shadow volumes
-and count up the total fill usage
-=================
-*/
-static void RB_ShowShadowCount( void ) {
-	int		i;
-	const drawSurf_t	*surf;
-	const viewLight_t	*vLight;
-
-	if ( !r_showShadowCount.GetBool() ) {
-		return;
-	}
-
-	GL_State( GLS_DEFAULT );
-
-	qglClearStencil( 0 );
-	qglClear( GL_STENCIL_BUFFER_BIT );
-
-	qglEnable( GL_STENCIL_TEST );
-
-	qglStencilOp( GL_KEEP, GL_INCR, GL_INCR );
-
-	qglStencilFunc( GL_ALWAYS, 1, 255 );
-
-	globalImages->defaultImage->Bind();
-
-	// draw both sides
-	GL_Cull( CT_TWO_SIDED );
-
-	for ( vLight = backEnd.viewDef->viewLights ; vLight ; vLight = vLight->next ) {
-		for ( i = 0 ; i < 2 ; i++ ) {
-			for ( surf = i ? vLight->localShadows : vLight->globalShadows 
-				; surf ; surf = (drawSurf_t *)surf->nextOnLight ) {
-				RB_SimpleSurfaceSetup( surf );
-				const srfTriangles_t	*tri = surf->geo;
-				if ( !tri->shadowCache ) {
-					continue;
-				}
-
-				if ( r_showShadowCount.GetInteger() == 3 ) {
-					// only show turboshadows
-					if ( tri->numShadowIndexesNoCaps != tri->numIndexes ) {
-						continue;
-					}
-				}
-				if ( r_showShadowCount.GetInteger() == 4 ) {
-					// only show static shadows
-					if ( tri->numShadowIndexesNoCaps == tri->numIndexes ) {
-						continue;
-					}
-				}
-
-				shadowCache_t *cache = (shadowCache_t *)vertexCache.Position( tri->shadowCache );
-				qglVertexPointer( 4, GL_FLOAT, sizeof( *cache ), &cache->xyz );
-				RB_DrawElementsWithCounters( tri );
-			}
-		}
-	}
-
-	// display the results
-	R_ColorByStencilBuffer();
-
-	if ( r_showShadowCount.GetInteger() == 2 ) {
-		common->Printf( "all shadows " );
-	} else if ( r_showShadowCount.GetInteger() == 3 ) {
-		common->Printf( "turboShadows " );
-	} else if ( r_showShadowCount.GetInteger() == 4 ) {
-		common->Printf( "static shadows " );
-	}
-
-	if ( r_showShadowCount.GetInteger() >= 2 ) {
-		RB_CountStencilBuffer();
-	}
-
-	GL_Cull( CT_FRONT_SIDED );
 }
 
 
@@ -1609,12 +1433,7 @@ void RB_ShowLights( void ) {
 		int index;
 
 		index = backEnd.viewDef->renderWorld->lightDefs.FindIndex( vLight->lightDef );
-		if ( vLight->viewInsideLight ) {
-			// view is in this volume
-			common->Printf( "[%i] ", index );
-		} else {
-			common->Printf( "%i ", index );
-		}
+		common->Printf( "%i ", index );
 	}
 
 	qglEnable( GL_DEPTH_TEST );
@@ -2343,7 +2162,6 @@ void RB_RenderDebugTools( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 
 	RB_ShowLightCount();
-	RB_ShowShadowCount();
 	RB_ShowTexturePolarity( drawSurfs, numDrawSurfs );
 	RB_ShowTangentSpace( drawSurfs, numDrawSurfs );
 	RB_ShowVertexColor( drawSurfs, numDrawSurfs );
@@ -2364,7 +2182,6 @@ void RB_RenderDebugTools( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	}
 	RB_TestImage();
 	RB_ShowPortals();
-	RB_ShowSilhouette();
 	RB_ShowDepthBuffer();
 	RB_ShowIntensity();
 	RB_ShowDebugLines();

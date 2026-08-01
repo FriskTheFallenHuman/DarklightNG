@@ -556,20 +556,6 @@ int idRenderModelStatic::NearestJoint( int surfaceNum, int a, int b, int c ) con
 ================
 idRenderModelStatic::FinishSurfaces
 
-The mergeShadows option allows surfaces with different textures to share
-silhouette edges for shadow calculation, instead of leaving shared edges
-hanging.
-
-If any of the original shaders have the noSelfShadow flag set, the surfaces
-can't be merged, because they will need to be drawn in different order.
-
-If there is only one surface, a separate merged surface won't be generated.
-
-A model with multiple surfaces can't later have a skinned shader change the
-state of the noSelfShadow flag.
-
------------------
-
 Creates mirrored copies of two sided surfaces with normal maps, which would
 otherwise light funny.
 
@@ -579,7 +565,6 @@ Extends the bounds of deformed surfaces so they don't cull incorrectly at screen
 */
 void idRenderModelStatic::FinishSurfaces() {
 	int			i;
-	int			totalVerts, totalIndexes;
 
 	purged = false;
 
@@ -603,11 +588,7 @@ void idRenderModelStatic::FinishSurfaces() {
 		return;
 	}
 
-	// cleanup all the final surfaces, but don't create sil edges
-	totalVerts = 0;
-	totalIndexes = 0;
-
-	// decide if we are going to merge all the surfaces into one shadower
+	// Cleanup all final surfaces without generating stencil-shadow edges.
 	int	numOriginalSurfaces = surfaces.Num();
 
 	// make sure there aren't any NULL shaders or geometry
@@ -652,11 +633,7 @@ void idRenderModelStatic::FinishSurfaces() {
 	for ( i = 0 ; i < surfaces.Num() ; i++ ) {
 		const modelSurface_t	*surf = &surfaces[i];
 
-		R_CleanupTriangles( surf->geometry, surf->geometry->generateNormals, true, surf->shader->UseUnsmoothedTangents() );
-		if ( surf->shader->SurfaceCastsShadow() ) {
-			totalVerts += surf->geometry->numVerts;
-			totalIndexes += surf->geometry->numIndexes;
-		}
+		R_CleanupTriangles( surf->geometry, surf->geometry->generateNormals, false, surf->shader->UseUnsmoothedTangents() );
 	}
 
 	// add up the total surface area for development information

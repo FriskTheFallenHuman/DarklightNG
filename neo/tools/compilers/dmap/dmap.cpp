@@ -84,10 +84,7 @@ bool ProcessModel( uEntity_t *e, bool floodFill ) {
 	// fragments in the solid areas
 	PutPrimitivesInAreas( e );
 
-	// now build shadow volumes for the lights and split
-	// the optimize lists by the light beam trees
-	// so there won't be unneeded overdraw in the static
-	// case
+	// Split optimize lists at realtime-light boundaries when requested.
 	Prelight( e );
 
 	// optimizing is a superset of fixing tjunctions
@@ -182,12 +179,8 @@ void ResetDmapGlobals( void ) {
 	dmapGlobals.noFlood = false;
 	dmapGlobals.noClipSides = false;
 	dmapGlobals.noLightCarve = false;
-	dmapGlobals.noShadow = false;
-	dmapGlobals.shadowOptLevel = SO_NONE;
 	dmapGlobals.drawBounds.Clear();
 	dmapGlobals.drawflag = false;
-	dmapGlobals.totalShadowTriangles = 0;
-	dmapGlobals.totalShadowVerts = 0;
 }
 
 /*
@@ -214,11 +207,6 @@ void Dmap( const idCmdArgs &args ) {
 	common->Printf("---- dmap ----\n");
 
 	dmapGlobals.fullCarve = true;
-	dmapGlobals.shadowOptLevel = SO_MERGE_SURFACES;		// create shadows by merging all surfaces, but no super optimization
-//	dmapGlobals.shadowOptLevel = SO_CLIP_OCCLUDERS;		// remove occluders that are completely covered
-//	dmapGlobals.shadowOptLevel = SO_SIL_OPTIMIZE;
-//	dmapGlobals.shadowOptLevel = SO_CULL_OCCLUDED;
-
 	dmapGlobals.noLightCarve = true;
 
 	for ( i = 1 ; i < args.Argc() ; i++ ) {
@@ -267,10 +255,6 @@ void Dmap( const idCmdArgs &args ) {
 		} else if ( !idStr::Icmp( s, "noCarve" ) ) {
 			common->Printf( "noCarve = true\n" );
 			dmapGlobals.fullCarve = false;
-		} else if ( !idStr::Icmp( s, "shadowOpt" ) ) {
-			dmapGlobals.shadowOptLevel = (shadowOptLevel_t)atoi( args.Argv( i+1 ) );
-			common->Printf( "shadowOpt = %i\n",dmapGlobals.shadowOptLevel );
-			i += 1;
 		} else if ( !idStr::Icmp( s, "noTjunc" ) ) {
 			// triangle optimization won't work properly without tjunction fixing
 			common->Printf ("noTJunc = true\n" );
@@ -339,9 +323,6 @@ void Dmap( const idCmdArgs &args ) {
 	}
 
 	FreeDMapFile();
-
-	common->Printf( "%i total shadow triangles\n", dmapGlobals.totalShadowTriangles );
-	common->Printf( "%i total shadow verts\n", dmapGlobals.totalShadowVerts );
 
 	end = Sys_Milliseconds();
 	common->Printf( "-----------------------\n" );

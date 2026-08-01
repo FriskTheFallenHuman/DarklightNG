@@ -80,7 +80,6 @@ void idRenderEntityLocal::RemoveDecals() {
 idRenderLightLocal::idRenderLightLocal() {
 	memset( &parms, 0, sizeof( parms ) );
 	memset( modelMatrix, 0, sizeof( modelMatrix ) );
-	memset( shadowFrustums, 0, sizeof( shadowFrustums ) );
 	memset( lightProject, 0, sizeof( lightProject ) );
 	memset( frustum, 0, sizeof( frustum ) );
 	memset( frustumWindings, 0, sizeof( frustumWindings ) );
@@ -88,14 +87,12 @@ idRenderLightLocal::idRenderLightLocal() {
 	lightHasMoved			= false;
 	world					= NULL;
 	index					= 0;
-	areaNum					= 0;
 	lastModifiedFrameNum	= 0;
 	archived				= false;
 	lightShader				= NULL;
 	falloffImage			= NULL;
 	globalLightOrigin		= vec3_zero;
 	frustumTris				= NULL;
-	numShadowFrustums		= 0;
 	viewCount				= 0;
 	viewLight				= NULL;
 	references				= NULL;

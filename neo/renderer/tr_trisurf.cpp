@@ -2202,9 +2202,6 @@ deformInfo_t *R_BuildDeformInfo( int numVerts, const idDrawVert *verts, int numI
 //	R_RemoveDuplicatedTriangles( &tri );
 //	R_RemoveDegenerateTriangles( &tri );
 //	R_RemoveUnusedVerts( &tri );
-	R_IdentifySilEdges( &tri, false );			// we cannot remove coplanar edges, because
-												// they can deform to silhouettes
-
 	R_DuplicateMirroredVertexes( &tri );		// split mirror points into multiple points
 
 	R_CreateDupVerts( &tri );

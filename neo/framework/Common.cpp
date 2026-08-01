@@ -1532,19 +1532,6 @@ void Com_ExecMachineSpec_f( const idCmdArgs &args ) {
 		cvarSystem->SetCVarInteger( "image_useNormalCompression", 1, CVAR_ARCHIVE );
 	}
 
-#if MACOS_X
-	// On low settings, G4 systems & 64MB FX5200/NV34 Systems should default shadows off
-	bool oldArch;
-	int vendorId, deviceId, cpuId;
-	OSX_GetVideoCard( vendorId, deviceId );
-	OSX_GetCPUIdentification( cpuId, oldArch );
-	bool isFX5200 = vendorId == 0x10DE && ( deviceId & 0x0FF0 ) == 0x0320;
-	if ( ( oldArch || ( isFX5200 && Sys_GetVideoRam() < 128 ) ) && com_machineSpec.GetInteger() == 0 ) {
-		cvarSystem->SetCVarBool( "r_shadows", false, CVAR_ARCHIVE );
-	} else {
-		cvarSystem->SetCVarBool( "r_shadows", true, CVAR_ARCHIVE );
-	}
-#endif
 }
 
 /*
