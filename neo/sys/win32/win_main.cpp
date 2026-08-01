@@ -73,8 +73,8 @@ int g_thread_count = 0;
 
 static sysMemoryStats_t exeLaunchMemoryStats;
 
-static	xthreadInfo	threadInfo;
-static	HANDLE		hTimer;
+static	xthreadInfo	soundThreadInfo;
+static	HANDLE		soundTimer;
 
 /*
 ================
@@ -867,68 +867,49 @@ void Sys_In_Restart_f( const idCmdArgs &args ) {
 
 /*
 ==================
-Sys_AsyncThread
+Sys_SoundThread
 ==================
 */
-static void Sys_AsyncThread( void *parm ) {
-	int		wakeNumber;
-	int		startTime;
-
-	startTime = Sys_Milliseconds();
-	wakeNumber = 0;
-
+static void Sys_SoundThread( void *parm ) {
 	while ( 1 ) {
 #ifdef WIN32	
-		// this will trigger 60 times a second
-		int r = WaitForSingleObject( hTimer, 100 );
+		// Service the sound backend at the usercmd rate.
+		int r = WaitForSingleObject( soundTimer, 100 );
 		if ( r != WAIT_OBJECT_0 ) {
-			OutputDebugString( "idPacketServer::PacketServerInterrupt: bad wait return" );
+			OutputDebugString( "Sys_SoundThread: bad wait return" );
 		}
 #endif
-
-#if 0
-		wakeNumber++;
-		int		msec = Sys_Milliseconds();
-		int		deltaTime = msec - startTime;
-		startTime = msec;
-
-		char	str[1024];
-		sprintf( str, "%i ", deltaTime );
-		OutputDebugString( str );
-#endif
-
-
-		common->Async();
+		common->SoundAsync();
 	}
 }
 
 /*
 ==============
-Sys_StartAsyncThread
+Sys_StartSoundThread
 
-Start the thread that will call idCommon::Async()
+Start the thread that services only the sound backend.
 ==============
 */
-void Sys_StartAsyncThread( void ) {
+void Sys_StartSoundThread( void ) {
 	// create an auto-reset event that happens 60 times a second
-	hTimer = CreateWaitableTimer( NULL, false, NULL );
-	if ( !hTimer ) {
-		common->Error( "idPacketServer::Spawn: CreateWaitableTimer failed" );
+	soundTimer = CreateWaitableTimer( NULL, false, NULL );
+	if ( !soundTimer ) {
+		common->Error( "Sys_StartSoundThread: CreateWaitableTimer failed" );
 	}
 
 	LARGE_INTEGER	t;
 	t.HighPart = t.LowPart = 0;
-	SetWaitableTimer( hTimer, &t, USERCMD_MSEC, NULL, NULL, TRUE );
+	SetWaitableTimer( soundTimer, &t, USERCMD_MSEC, NULL, NULL, TRUE );
 
-	Sys_CreateThread( (xthread_t)Sys_AsyncThread, NULL, THREAD_ABOVE_NORMAL, threadInfo, "Async", g_threads,  &g_thread_count );
+	Sys_CreateThread( (xthread_t)Sys_SoundThread, NULL, THREAD_ABOVE_NORMAL, soundThreadInfo, "Sound", g_threads,  &g_thread_count );
 
 #ifdef SET_THREAD_AFFINITY 
-	// give the async thread an affinity for the second cpu
-	SetThreadAffinityMask( (HANDLE)threadInfo.threadHandle, 2 );
+	// give the sound thread an affinity for the second cpu
+	SetThreadAffinityMask( (HANDLE)soundThreadInfo.threadHandle, 2 );
 #endif
 
-	if ( !threadInfo.threadHandle ) {
-		common->Error( "Sys_StartAsyncThread: failed" );
+	if ( !soundThreadInfo.threadHandle ) {
+		common->Error( "Sys_StartSoundThread: failed" );
 	}
 }
 
@@ -1416,7 +1397,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 	}
 #endif
 
-	Sys_StartAsyncThread();
+	Sys_StartSoundThread();
 
 	// hide or show the early console as necessary
 	if ( win32.win_viewlog.GetInteger() || com_skipRenderer.GetBool() || idAsyncNetwork::serverDedicated.GetInteger() ) {

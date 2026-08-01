@@ -47,8 +47,8 @@ void		Posix_Exit( int ret );
 void		Posix_SetExit(int ret); // override the exit code
 void		Posix_SetExitSpawn( const char *exeName ); // set the process to be spawned when we quit
 
-void		Posix_StartAsyncThread( void );
-extern xthreadInfo asyncThread;
+void		Posix_StartSoundThread( void );
+extern xthreadInfo soundThread;
 
 bool		Posix_AddKeyboardPollEvent( int key, bool state );
 bool		Posix_AddMousePollEvent( int action, int value );
@@ -60,7 +60,6 @@ void		Posix_Shutdown( void );
 void		Sys_FPE_handler( int signum, siginfo_t *info, void *context );
 void		Sys_DoStartProcess( const char *exeName, bool dofork = true ); // if not forking, current process gets replaced
 
-void		Sys_AsyncThread( void );
+void		Sys_SoundThread( void );
 
 #endif
-

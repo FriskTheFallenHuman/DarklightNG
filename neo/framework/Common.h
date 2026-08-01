@@ -58,7 +58,6 @@ typedef enum {
 
 extern idCVar		com_version;
 extern idCVar		com_skipRenderer;
-extern idCVar		com_asyncInput;
 extern idCVar		com_asyncSound;
 extern idCVar		com_machineSpec;
 extern idCVar		com_purgeAll;
@@ -79,7 +78,7 @@ extern int			time_frontend;			// renderer frontend time
 extern int			time_backend;			// renderer backend time
 
 extern int			com_frameTime;			// time for the current frame in milliseconds
-extern volatile int	com_ticNumber;			// 60 hz tics, incremented by async function
+extern int			com_ticNumber;			// 60 hz tics, advanced by the main thread
 extern int			com_editors;			// current active editor(s)
 extern bool			com_editorActive;		// true if an editor has focus
 
@@ -133,9 +132,12 @@ public:
 								// Called repeatedly by blocking function calls with GUI interactivity.
 	virtual void				GUIFrame( bool execCmd, bool network ) = 0;
 
-								// Called 60 times a second from a background thread for sound mixing,
-								// and input generation. Not called until idCommon::Init() has completed.
-	virtual void				Async( void ) = 0;
+								// Advances the fixed-step game clock from the main thread.
+	virtual void				UpdateGameTime( void ) = 0;
+
+								// Called from the dedicated sound thread. Not called until
+								// idCommon::Init() has completed.
+	virtual void				SoundAsync( void ) = 0;
 
 								// Checks for and removes command line "+set var arg" constructs.
 								// If match is NULL, all set commands will be executed, otherwise

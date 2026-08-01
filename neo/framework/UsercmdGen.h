@@ -140,10 +140,7 @@ public:
 	// Returns a buffered command for the given game tic.
 	virtual usercmd_t	TicCmd( int ticNumber ) = 0;
 
-	// Called async at regular intervals.
-	virtual	void		UsercmdInterrupt( void ) = 0;
-
-	// Set a value that can safely be referenced by UsercmdInterrupt() for each key binding.
+	// Returns the usercmd action for a key binding.
 	virtual	int			CommandStringUsercmdData( const char *cmdString ) = 0;
 
 	// Returns the number of user commands.

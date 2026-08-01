@@ -324,8 +324,6 @@ public:
 
 	void			InhibitUsercmd( inhibit_t subsystem, bool inhibit );
 
-	void			UsercmdInterrupt( void );
-
 	int				CommandStringUsercmdData( const char *cmdString );
 
 	int				GetNumUserCommands( void );
@@ -1036,40 +1034,6 @@ idUsercmdGenLocal::Joystick
 */
 void idUsercmdGenLocal::Joystick( void ) {
 	memset( joystickAxis, 0, sizeof( joystickAxis ) );
-}
-
-/*
-================
-idUsercmdGenLocal::UsercmdInterrupt
-
-Called asyncronously
-================
-*/
-void idUsercmdGenLocal::UsercmdInterrupt( void ) {
-	// dedicated servers won't create usercmds
-	if ( !initialized ) {
-		return;
-	}
-
-	// init the usercmd for com_ticNumber+1
-	InitCurrent();
-
-	// process the system mouse events
-	Mouse();
-
-	// process the system keyboard events
-	Keyboard();
-
-	// process the system joystick events
-	Joystick();
-
-	// create the usercmd for com_ticNumber+1
-	MakeCurrent();
-
-	// save a number for debugging cmdDemos and networking
-	cmd.sequence = com_ticNumber+1;
-
-	buffered[(com_ticNumber+1) & (MAX_BUFFERED_USERCMD-1)] = cmd;
 }
 
 /*

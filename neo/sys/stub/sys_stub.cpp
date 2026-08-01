@@ -227,7 +227,6 @@ int main( int argc, char **argv ) {
 	common->Init( cmdline );
 
 	while( 1 ) {
-		common->Async();
 		common->Frame();
 		frameNum++;
 	}

@@ -57,15 +57,13 @@ idCVar com_skipRenderer( "com_skipRenderer", "0", CVAR_BOOL|CVAR_SYSTEM, "skip t
 idCVar com_machineSpec( "com_machineSpec", "-1", CVAR_INTEGER | CVAR_ARCHIVE | CVAR_SYSTEM, "hardware classification, -1 = not detected, 0 = low quality, 1 = medium quality, 2 = high quality, 3 = ultra quality" );
 idCVar com_purgeAll( "com_purgeAll", "0", CVAR_BOOL | CVAR_ARCHIVE | CVAR_SYSTEM, "purge everything between level loads" );
 idCVar com_memoryMarker( "com_memoryMarker", "-1", CVAR_INTEGER | CVAR_SYSTEM | CVAR_INIT, "used as a marker for memory stats" );
-idCVar com_preciseTic( "com_preciseTic", "1", CVAR_BOOL|CVAR_SYSTEM, "run one game tick every async thread update" );
-idCVar com_asyncInput( "com_asyncInput", "0", CVAR_BOOL|CVAR_SYSTEM, "sample input from the async thread" );
 #define ASYNCSOUND_INFO "0: mix sound inline, 1: memory mapped async mix, 2: callback mixing, 3: write async mix"
 #if defined( MACOS_X )
 idCVar com_asyncSound( "com_asyncSound", "2", CVAR_INTEGER|CVAR_SYSTEM|CVAR_ROM, ASYNCSOUND_INFO );
 #elif defined( __linux__ )
 idCVar com_asyncSound( "com_asyncSound", "3", CVAR_INTEGER|CVAR_SYSTEM|CVAR_ROM, ASYNCSOUND_INFO );
 #else
-idCVar com_asyncSound( "com_asyncSound", "1", CVAR_INTEGER|CVAR_SYSTEM, ASYNCSOUND_INFO, 0, 1 );
+idCVar com_asyncSound( "com_asyncSound", "1", CVAR_INTEGER|CVAR_SYSTEM|CVAR_ROM, ASYNCSOUND_INFO, 1, 1 );
 #endif
 idCVar com_forceGenericSIMD( "com_forceGenericSIMD", "0", CVAR_BOOL | CVAR_SYSTEM | CVAR_NOCHEAT, "force generic platform independent SIMD" );
 idCVar com_developer( "developer", "0", CVAR_BOOL|CVAR_SYSTEM|CVAR_NOCHEAT, "developer mode" );
@@ -93,7 +91,7 @@ int				time_backend;			// renderSystem backend time
 
 int				com_frameTime;			// time for the current frame in milliseconds
 int				com_frameNumber;		// variable frame number
-volatile int	com_ticNumber;			// 60 hz tics
+int				com_ticNumber;			// 60 hz tics
 int				com_editors;			// currently opened editor(s)
 bool			com_editorActive;		//  true if an editor has focus
 
@@ -121,7 +119,8 @@ public:
 	virtual bool				IsInitialized( void ) const;
 	virtual void				Frame( void );
 	virtual void				GUIFrame( bool execCmd, bool network );
-	virtual void				Async( void );
+	virtual void				UpdateGameTime( void );
+	virtual void				SoundAsync( void );
 	virtual void				StartupVariable( const char *match, bool once );
 	virtual void				InitTool( const toolFlag_t tool, const idDict *dict );
 	virtual void				ActivateTool( bool active );
@@ -170,7 +169,6 @@ private:
 	void						CloseLogFile( void );
 	void						WriteConfiguration( void );
 	void						DumpWarnings( void );
-	void						SingleAsyncTic( void );
 	void						LoadGameDLL( void );
 	void						UnloadGameDLL( void );
 	void						PrintLoadingMessage( const char *msg );
@@ -2425,6 +2423,7 @@ idCommonLocal::Frame
 */
 void idCommonLocal::Frame( void ) {
 	try {
+		UpdateGameTime();
 
 		// pump all the events
 		Sys_GenerateEvents();
@@ -2489,6 +2488,7 @@ idCommonLocal::GUIFrame
 =================
 */
 void idCommonLocal::GUIFrame( bool execCmd, bool network ) {
+	UpdateGameTime();
 	Sys_GenerateEvents();
 	eventLoop->RunEventLoop( execCmd );	// and execute any commands
 	com_frameTime = com_ticNumber * USERCMD_MSEC;
@@ -2501,111 +2501,69 @@ void idCommonLocal::GUIFrame( bool execCmd, bool network ) {
 
 /*
 =================
-idCommonLocal::SingleAsyncTic
+idCommonLocal::UpdateGameTime
 
-The system will asyncronously call this function 60 times a second to
-handle the time-critical functions that we don't want limited to
-the frame rate:
-
-sound mixing
-user input generation (conditioned by com_asyncInput)
-packet server operation
-packet client operation
-
-We are not using thread safe libraries, so any functionality put here must
-be VERY VERY careful about what it calls.
+Advance fixed game tics from elapsed wall-clock time on the main thread.
+The residual keeps fractional timescale progress instead of rounding the
+wall-clock duration of each tic.
 =================
 */
+void idCommonLocal::UpdateGameTime( void ) {
+	static int lastTimeMsec;
+	static double residualMsec;
 
-typedef struct {
-	int				milliseconds;			// should always be incremeting by 60hz
-	int				deltaMsec;				// should always be 16
-	int				timeConsumed;			// msec spent in Com_AsyncThread()
-	int				clientPacketsReceived;
-	int				serverPacketsReceived;
-	int				mostRecentServerPacketSequence;
-} asyncStats_t;
-
-static const int MAX_ASYNC_STATS = 1024;
-asyncStats_t	com_asyncStats[MAX_ASYNC_STATS];		// indexed by com_ticNumber
-int prevAsyncMsec;
-int	lastTicMsec;
-
-void idCommonLocal::SingleAsyncTic( void ) {
-	// main thread code can prevent this from happening while modifying
-	// critical data structures
-	Sys_EnterCriticalSection();
-
-	asyncStats_t *stat = &com_asyncStats[com_ticNumber & (MAX_ASYNC_STATS-1)];
-	memset( stat, 0, sizeof( *stat ) );
-	stat->milliseconds = Sys_Milliseconds();
-	stat->deltaMsec = stat->milliseconds - com_asyncStats[(com_ticNumber - 1) & (MAX_ASYNC_STATS-1)].milliseconds;
-
-	if ( usercmdGen && com_asyncInput.GetBool() ) {
-		usercmdGen->UsercmdInterrupt();
+	const int now = Sys_Milliseconds();
+	if ( !lastTimeMsec ) {
+		lastTimeMsec = now - USERCMD_MSEC;
 	}
 
-	switch ( com_asyncSound.GetInteger() ) {
-		case 1:
-			soundSystem->AsyncUpdate( stat->milliseconds );
-			break;
-		case 3:
-			soundSystem->AsyncUpdateWrite( stat->milliseconds );
-			break;
+	int elapsedMsec = now - lastTimeMsec;
+	lastTimeMsec = now;
+	if ( elapsedMsec < 0 ) {
+		residualMsec = 0.0;
+		return;
 	}
 
-	// we update com_ticNumber after all the background tasks
-	// have completed their work for this tic
-	com_ticNumber++;
+	// Discard excessive scaled time after a hitch so simulation catch-up cannot
+	// monopolize the main thread. Slow timescales still retain their wall time.
+	const double maxScaledMsec = 10 * USERCMD_MSEC;
+	double scaledMsec = elapsedMsec * com_timescale.GetFloat();
+	if ( scaledMsec > maxScaledMsec ) {
+		scaledMsec = maxScaledMsec;
+		residualMsec = 0.0;
+	}
 
-	stat->timeConsumed = Sys_Milliseconds() - stat->milliseconds;
-
-	Sys_LeaveCriticalSection();
+	residualMsec += scaledMsec;
+	const int tics = (int)( residualMsec / USERCMD_MSEC );
+	if ( tics > 0 ) {
+		com_ticNumber += tics;
+		residualMsec -= tics * USERCMD_MSEC;
+	}
 }
 
 /*
 =================
-idCommonLocal::Async
+idCommonLocal::SoundAsync
+
+Service only the sound backend from the dedicated sound thread.
 =================
 */
-void idCommonLocal::Async( void ) {
+void idCommonLocal::SoundAsync( void ) {
 	if ( com_shuttingDown ) {
 		return;
 	}
 
-	int	msec = Sys_Milliseconds();
-	if ( !lastTicMsec ) {
-		lastTicMsec = msec - USERCMD_MSEC;
+	Sys_EnterCriticalSection();
+	const int milliseconds = Sys_Milliseconds();
+	switch ( com_asyncSound.GetInteger() ) {
+		case 1:
+			soundSystem->AsyncUpdate( milliseconds );
+			break;
+		case 3:
+			soundSystem->AsyncUpdateWrite( milliseconds );
+			break;
 	}
-
-	if ( !com_preciseTic.GetBool() ) {
-		// just run a single tic, even if the exact msec isn't precise
-		SingleAsyncTic();
-		return;
-	}
-
-	int ticMsec = USERCMD_MSEC;
-
-	// the number of msec per tic can be varies with the timescale cvar
-	float timescale = com_timescale.GetFloat();
-	if ( timescale != 1.0f ) {
-		ticMsec /= timescale;
-		if ( ticMsec < 1 ) {
-			ticMsec = 1;
-		}
-	}
-
-	// don't skip too many
-	if ( timescale == 1.0f ) {
-		if ( lastTicMsec + 10 * USERCMD_MSEC < msec ) {
-			lastTicMsec = msec - 10*USERCMD_MSEC;
-		}
-	}
-
-	while ( lastTicMsec + ticMsec <= msec ) {
-		SingleAsyncTic();
-		lastTicMsec += ticMsec;
-	}
+	Sys_LeaveCriticalSection();
 }
 
 /*

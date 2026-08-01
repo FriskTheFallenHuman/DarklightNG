@@ -189,7 +189,7 @@ public:
 	bool			down;
 	int				repeats;		// if > 1, it is autorepeating
 	idStr			binding;
-	int				usercmdAction;	// for testing by the asyncronous usercmd generation
+	int				usercmdAction;	// non-zero for commands handled by usercmd generation
 };
 
 bool		key_overstrikeMode = false;
@@ -724,8 +724,7 @@ idKeyInput::ExecKeyBinding
 =================
 */
 bool idKeyInput::ExecKeyBinding( int keynum ) {
-	// commands that are used by the async thread
-	// don't add text
+	// Usercmd actions are sampled directly and don't add command text.
 	if ( keys[keynum].usercmdAction ) {
 		return false;
 	}

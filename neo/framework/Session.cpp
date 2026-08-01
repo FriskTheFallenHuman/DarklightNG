@@ -484,13 +484,8 @@ idSessionLocal::CompleteWipe
 ================
 */
 void idSessionLocal::CompleteWipe() {
-	if ( com_ticNumber == 0 ) {
-		// if the async thread hasn't started, we would hang here
-		wipeStopTic = 0;
-		UpdateScreen( true );
-		return;
-	}
 	while ( com_ticNumber < wipeStopTic ) {
+		common->UpdateGameTime();
 #if ID_CONSOLE_LOCK
 		emptyDrawCount = 0;
 #endif
@@ -515,6 +510,7 @@ void idSessionLocal::ShowLoadingGui() {
 	int stop = Sys_Milliseconds() + 1000;
 	int force = 10;
 	while ( Sys_Milliseconds() < stop || force-- > 0 ) {
+		common->UpdateGameTime();
 		com_frameTime = com_ticNumber * USERCMD_MSEC;
 		session->Frame();
 		session->UpdateScreen( false );
@@ -2509,11 +2505,6 @@ idSessionLocal::Frame
 ===============
 */
 void idSessionLocal::Frame() {
-
-	if ( com_asyncSound.GetInteger() == 0 ) {
-		soundSystem->AsyncUpdate( Sys_Milliseconds() );
-	}
-
 	// Editors that completely take over the game
 	if ( com_editorActive && ( com_editors & ( EDITOR_RADIANT | EDITOR_GUI ) ) ) {
 		return;
@@ -2580,27 +2571,16 @@ void idSessionLocal::Frame() {
 		minTic = latchedTicNumber;
 	}
 
-	// FIXME: deserves a cleanup and abstraction
-#if defined( _WIN32 )
-	// Spin in place if needed.  The game should yield the cpu if
-	// it is running over 60 hz, because there is fundamentally
-	// nothing useful for it to do.
+	// Wait for the next fixed step when rendering is ahead of the game clock.
+	// The main thread owns the clock, so it advances it after each short yield.
 	while( 1 ) {
+		common->UpdateGameTime();
 		latchedTicNumber = com_ticNumber;
 		if ( latchedTicNumber >= minTic ) {
 			break;
 		}
 		Sys_Sleep( 1 );
 	}
-#else
-	while( 1 ) {
-		latchedTicNumber = com_ticNumber;
-		if ( latchedTicNumber >= minTic ) {
-			break;
-		}
-		Sys_WaitForEvent( TRIGGER_EVENT_ONE );
-	}
-#endif
 
 	if ( authEmitTimeout ) {
 		// waiting for a game auth
@@ -2638,10 +2618,8 @@ void idSessionLocal::Frame() {
 	//------------ single player game tics --------------
 
 	if ( !mapSpawned || guiActive ) {
-		if ( !com_asyncInput.GetBool() ) {
-			// early exit, won't do RunGameTic .. but still need to update mouse position for GUIs
-			usercmdGen->GetDirectUsercmd();
-		}
+		// Early exit, won't do RunGameTic, but still update the mouse for GUIs.
+		usercmdGen->GetDirectUsercmd();
 	}
 
 	if ( !mapSpawned ) {
@@ -2760,12 +2738,8 @@ void idSessionLocal::RunGameTic() {
 	
 	// if we didn't get one from the file, get it locally
 	if ( !cmdDemoFile ) {
-		// get a locally created command
-		if ( com_asyncInput.GetBool() ) {
-			cmd = usercmdGen->TicCmd( lastGameTic );
-		} else {
-			cmd = usercmdGen->GetDirectUsercmd();
-		}
+		// Input is sampled on the main thread for the tic being run.
+		cmd = usercmdGen->GetDirectUsercmd();
 		lastGameTic++;
 	}
 

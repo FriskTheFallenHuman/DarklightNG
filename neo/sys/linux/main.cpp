@@ -55,10 +55,10 @@ void Sys_InitScanTable( void ) {
 
 /*
 =================
-Sys_AsyncThread
+Sys_SoundThread
 =================
 */
-void Sys_AsyncThread( void ) {
+void Sys_SoundThread( void ) {
 	int now;
 	int next;
 	int	want_sleep;
@@ -102,9 +102,8 @@ void Sys_AsyncThread( void ) {
 		#endif
 		
 		while ( ticked < to_ticked ) {
-			common->Async();
+			common->SoundAsync();
 			ticked++;
-			Sys_TriggerEvent( TRIGGER_EVENT_ONE );
 		}
 		// thread exit
 		pthread_testcancel();

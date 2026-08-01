@@ -240,24 +240,29 @@ const char* Sys_GetThreadName( int *index ) {
 
 /*
 =========================================================
-Async Thread
+Sound Thread
 =========================================================
 */
 
-xthreadInfo asyncThread;
+xthreadInfo soundThread;
 
 /*
 =================
-Posix_StartAsyncThread
+Posix_StartSoundThread
 =================
 */
-void Posix_StartAsyncThread() {
-	if ( asyncThread.threadHandle == 0 ) {
-		Sys_CreateThread( (xthread_t)Sys_AsyncThread, NULL, THREAD_NORMAL, asyncThread, "Async", g_threads, &g_thread_count );
-	} else {
-		common->Printf( "Async thread already running\n" );
+void Posix_StartSoundThread() {
+	const int soundMode = com_asyncSound.GetInteger();
+	if ( soundMode != 1 && soundMode != 3 ) {
+		return;
 	}
-	common->Printf( "Async thread started\n" );
+
+	if ( soundThread.threadHandle == 0 ) {
+		Sys_CreateThread( (xthread_t)Sys_SoundThread, NULL, THREAD_NORMAL, soundThread, "Sound", g_threads, &g_thread_count );
+	} else {
+		common->Printf( "Sound thread already running\n" );
+	}
+	common->Printf( "Sound thread started\n" );
 }
 
 /*
@@ -289,4 +294,3 @@ void Posix_InitPThreads( ) {
 		g_threads[ i ] = NULL;
 	}	
 }
-

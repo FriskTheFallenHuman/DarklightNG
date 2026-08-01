@@ -980,14 +980,13 @@ static OSErr DoRegCodeDialog( char* ioRegCode1 )
 
 /*
 =================
-Sys_AsyncThread
+Sys_SoundThread
 =================
 */
-void Sys_AsyncThread( void ) {
+void Sys_SoundThread( void ) {
 	while ( 1 ) {
 		usleep( 16666 );
-		common->Async();
-		Sys_TriggerEvent( TRIGGER_EVENT_ONE );
+		common->SoundAsync();
 		pthread_testcancel();
 	}
 }
