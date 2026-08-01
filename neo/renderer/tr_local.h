@@ -31,6 +31,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "Image.h"
 #include "MegaTexture.h"
+#include "GlslProgram.h"
 
 class idRenderWorldLocal;
 
@@ -675,7 +676,7 @@ public:
 							~idRenderSystemLocal( void );
 
 	void					Clear( void );
-	void					SetBackEndRenderer();			// validates the ARB2 forward path
+	void					SetBackEndRenderer();			// validates the GLSL forward path
 	void					RenderViewToViewport( const renderView_t *renderView, idScreenRect *viewport );
 
 public:
@@ -768,7 +769,7 @@ extern idCVar r_flareSize;				// scale the flare deforms from the material def
 extern idCVar r_gamma;					// changes gamma tables
 extern idCVar r_brightness;				// changes gamma tables
 
-extern idCVar r_renderer;				// forward ARB2 renderer
+extern idCVar r_renderer;				// forward GLSL renderer
 
 extern idCVar r_checkBounds;			// compare all surface bounds with precalculated ones
 
@@ -869,7 +870,7 @@ extern idCVar r_testGamma;				// draw a grid pattern to test gamma levels
 extern idCVar r_testStepGamma;			// draw a grid pattern to test gamma levels
 extern idCVar r_testGammaBias;			// draw a grid pattern to test gamma levels
 
-extern idCVar r_testARBProgram;			// experiment with vertex/fragment programs
+extern idCVar r_testGLSLProgram;			// experiment with GLSL programs
 
 extern idCVar r_singleLight;			// suppress all but one light
 extern idCVar r_singleEntity;			// suppress all but one entity
@@ -1192,30 +1193,8 @@ DRAW_*
 ============================================================
 */
 
-void	R_ARB2_Init( void );
-void	RB_ARB2_DrawInteractions( void );
-void	RB_ARB2_DrawBakedLightmaps( drawSurf_t **drawSurfs, int numDrawSurfs );
-void	R_ReloadARBPrograms_f( const idCmdArgs &args );
-int		R_FindARBProgram( GLenum target, const char *program );
-
-typedef enum {
-	PROG_INVALID,
-	VPROG_INTERACTION,
-	VPROG_ENVIRONMENT,
-	VPROG_BUMPY_ENVIRONMENT,
-	VPROG_TEST,
-	FPROG_INTERACTION,
-	FPROG_ENVIRONMENT,
-	FPROG_BUMPY_ENVIRONMENT,
-	FPROG_TEST,
-	VPROG_AMBIENT,
-	FPROG_AMBIENT,
-	VPROG_GLASSWARP,
-	FPROG_GLASSWARP,
-	VPROG_BAKED_LIGHT,
-	FPROG_BAKED_LIGHT,
-	PROG_USER
-} program_t;
+void	RB_GLSL_DrawInteractions( void );
+void	RB_GLSL_DrawBakedLightmaps( drawSurf_t **drawSurfs, int numDrawSurfs );
 
 /*
 

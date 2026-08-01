@@ -71,8 +71,7 @@ typedef struct glconfig_s {
 	bool				texture3DAvailable;
 	bool				sharedTexturePaletteAvailable;
 	bool				ARBVertexBufferObjectAvailable;
-	bool				ARBVertexProgramAvailable;
-	bool				ARBFragmentProgramAvailable;
+	bool				glslAvailable;
 	bool				textureNonPowerOfTwoAvailable;
 
 	// ati r200 extensions
@@ -84,7 +83,7 @@ typedef struct glconfig_s {
 
 	bool				isFullscreen;
 
-	bool				allowARB2Path;
+	bool				allowGLSLPath;
 
 	bool				isInitialized;
 } glconfig_t;

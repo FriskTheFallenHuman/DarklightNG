@@ -42,9 +42,9 @@ glconfig_t	glConfig;
 
 static void GfxInfo_f( void );
 
-const char *r_rendererArgs[] = { "best", "arb2", NULL };
+const char *r_rendererArgs[] = { "best", "glsl", NULL };
 
-idCVar r_inhibitFragmentProgram( "r_inhibitFragmentProgram", "0", CVAR_RENDERER | CVAR_BOOL, "ignore the fragment program extension" );
+idCVar r_inhibitGLSL( "r_inhibitGLSL", "0", CVAR_RENDERER | CVAR_BOOL, "disable the GLSL renderer" );
 idCVar r_glDriver( "r_glDriver", "", CVAR_RENDERER, "\"opengl32\", etc." );
 idCVar r_multiSamples( "r_multiSamples", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "number of antialiasing samples" );
 idCVar r_mode( "r_mode", "3", CVAR_ARCHIVE | CVAR_RENDERER | CVAR_INTEGER, "video mode number" );
@@ -76,7 +76,7 @@ idCVar r_swapInterval( "r_swapInterval", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVA
 idCVar r_gamma( "r_gamma", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "changes gamma tables", 0.5f, 3.0f );
 idCVar r_brightness( "r_brightness", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "changes gamma tables", 0.5f, 2.0f );
 
-idCVar r_renderer( "r_renderer", "best", CVAR_RENDERER | CVAR_ARCHIVE, "forward renderer path (best and arb2 select the same pipeline)", r_rendererArgs, idCmdSystem::ArgCompletion_String<r_rendererArgs> );
+idCVar r_renderer( "r_renderer", "best", CVAR_RENDERER | CVAR_ARCHIVE, "forward renderer path (best and glsl select the same pipeline)", r_rendererArgs, idCmdSystem::ArgCompletion_String<r_rendererArgs> );
 
 idCVar r_jitter( "r_jitter", "0", CVAR_RENDERER | CVAR_BOOL, "randomly subpixel jitter the projection matrix" );
 
@@ -123,7 +123,7 @@ idCVar r_skipSubviews( "r_skipSubviews", "0", CVAR_RENDERER | CVAR_INTEGER, "1 =
 idCVar r_skipGuiShaders( "r_skipGuiShaders", "0", CVAR_RENDERER | CVAR_INTEGER, "1 = skip all gui elements on surfaces, 2 = skip drawing but still handle events, 3 = draw but skip events", 0, 3, idCmdSystem::ArgCompletion_Integer<0,3> );
 idCVar r_skipParticles( "r_skipParticles", "0", CVAR_RENDERER | CVAR_INTEGER, "1 = skip all particle systems", 0, 1, idCmdSystem::ArgCompletion_Integer<0,1> );
 idCVar r_subviewOnly( "r_subviewOnly", "0", CVAR_RENDERER | CVAR_BOOL, "1 = don't render main view, allowing subviews to be debugged" );
-idCVar r_testARBProgram( "r_testARBProgram", "0", CVAR_RENDERER | CVAR_BOOL, "experiment with vertex/fragment programs" );
+idCVar r_testGLSLProgram( "r_testGLSLProgram", "0", CVAR_RENDERER | CVAR_BOOL, "experiment with GLSL programs" );
 idCVar r_testGamma( "r_testGamma", "0", CVAR_RENDERER | CVAR_FLOAT, "if > 0 draw a grid pattern to test gamma levels", 0, 195 );
 idCVar r_testGammaBias( "r_testGammaBias", "0", CVAR_RENDERER | CVAR_FLOAT, "if > 0 draw a grid pattern to test gamma levels" );
 idCVar r_testStepGamma( "r_testStepGamma", "0", CVAR_RENDERER | CVAR_FLOAT, "if > 0 draw a grid pattern to test gamma levels" );
@@ -265,15 +265,33 @@ PFNGLUNMAPBUFFERARBPROC					qglUnmapBufferARB;
 PFNGLGETBUFFERPARAMETERIVARBPROC		qglGetBufferParameterivARB;
 PFNGLGETBUFFERPOINTERVARBPROC			qglGetBufferPointervARB;
 
-// ARB_vertex_program / ARB_fragment_program
-PFNGLVERTEXATTRIBPOINTERARBPROC			qglVertexAttribPointerARB;
-PFNGLENABLEVERTEXATTRIBARRAYARBPROC		qglEnableVertexAttribArrayARB;
-PFNGLDISABLEVERTEXATTRIBARRAYARBPROC	qglDisableVertexAttribArrayARB;
+// OpenGL 2.0 GLSL
+GLuint ( APIENTRY *qglCreateShader )( GLenum type );
+void ( APIENTRY *qglShaderSource )( GLuint shader, GLsizei count, const char **strings, const GLint *lengths );
+void ( APIENTRY *qglCompileShader )( GLuint shader );
+void ( APIENTRY *qglGetShaderiv )( GLuint shader, GLenum pname, GLint *params );
+void ( APIENTRY *qglGetShaderInfoLog )( GLuint shader, GLsizei maxLength, GLsizei *length, char *infoLog );
+void ( APIENTRY *qglDeleteShader )( GLuint shader );
+GLuint ( APIENTRY *qglCreateProgram )( void );
+void ( APIENTRY *qglAttachShader )( GLuint program, GLuint shader );
+void ( APIENTRY *qglBindAttribLocation )( GLuint program, GLuint index, const char *name );
+void ( APIENTRY *qglLinkProgram )( GLuint program );
+void ( APIENTRY *qglGetProgramiv )( GLuint program, GLenum pname, GLint *params );
+void ( APIENTRY *qglGetProgramInfoLog )( GLuint program, GLsizei maxLength, GLsizei *length, char *infoLog );
+void ( APIENTRY *qglDeleteProgram )( GLuint program );
+void ( APIENTRY *qglUseProgram )( GLuint program );
+GLint ( APIENTRY *qglGetUniformLocation )( GLuint program, const char *name );
+void ( APIENTRY *qglUniform1i )( GLint location, GLint value );
+void ( APIENTRY *qglUniform4fv )( GLint location, GLsizei count, const GLfloat *value );
+void ( APIENTRY *qglVertexAttribPointer )( GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer );
+void ( APIENTRY *qglEnableVertexAttribArray )( GLuint index );
+void ( APIENTRY *qglDisableVertexAttribArray )( GLuint index );
+
+// Legacy macOS ATI_fragment_shader compatibility shim.
 PFNGLPROGRAMSTRINGARBPROC				qglProgramStringARB;
 PFNGLBINDPROGRAMARBPROC					qglBindProgramARB;
 PFNGLGENPROGRAMSARBPROC					qglGenProgramsARB;
 PFNGLPROGRAMENVPARAMETER4FVARBPROC		qglProgramEnvParameter4fvARB;
-PFNGLPROGRAMLOCALPARAMETER4FVARBPROC	qglProgramLocalParameter4fvARB;
 
 // GL_EXT_depth_bounds_test
 
@@ -407,6 +425,12 @@ static void R_CheckPortableExtensions( void ) {
 		glConfig.atiFragmentShaderAvailable = R_CheckExtension( "GL_ATI_text_fragment_shader" );
 	}
 	if ( glConfig.atiFragmentShaderAvailable ) {
+		// The macOS ATI compatibility layer translates these calls through the
+		// text-fragment-program extension.  The GLSL renderer itself never uses them.
+		qglProgramStringARB = (PFNGLPROGRAMSTRINGARBPROC)GLimp_ExtensionPointer( "glProgramStringARB" );
+		qglBindProgramARB = (PFNGLBINDPROGRAMARBPROC)GLimp_ExtensionPointer( "glBindProgramARB" );
+		qglGenProgramsARB = (PFNGLGENPROGRAMSARBPROC)GLimp_ExtensionPointer( "glGenProgramsARB" );
+		qglProgramEnvParameter4fvARB = (PFNGLPROGRAMENVPARAMETER4FVARBPROC)GLimp_ExtensionPointer( "glProgramEnvParameter4fvARB" );
 		qglGenFragmentShadersATI = (PFNGLGENFRAGMENTSHADERSATIPROC)GLimp_ExtensionPointer( "glGenFragmentShadersATI" );
 		qglBindFragmentShaderATI = (PFNGLBINDFRAGMENTSHADERATIPROC)GLimp_ExtensionPointer( "glBindFragmentShaderATI" );
 		qglDeleteFragmentShaderATI = (PFNGLDELETEFRAGMENTSHADERATIPROC)GLimp_ExtensionPointer( "glDeleteFragmentShaderATI" );
@@ -439,30 +463,39 @@ static void R_CheckPortableExtensions( void ) {
 		qglGetBufferPointervARB = (PFNGLGETBUFFERPOINTERVARBPROC)GLimp_ExtensionPointer( "glGetBufferPointervARB");
 	}
 
-	// ARB_vertex_program
-	glConfig.ARBVertexProgramAvailable = R_CheckExtension( "GL_ARB_vertex_program" );
-	if (glConfig.ARBVertexProgramAvailable) {
-		qglVertexAttribPointerARB = (PFNGLVERTEXATTRIBPOINTERARBPROC)GLimp_ExtensionPointer( "glVertexAttribPointerARB" );
-		qglEnableVertexAttribArrayARB = (PFNGLENABLEVERTEXATTRIBARRAYARBPROC)GLimp_ExtensionPointer( "glEnableVertexAttribArrayARB" );
-		qglDisableVertexAttribArrayARB = (PFNGLDISABLEVERTEXATTRIBARRAYARBPROC)GLimp_ExtensionPointer( "glDisableVertexAttribArrayARB" );
-		qglProgramStringARB = (PFNGLPROGRAMSTRINGARBPROC)GLimp_ExtensionPointer( "glProgramStringARB" );
-		qglBindProgramARB = (PFNGLBINDPROGRAMARBPROC)GLimp_ExtensionPointer( "glBindProgramARB" );
-		qglGenProgramsARB = (PFNGLGENPROGRAMSARBPROC)GLimp_ExtensionPointer( "glGenProgramsARB" );
-		qglProgramEnvParameter4fvARB = (PFNGLPROGRAMENVPARAMETER4FVARBPROC)GLimp_ExtensionPointer( "glProgramEnvParameter4fvARB" );
-		qglProgramLocalParameter4fvARB = (PFNGLPROGRAMLOCALPARAMETER4FVARBPROC)GLimp_ExtensionPointer( "glProgramLocalParameter4fvARB" );
-	}
+	// GLSL is part of OpenGL 2.0.  Load the core entry points explicitly because
+	// Windows only exports OpenGL 1.1 symbols from opengl32.dll.
+	glConfig.glslAvailable = glConfig.glVersion >= 2.0f && !r_inhibitGLSL.GetBool();
+	if ( glConfig.glslAvailable ) {
+		qglCreateShader = (GLuint (APIENTRY *)(GLenum))GLimp_ExtensionPointer( "glCreateShader" );
+		qglShaderSource = (void (APIENTRY *)(GLuint, GLsizei, const char **, const GLint *))GLimp_ExtensionPointer( "glShaderSource" );
+		qglCompileShader = (void (APIENTRY *)(GLuint))GLimp_ExtensionPointer( "glCompileShader" );
+		qglGetShaderiv = (void (APIENTRY *)(GLuint, GLenum, GLint *))GLimp_ExtensionPointer( "glGetShaderiv" );
+		qglGetShaderInfoLog = (void (APIENTRY *)(GLuint, GLsizei, GLsizei *, char *))GLimp_ExtensionPointer( "glGetShaderInfoLog" );
+		qglDeleteShader = (void (APIENTRY *)(GLuint))GLimp_ExtensionPointer( "glDeleteShader" );
+		qglCreateProgram = (GLuint (APIENTRY *)(void))GLimp_ExtensionPointer( "glCreateProgram" );
+		qglAttachShader = (void (APIENTRY *)(GLuint, GLuint))GLimp_ExtensionPointer( "glAttachShader" );
+		qglBindAttribLocation = (void (APIENTRY *)(GLuint, GLuint, const char *))GLimp_ExtensionPointer( "glBindAttribLocation" );
+		qglLinkProgram = (void (APIENTRY *)(GLuint))GLimp_ExtensionPointer( "glLinkProgram" );
+		qglGetProgramiv = (void (APIENTRY *)(GLuint, GLenum, GLint *))GLimp_ExtensionPointer( "glGetProgramiv" );
+		qglGetProgramInfoLog = (void (APIENTRY *)(GLuint, GLsizei, GLsizei *, char *))GLimp_ExtensionPointer( "glGetProgramInfoLog" );
+		qglDeleteProgram = (void (APIENTRY *)(GLuint))GLimp_ExtensionPointer( "glDeleteProgram" );
+		qglUseProgram = (void (APIENTRY *)(GLuint))GLimp_ExtensionPointer( "glUseProgram" );
+		qglGetUniformLocation = (GLint (APIENTRY *)(GLuint, const char *))GLimp_ExtensionPointer( "glGetUniformLocation" );
+		qglUniform1i = (void (APIENTRY *)(GLint, GLint))GLimp_ExtensionPointer( "glUniform1i" );
+		qglUniform4fv = (void (APIENTRY *)(GLint, GLsizei, const GLfloat *))GLimp_ExtensionPointer( "glUniform4fv" );
+		qglVertexAttribPointer = (void (APIENTRY *)(GLuint, GLint, GLenum, GLboolean, GLsizei, const void *))GLimp_ExtensionPointer( "glVertexAttribPointer" );
+		qglEnableVertexAttribArray = (void (APIENTRY *)(GLuint))GLimp_ExtensionPointer( "glEnableVertexAttribArray" );
+		qglDisableVertexAttribArray = (void (APIENTRY *)(GLuint))GLimp_ExtensionPointer( "glDisableVertexAttribArray" );
 
-	// ARB_fragment_program
-	if ( r_inhibitFragmentProgram.GetBool() ) {
-		glConfig.ARBFragmentProgramAvailable = false;
-	} else {
-		glConfig.ARBFragmentProgramAvailable = R_CheckExtension( "GL_ARB_fragment_program" );
-		if (glConfig.ARBFragmentProgramAvailable) {
-			// these are the same as ARB_vertex_program
-			qglProgramStringARB = (PFNGLPROGRAMSTRINGARBPROC)GLimp_ExtensionPointer( "glProgramStringARB" );
-			qglBindProgramARB = (PFNGLBINDPROGRAMARBPROC)GLimp_ExtensionPointer( "glBindProgramARB" );
-			qglProgramEnvParameter4fvARB = (PFNGLPROGRAMENVPARAMETER4FVARBPROC)GLimp_ExtensionPointer( "glProgramEnvParameter4fvARB" );
-			qglProgramLocalParameter4fvARB = (PFNGLPROGRAMLOCALPARAMETER4FVARBPROC)GLimp_ExtensionPointer( "glProgramLocalParameter4fvARB" );
+		if ( !qglCreateShader || !qglShaderSource || !qglCompileShader || !qglGetShaderiv ||
+			 !qglGetShaderInfoLog || !qglDeleteShader || !qglCreateProgram || !qglAttachShader ||
+			 !qglBindAttribLocation || !qglLinkProgram || !qglGetProgramiv || !qglGetProgramInfoLog ||
+			 !qglDeleteProgram || !qglUseProgram || !qglGetUniformLocation || !qglUniform1i ||
+			 !qglUniform4fv || !qglVertexAttribPointer || !qglEnableVertexAttribArray ||
+			 !qglDisableVertexAttribArray ) {
+			common->Printf( "OpenGL 2.0 reported, but required GLSL entry points are missing\n" );
+			glConfig.glslAvailable = false;
 		}
 	}
 
@@ -622,12 +655,11 @@ void R_InitOpenGL( void ) {
 	// recheck all the extensions (FIXME: this might be dangerous)
 	R_CheckPortableExtensions();
 
-	// parse our vertex and fragment programs, possibly disably support for
-	// one of the paths if there was an error
-	R_ARB2_Init();
+	// Compile and link the OpenGL 2.x GLSL programs.
+	R_GLSL_Init();
 
-	cmdSystem->AddCommand( "reloadARBprograms", R_ReloadARBPrograms_f, CMD_FL_RENDERER, "reloads ARB programs" );
-	R_ReloadARBPrograms_f( idCmdArgs() );
+	cmdSystem->AddCommand( "reloadGLSLprograms", R_ReloadGLSLPrograms_f, CMD_FL_RENDERER, "reloads GLSL programs" );
+	R_ReloadGLSLPrograms_f( idCmdArgs() );
 
 	// allocate the vertex array range or vertex objects
 	vertexCache.Init();
@@ -1735,10 +1767,10 @@ void GfxInfo_f( const idCmdArgs &args ) {
 	}
 	common->Printf( "CPU: %s\n", Sys_GetProcessorString() );
 
-	if ( glConfig.allowARB2Path ) {
-		common->Printf( "ARB2 forward path ENABLED (ACTIVE)\n" );
+	if ( glConfig.allowGLSLPath ) {
+		common->Printf( "GLSL forward path ENABLED (ACTIVE)\n" );
 	} else {
-		common->Printf( "ARB2 forward path disabled\n" );
+		common->Printf( "GLSL forward path disabled\n" );
 	}
 
 	//=============================
@@ -1820,6 +1852,7 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 		Sys_ShutdownInput();
 		globalImages->PurgeAllImages();
 		// free the context and close the window
+		R_ShutdownGLSLPrograms();
 		GLimp_Shutdown();
 		glConfig.isInitialized = false;
 
@@ -2162,6 +2195,7 @@ idRenderSystemLocal::ShutdownOpenGL
 void idRenderSystemLocal::ShutdownOpenGL( void ) {
 	// free the context and close the window
 	R_ShutdownFrameData();
+	R_ShutdownGLSLPrograms();
 	GLimp_Shutdown();
 	glConfig.isInitialized = false;
 }

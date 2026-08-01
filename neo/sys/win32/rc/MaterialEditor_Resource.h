@@ -60,7 +60,7 @@ If you have questions concerning this license or the applicable additional terms
 #define ID_ME_FILE_NEW                  26003
 #define ID_ME_FILE_SAVEAS               26004
 #define ID_VIEW_INCLUDEFILENAME         26005
-#define ID_PREVIEW_RELOADARBPROGRAMS    26006
+#define ID_PREVIEW_RELOADGLSLPROGRAMS   26006
 #define ID_ME_PREVIEW_APPLYCHANGES      26007
 #define ID_ME_PREVIEW_APPLYALL          26008
 #define ID_POPUP_APPLYCHANGES           26009

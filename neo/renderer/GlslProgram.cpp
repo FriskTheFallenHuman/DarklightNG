@@ -1,0 +1,396 @@
+/*
+===========================================================================
+
+Doom 3 GPL Source Code
+Copyright (C) 1999-2011 id Software LLC, a ZeniMax Media company.
+
+===========================================================================
+*/
+
+#include "../idlib/precompiled.h"
+#pragma hdrstop
+
+#include "tr_local.h"
+
+typedef struct {
+	char	vertexName[64];
+	char	fragmentName[64];
+} glslShaderDef_t;
+
+static glslShaderDef_t glslShaders[MAX_GLSL_SHADERS];
+static idList<idGLSLProgram *> glslPrograms;
+static idGLSLProgram *activeGLSLProgram;
+static bool glslShaderDefsInitialized;
+
+static float vertexEnvParameters[GLSL_MAX_PROGRAM_PARMS][4];
+static float fragmentEnvParameters[GLSL_MAX_PROGRAM_PARMS][4];
+static float vertexLocalParameters[MAX_GLSL_SHADERS][GLSL_MAX_PROGRAM_PARMS][4];
+static float fragmentLocalParameters[MAX_GLSL_SHADERS][GLSL_MAX_PROGRAM_PARMS][4];
+
+static void R_SetBuiltinGLSLShader( glslProgram_t index, const char *name ) {
+	idStr::Copynz( glslShaders[index].vertexName, name, sizeof( glslShaders[index].vertexName ) );
+	idStr::Copynz( glslShaders[index].fragmentName, name, sizeof( glslShaders[index].fragmentName ) );
+}
+
+static void R_InitGLSLShaderDefs() {
+	if ( glslShaderDefsInitialized ) {
+		return;
+	}
+	glslShaderDefsInitialized = true;
+	memset( glslShaders, 0, sizeof( glslShaders ) );
+	memset( vertexEnvParameters, 0, sizeof( vertexEnvParameters ) );
+	memset( fragmentEnvParameters, 0, sizeof( fragmentEnvParameters ) );
+	memset( vertexLocalParameters, 0, sizeof( vertexLocalParameters ) );
+	memset( fragmentLocalParameters, 0, sizeof( fragmentLocalParameters ) );
+
+	R_SetBuiltinGLSLShader( GLSLPROG_INTERACTION, "interaction" );
+	R_SetBuiltinGLSLShader( GLSLPROG_ENVIRONMENT, "environment" );
+	R_SetBuiltinGLSLShader( GLSLPROG_BUMPY_ENVIRONMENT, "bumpyEnvironment" );
+	R_SetBuiltinGLSLShader( GLSLPROG_TEST, "test" );
+	R_SetBuiltinGLSLShader( GLSLPROG_AMBIENT, "ambientLight" );
+	R_SetBuiltinGLSLShader( GLSLPROG_GLASSWARP, "glassWarp" );
+	R_SetBuiltinGLSLShader( GLSLPROG_BAKED_LIGHT, "bakedLight" );
+	R_SetBuiltinGLSLShader( GLSLPROG_COLOR_PROCESS, "colorProcess" );
+	R_SetBuiltinGLSLShader( GLSLPROG_HEAT_HAZE, "heatHaze" );
+	R_SetBuiltinGLSLShader( GLSLPROG_HEAT_HAZE_WITH_MASK, "heatHazeWithMask" );
+	R_SetBuiltinGLSLShader( GLSLPROG_HEAT_HAZE_WITH_MASK_AND_VERTEX, "heatHazeWithMaskAndVertex" );
+	R_SetBuiltinGLSLShader( GLSLPROG_BAKED_SHADOW, "bakedShadow" );
+	R_SetBuiltinGLSLShader( GLSLPROG_INTERACTION_SHADOW, "interactionShadow" );
+}
+
+idGLSLProgram::idGLSLProgram() {
+	vertexShaderIndex = GLSLPROG_INVALID;
+	fragmentShaderIndex = GLSLPROG_INVALID;
+	program = 0;
+	memset( vertexEnvLocations, -1, sizeof( vertexEnvLocations ) );
+	memset( fragmentEnvLocations, -1, sizeof( fragmentEnvLocations ) );
+	memset( vertexLocalLocations, -1, sizeof( vertexLocalLocations ) );
+	memset( fragmentLocalLocations, -1, sizeof( fragmentLocalLocations ) );
+}
+
+idGLSLProgram::~idGLSLProgram() {
+	Purge();
+}
+
+void idGLSLProgram::Init( int vertexIndex, const char *vertexName, int fragmentIndex, const char *fragmentName ) {
+	vertexShaderIndex = vertexIndex;
+	fragmentShaderIndex = fragmentIndex;
+	vertexShaderName = vertexName;
+	fragmentShaderName = fragmentName;
+	if ( !vertexShaderName.Icmp( fragmentShaderName ) ) {
+		name = vertexShaderName;
+	} else {
+		name = vertexShaderName;
+		name += "/";
+		name += fragmentShaderName;
+	}
+}
+
+void idGLSLProgram::Purge() {
+	if ( program && glConfig.isInitialized && qglDeleteProgram ) {
+		qglDeleteProgram( program );
+	}
+	program = 0;
+	memset( vertexEnvLocations, -1, sizeof( vertexEnvLocations ) );
+	memset( fragmentEnvLocations, -1, sizeof( fragmentEnvLocations ) );
+	memset( vertexLocalLocations, -1, sizeof( vertexLocalLocations ) );
+	memset( fragmentLocalLocations, -1, sizeof( fragmentLocalLocations ) );
+}
+
+GLuint idGLSLProgram::CompileShader( GLenum type, const char *shaderName, const char *extension ) {
+	idStr path = "glprogs/";
+	path += shaderName;
+	path += extension;
+
+	char *source = NULL;
+	fileSystem->ReadFile( path.c_str(), (void **)&source, NULL );
+	common->Printf( "%s", path.c_str() );
+	if ( !source ) {
+		common->Printf( ": File not found\n" );
+		return 0;
+	}
+
+	GLuint shader = qglCreateShader( type );
+	const char *sources[1] = { source };
+	qglShaderSource( shader, 1, sources, NULL );
+	qglCompileShader( shader );
+	fileSystem->FreeFile( source );
+
+	GLint compiled = 0;
+	qglGetShaderiv( shader, GL_COMPILE_STATUS, &compiled );
+	if ( !compiled ) {
+		char log[8192];
+		GLsizei length = 0;
+		qglGetShaderInfoLog( shader, sizeof( log ) - 1, &length, log );
+		log[idMath::ClampInt( 0, sizeof( log ) - 1, length )] = '\0';
+		common->Printf( ": compile failed\n%s\n", log );
+		qglDeleteShader( shader );
+		return 0;
+	}
+
+	common->Printf( "\n" );
+	return shader;
+}
+
+bool idGLSLProgram::Reload() {
+	Purge();
+	if ( !glConfig.glslAvailable ) {
+		return false;
+	}
+
+	GLuint vertexShader = CompileShader( GL_VERTEX_SHADER, vertexShaderName.c_str(), ".vert" );
+	if ( !vertexShader ) {
+		return false;
+	}
+	GLuint fragmentShader = CompileShader( GL_FRAGMENT_SHADER, fragmentShaderName.c_str(), ".frag" );
+	if ( !fragmentShader ) {
+		qglDeleteShader( vertexShader );
+		return false;
+	}
+
+	program = qglCreateProgram();
+	qglAttachShader( program, vertexShader );
+	qglAttachShader( program, fragmentShader );
+
+	// Match the generic attribute slots used by idDrawVert throughout the renderer.
+	qglBindAttribLocation( program, 8, "attr_TexCoord" );
+	qglBindAttribLocation( program, 9, "attr_Tangent" );
+	qglBindAttribLocation( program, 10, "attr_Bitangent" );
+	qglBindAttribLocation( program, 11, "attr_Normal" );
+	qglBindAttribLocation( program, 12, "attr_LightCoord" );
+
+	qglLinkProgram( program );
+	qglDeleteShader( vertexShader );
+	qglDeleteShader( fragmentShader );
+
+	GLint linked = 0;
+	qglGetProgramiv( program, GL_LINK_STATUS, &linked );
+	if ( !linked ) {
+		char log[8192];
+		GLsizei length = 0;
+		qglGetProgramInfoLog( program, sizeof( log ) - 1, &length, log );
+		log[idMath::ClampInt( 0, sizeof( log ) - 1, length )] = '\0';
+		common->Printf( "GLSL program %s: link failed\n%s\n", name.c_str(), log );
+		qglDeleteProgram( program );
+		program = 0;
+		return false;
+	}
+
+	FindUniformLocations();
+	SetSamplerUniforms();
+	return true;
+}
+
+void idGLSLProgram::FindUniformLocations() {
+	for ( int i = 0; i < GLSL_MAX_PROGRAM_PARMS; i++ ) {
+		vertexEnvLocations[i] = qglGetUniformLocation( program, va( "u_vertexParm[%i]", i ) );
+		fragmentEnvLocations[i] = qglGetUniformLocation( program, va( "u_fragmentParm[%i]", i ) );
+		vertexLocalLocations[i] = qglGetUniformLocation( program, va( "u_vertexLocalParm[%i]", i ) );
+		fragmentLocalLocations[i] = qglGetUniformLocation( program, va( "u_fragmentLocalParm[%i]", i ) );
+	}
+}
+
+void idGLSLProgram::SetSamplerUniforms() {
+	qglUseProgram( program );
+	for ( int i = 0; i < MAX_MULTITEXTURE_UNITS; i++ ) {
+		GLint location = qglGetUniformLocation( program, va( "u_texture%i", i ) );
+		if ( location >= 0 ) {
+			qglUniform1i( location, i );
+		}
+	}
+	qglUseProgram( 0 );
+}
+
+void idGLSLProgram::Bind() {
+	qglUseProgram( program );
+	UploadParameters( vertexEnvParameters, fragmentEnvParameters,
+		vertexLocalParameters[vertexShaderIndex], fragmentLocalParameters[fragmentShaderIndex] );
+}
+
+void idGLSLProgram::SetVertexEnvParameter( int index, const float *value ) const {
+	if ( vertexEnvLocations[index] >= 0 ) {
+		qglUniform4fv( vertexEnvLocations[index], 1, value );
+	}
+}
+
+void idGLSLProgram::SetFragmentEnvParameter( int index, const float *value ) const {
+	if ( fragmentEnvLocations[index] >= 0 ) {
+		qglUniform4fv( fragmentEnvLocations[index], 1, value );
+	}
+}
+
+void idGLSLProgram::SetVertexLocalParameter( int index, const float *value ) const {
+	if ( vertexLocalLocations[index] >= 0 ) {
+		qglUniform4fv( vertexLocalLocations[index], 1, value );
+	}
+}
+
+void idGLSLProgram::SetFragmentLocalParameter( int index, const float *value ) const {
+	if ( fragmentLocalLocations[index] >= 0 ) {
+		qglUniform4fv( fragmentLocalLocations[index], 1, value );
+	}
+}
+
+void idGLSLProgram::UploadParameters( const float vertexEnv[][4], const float fragmentEnv[][4],
+		const float vertexLocal[][4], const float fragmentLocal[][4] ) const {
+	for ( int i = 0; i < GLSL_MAX_PROGRAM_PARMS; i++ ) {
+		SetVertexEnvParameter( i, vertexEnv[i] );
+		SetFragmentEnvParameter( i, fragmentEnv[i] );
+		SetVertexLocalParameter( i, vertexLocal[i] );
+		SetFragmentLocalParameter( i, fragmentLocal[i] );
+	}
+}
+
+static idGLSLProgram *R_FindLinkedGLSLProgram( int vertexShader, int fragmentShader, bool create ) {
+	for ( int i = 0; i < glslPrograms.Num(); i++ ) {
+		idGLSLProgram *program = glslPrograms[i];
+		if ( program->GetVertexShaderIndex() == vertexShader && program->GetFragmentShaderIndex() == fragmentShader ) {
+			return program;
+		}
+	}
+
+	if ( !create || vertexShader <= GLSLPROG_INVALID || vertexShader >= MAX_GLSL_SHADERS ||
+		 fragmentShader <= GLSLPROG_INVALID || fragmentShader >= MAX_GLSL_SHADERS ||
+		 !glslShaders[vertexShader].vertexName[0] || !glslShaders[fragmentShader].fragmentName[0] ) {
+		return NULL;
+	}
+
+	idGLSLProgram *program = new idGLSLProgram;
+	program->Init( vertexShader, glslShaders[vertexShader].vertexName,
+		fragmentShader, glslShaders[fragmentShader].fragmentName );
+	glslPrograms.Append( program );
+	return program;
+}
+
+void R_GLSL_Init( void ) {
+	R_InitGLSLShaderDefs();
+	glConfig.allowGLSLPath = false;
+	common->Printf( "---------- R_GLSL_Init ----------\n" );
+	if ( !glConfig.glslAvailable ) {
+		common->Printf( "Not available. OpenGL 2.0 or newer is required.\n" );
+		return;
+	}
+	common->Printf( "Available.\n" );
+	common->Printf( "---------------------------------\n" );
+	glConfig.allowGLSLPath = true;
+}
+
+void R_ShutdownGLSLPrograms( void ) {
+	R_UnbindGLSLProgram();
+	for ( int i = 0; i < glslPrograms.Num(); i++ ) {
+		glslPrograms[i]->Purge();
+	}
+}
+
+int R_FindGLSLShader( GLenum target, const char *shaderName ) {
+	R_InitGLSLShaderDefs();
+	idStr stripped = shaderName;
+	stripped.StripPath();
+	stripped.StripFileExtension();
+
+	for ( int i = 1; i < MAX_GLSL_SHADERS; i++ ) {
+		const char *name = target == GL_VERTEX_SHADER ? glslShaders[i].vertexName : glslShaders[i].fragmentName;
+		if ( name[0] && !idStr::Icmp( stripped.c_str(), name ) ) {
+			return i;
+		}
+	}
+
+	// A combined material program is registered one stage at a time.  Reuse the
+	// opposite-stage slot when its base name matches so "program foo" gets one id.
+	for ( int i = GLSLPROG_USER; i < MAX_GLSL_SHADERS; i++ ) {
+		const char *otherName = target == GL_VERTEX_SHADER ? glslShaders[i].fragmentName : glslShaders[i].vertexName;
+		if ( otherName[0] && !idStr::Icmp( stripped.c_str(), otherName ) ) {
+			char *name = target == GL_VERTEX_SHADER ? glslShaders[i].vertexName : glslShaders[i].fragmentName;
+			idStr::Copynz( name, stripped.c_str(), 64 );
+			return i;
+		}
+	}
+
+	for ( int i = GLSLPROG_USER; i < MAX_GLSL_SHADERS; i++ ) {
+		if ( !glslShaders[i].vertexName[0] && !glslShaders[i].fragmentName[0] ) {
+			char *name = target == GL_VERTEX_SHADER ? glslShaders[i].vertexName : glslShaders[i].fragmentName;
+			idStr::Copynz( name, stripped.c_str(), 64 );
+			return i;
+		}
+	}
+
+	common->Error( "R_FindGLSLShader: MAX_GLSL_SHADERS" );
+	return GLSLPROG_INVALID;
+}
+
+bool R_BindGLSLProgram( int vertexShader, int fragmentShader ) {
+	idGLSLProgram *program = R_FindLinkedGLSLProgram( vertexShader, fragmentShader, true );
+	if ( !program ) {
+		R_UnbindGLSLProgram();
+		return false;
+	}
+	if ( !program->IsLoaded() && !program->Reload() ) {
+		R_UnbindGLSLProgram();
+		return false;
+	}
+	activeGLSLProgram = program;
+	program->Bind();
+	return true;
+}
+
+bool R_BindGLSLProgram( int program ) {
+	return R_BindGLSLProgram( program, program );
+}
+
+void R_UnbindGLSLProgram( void ) {
+	activeGLSLProgram = NULL;
+	if ( glConfig.isInitialized && qglUseProgram ) {
+		qglUseProgram( 0 );
+	}
+}
+
+void R_SetGLSLProgramEnvParameter( GLenum target, int index, const float *value ) {
+	if ( index < 0 || index >= GLSL_MAX_PROGRAM_PARMS ) {
+		common->Error( "R_SetGLSLProgramEnvParameter: bad index %i", index );
+	}
+	float (*parameters)[4] = target == GL_VERTEX_SHADER ? vertexEnvParameters : fragmentEnvParameters;
+	memcpy( parameters[index], value, sizeof( parameters[index] ) );
+	if ( activeGLSLProgram ) {
+		if ( target == GL_VERTEX_SHADER ) {
+			activeGLSLProgram->SetVertexEnvParameter( index, value );
+		} else {
+			activeGLSLProgram->SetFragmentEnvParameter( index, value );
+		}
+	}
+}
+
+void R_SetGLSLProgramLocalParameter( GLenum target, int index, const float *value ) {
+	if ( !activeGLSLProgram ) {
+		return;
+	}
+	if ( index < 0 || index >= GLSL_MAX_PROGRAM_PARMS ) {
+		common->Error( "R_SetGLSLProgramLocalParameter: bad index %i", index );
+	}
+	if ( target == GL_VERTEX_SHADER ) {
+		memcpy( vertexLocalParameters[activeGLSLProgram->GetVertexShaderIndex()][index], value, sizeof( float ) * 4 );
+		activeGLSLProgram->SetVertexLocalParameter( index, value );
+	} else {
+		memcpy( fragmentLocalParameters[activeGLSLProgram->GetFragmentShaderIndex()][index], value, sizeof( float ) * 4 );
+		activeGLSLProgram->SetFragmentLocalParameter( index, value );
+	}
+}
+
+void R_ReloadGLSLPrograms_f( const idCmdArgs &args ) {
+	R_InitGLSLShaderDefs();
+	common->Printf( "----- R_ReloadGLSLPrograms -----\n" );
+	R_UnbindGLSLProgram();
+
+	for ( int i = GLSLPROG_INTERACTION; i < GLSLPROG_USER; i++ ) {
+		R_FindLinkedGLSLProgram( i, i, true );
+	}
+
+	bool builtinsLoaded = glConfig.glslAvailable;
+	for ( int i = 0; i < glslPrograms.Num(); i++ ) {
+		bool loaded = glslPrograms[i]->Reload();
+		if ( glslPrograms[i]->GetVertexShaderIndex() < GLSLPROG_USER && !loaded ) {
+			builtinsLoaded = false;
+		}
+	}
+	glConfig.allowGLSLPath = builtinsLoaded;
+	common->Printf( "--------------------------------\n" );
+}

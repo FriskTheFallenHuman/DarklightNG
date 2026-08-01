@@ -103,7 +103,7 @@ protected:
 	afx_msg void 				OnEditRedoUpdate(CCmdUI *pCmdUI);
 	
 	afx_msg void 				OnViewIncludeFile();
-	afx_msg void 				OnReloadArbPrograms();
+	afx_msg void 				OnReloadGLSLPrograms();
 	afx_msg void 				OnReloadImages();
 	
 	DECLARE_MESSAGE_MAP()
@@ -150,5 +150,4 @@ protected:
 	MEOptions					options;
 
 };
-
 

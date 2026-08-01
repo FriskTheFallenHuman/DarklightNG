@@ -537,11 +537,11 @@ void idRenderSystemLocal::SetBackEndRenderer() {
 		return;
 	}
 
-	if ( !glConfig.allowARB2Path ) {
-		common->FatalError( "The forward renderer requires ARB vertex and fragment programs" );
+	if ( !glConfig.allowGLSLPath ) {
+		common->FatalError( "The forward renderer requires OpenGL 2.0 GLSL support" );
 	}
 
-	common->Printf( "using ARB2 forward renderSystem\n" );
+	common->Printf( "using GLSL forward renderSystem\n" );
 
 	r_renderer.ClearModified();
 }

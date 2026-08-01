@@ -151,8 +151,7 @@ void RB_PrepareStageTexturing( const shaderStage_t *pStage,  const drawSurf_t *s
 	}
 
 	if ( pStage->texture.texgen == TG_GLASSWARP ) {
-			qglBindProgramARB( GL_FRAGMENT_PROGRAM_ARB, FPROG_GLASSWARP );
-			qglEnable( GL_FRAGMENT_PROGRAM_ARB );
+		R_BindGLSLProgram( GLSLPROG_GLASSWARP );
 
 			GL_SelectTexture( 2 );
 			globalImages->scratchImage->Bind();
@@ -198,28 +197,21 @@ void RB_PrepareStageTexturing( const shaderStage_t *pStage,  const drawSurf_t *s
 				GL_SelectTexture( 0 );
 
 				qglNormalPointer( GL_FLOAT, sizeof( idDrawVert ), ac->normal.ToFloatPtr() );
-				qglVertexAttribPointerARB( 10, 3, GL_FLOAT, false, sizeof( idDrawVert ), ac->tangents[1].ToFloatPtr() );
-				qglVertexAttribPointerARB( 9, 3, GL_FLOAT, false, sizeof( idDrawVert ), ac->tangents[0].ToFloatPtr() );
+				qglVertexAttribPointer( 10, 3, GL_FLOAT, false, sizeof( idDrawVert ), ac->tangents[1].ToFloatPtr() );
+				qglVertexAttribPointer( 9, 3, GL_FLOAT, false, sizeof( idDrawVert ), ac->tangents[0].ToFloatPtr() );
 
-				qglEnableVertexAttribArrayARB( 9 );
-				qglEnableVertexAttribArrayARB( 10 );
+				qglEnableVertexAttribArray( 9 );
+				qglEnableVertexAttribArray( 10 );
 				qglEnableClientState( GL_NORMAL_ARRAY );
 
 				// Program env 5, 6, 7, 8 have been set in RB_SetProgramEnvironmentSpace
-
-				qglBindProgramARB( GL_FRAGMENT_PROGRAM_ARB, FPROG_BUMPY_ENVIRONMENT );
-				qglEnable( GL_FRAGMENT_PROGRAM_ARB );
-				qglBindProgramARB( GL_VERTEX_PROGRAM_ARB, VPROG_BUMPY_ENVIRONMENT );
-				qglEnable( GL_VERTEX_PROGRAM_ARB );
+				R_BindGLSLProgram( GLSLPROG_BUMPY_ENVIRONMENT );
 			} else {
 				// per-pixel reflection mapping without a normal map
 				qglNormalPointer( GL_FLOAT, sizeof( idDrawVert ), ac->normal.ToFloatPtr() );
 				qglEnableClientState( GL_NORMAL_ARRAY );
 
-				qglBindProgramARB( GL_FRAGMENT_PROGRAM_ARB, FPROG_ENVIRONMENT );
-				qglEnable( GL_FRAGMENT_PROGRAM_ARB );
-				qglBindProgramARB( GL_VERTEX_PROGRAM_ARB, VPROG_ENVIRONMENT );
-				qglEnable( GL_VERTEX_PROGRAM_ARB );
+				R_BindGLSLProgram( GLSLPROG_ENVIRONMENT );
 			}
 	}
 }
@@ -262,7 +254,7 @@ void RB_FinishStageTexturing( const shaderStage_t *pStage, const drawSurf_t *sur
 			qglDisable( GL_TEXTURE_GEN_S );
 			qglDisable( GL_TEXTURE_GEN_T );
 			qglDisable( GL_TEXTURE_GEN_Q );
-			qglDisable( GL_FRAGMENT_PROGRAM_ARB );
+			R_UnbindGLSLProgram();
 			globalImages->BindNull();
 			GL_SelectTexture( 0 );
 	}
@@ -276,17 +268,14 @@ void RB_FinishStageTexturing( const shaderStage_t *pStage, const drawSurf_t *sur
 				globalImages->BindNull();
 				GL_SelectTexture( 0 );
 
-				qglDisableVertexAttribArrayARB( 9 );
-				qglDisableVertexAttribArrayARB( 10 );
+				qglDisableVertexAttribArray( 9 );
+				qglDisableVertexAttribArray( 10 );
 			} else {
 				// per-pixel reflection mapping without bump mapping
 			}
 
 			qglDisableClientState( GL_NORMAL_ARRAY );
-			qglDisable( GL_FRAGMENT_PROGRAM_ARB );
-			qglDisable( GL_VERTEX_PROGRAM_ARB );
-			// Fixme: Hack to get around an apparent bug in ATI drivers.  Should remove as soon as it gets fixed.
-			qglBindProgramARB( GL_VERTEX_PROGRAM_ARB, 0 );
+			R_UnbindGLSLProgram();
 	}
 
 	if ( pStage->texture.hasMatrix ) {
@@ -537,7 +526,7 @@ void RB_SetProgramEnvironment( void ) {
 	float	parm[4];
 	int		pot;
 
-	if ( !glConfig.ARBVertexProgramAvailable ) {
+	if ( !glConfig.glslAvailable ) {
 		return;
 	}
 
@@ -562,7 +551,7 @@ void RB_SetProgramEnvironment( void ) {
 
 	parm[2] = 0;
 	parm[3] = 1;
-	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 0, parm );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 0, parm );
 #else
 	// screen power of two correction factor, assuming the copy to _currentRender
 	// also copied an extra row and column for the bilerp
@@ -576,17 +565,17 @@ void RB_SetProgramEnvironment( void ) {
 
 	parm[2] = 0;
 	parm[3] = 1;
-	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 0, parm );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 0, parm );
 #endif
 
-	qglProgramEnvParameter4fvARB( GL_FRAGMENT_PROGRAM_ARB, 0, parm );
+	R_SetGLSLProgramEnvParameter( GL_FRAGMENT_SHADER, 0, parm );
 
 	// window coord to 0.0 to 1.0 conversion
 	parm[0] = 1.0 / w;
 	parm[1] = 1.0 / h;
 	parm[2] = 0;
 	parm[3] = 1;
-	qglProgramEnvParameter4fvARB( GL_FRAGMENT_PROGRAM_ARB, 1, parm );
+	R_SetGLSLProgramEnvParameter( GL_FRAGMENT_SHADER, 1, parm );
 
 	//
 	// set eye position in global space
@@ -595,7 +584,7 @@ void RB_SetProgramEnvironment( void ) {
 	parm[1] = backEnd.viewDef->renderView.vieworg[1];
 	parm[2] = backEnd.viewDef->renderView.vieworg[2];
 	parm[3] = 1.0;
-	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 1, parm );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 1, parm );
 
 
 }
@@ -608,7 +597,7 @@ Sets variables related to the current space that can be used by all vertex progr
 ==================
 */
 void RB_SetProgramEnvironmentSpace( void ) {
-	if ( !glConfig.ARBVertexProgramAvailable ) {
+	if ( !glConfig.glslAvailable ) {
 		return;
 	}
 
@@ -618,7 +607,7 @@ void RB_SetProgramEnvironmentSpace( void ) {
 	// set eye position in local space
 	R_GlobalPointToLocal( space->modelMatrix, backEnd.viewDef->renderView.vieworg, *(idVec3 *)parm );
 	parm[3] = 1.0;
-	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 5, parm );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 5, parm );
 
 	// we need the model matrix without it being combined with the view matrix
 	// so we can transform local vectors to global coordinates
@@ -626,17 +615,17 @@ void RB_SetProgramEnvironmentSpace( void ) {
 	parm[1] = space->modelMatrix[4];
 	parm[2] = space->modelMatrix[8];
 	parm[3] = space->modelMatrix[12];
-	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 6, parm );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 6, parm );
 	parm[0] = space->modelMatrix[1];
 	parm[1] = space->modelMatrix[5];
 	parm[2] = space->modelMatrix[9];
 	parm[3] = space->modelMatrix[13];
-	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 7, parm );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 7, parm );
 	parm[0] = space->modelMatrix[2];
 	parm[1] = space->modelMatrix[6];
 	parm[2] = space->modelMatrix[10];
 	parm[3] = space->modelMatrix[14];
-	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, 8, parm );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 8, parm );
 }
 
 /*
@@ -746,19 +735,24 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 				continue;
 			}
 			qglColorPointer( 4, GL_UNSIGNED_BYTE, sizeof( idDrawVert ), (void *)&ac->color );
-			qglVertexAttribPointerARB( 9, 3, GL_FLOAT, false, sizeof( idDrawVert ), ac->tangents[0].ToFloatPtr() );
-			qglVertexAttribPointerARB( 10, 3, GL_FLOAT, false, sizeof( idDrawVert ), ac->tangents[1].ToFloatPtr() );
+			qglVertexAttribPointer( 9, 3, GL_FLOAT, false, sizeof( idDrawVert ), ac->tangents[0].ToFloatPtr() );
+			qglVertexAttribPointer( 10, 3, GL_FLOAT, false, sizeof( idDrawVert ), ac->tangents[1].ToFloatPtr() );
 			qglNormalPointer( GL_FLOAT, sizeof( idDrawVert ), ac->normal.ToFloatPtr() );
 
 			qglEnableClientState( GL_COLOR_ARRAY );
-			qglEnableVertexAttribArrayARB( 9 );
-			qglEnableVertexAttribArrayARB( 10 );
+			qglEnableVertexAttribArray( 9 );
+			qglEnableVertexAttribArray( 10 );
 			qglEnableClientState( GL_NORMAL_ARRAY );
 
 			GL_State( pStage->drawStateBits );
 			
-			qglBindProgramARB( GL_VERTEX_PROGRAM_ARB, newStage->vertexProgram );
-			qglEnable( GL_VERTEX_PROGRAM_ARB );
+			if ( !R_BindGLSLProgram( newStage->vertexProgram, newStage->fragmentProgram ) ) {
+				qglDisableClientState( GL_COLOR_ARRAY );
+				qglDisableVertexAttribArray( 9 );
+				qglDisableVertexAttribArray( 10 );
+				qglDisableClientState( GL_NORMAL_ARRAY );
+				continue;
+			}
 
 			// megaTextures bind a lot of images and set a lot of parameters
 			if ( newStage->megaTexture ) {
@@ -774,7 +768,7 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 				parm[1] = regs[ newStage->vertexParms[i][1] ];
 				parm[2] = regs[ newStage->vertexParms[i][2] ];
 				parm[3] = regs[ newStage->vertexParms[i][3] ];
-				qglProgramLocalParameter4fvARB( GL_VERTEX_PROGRAM_ARB, i, parm );
+				R_SetGLSLProgramLocalParameter( GL_VERTEX_SHADER, i, parm );
 			}
 
 			for ( int i = 0 ; i < newStage->numFragmentProgramImages ; i++ ) {
@@ -783,9 +777,6 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 					newStage->fragmentProgramImages[i]->Bind();
 				}
 			}
-			qglBindProgramARB( GL_FRAGMENT_PROGRAM_ARB, newStage->fragmentProgram );
-			qglEnable( GL_FRAGMENT_PROGRAM_ARB );
-
 			// draw it
 			RB_DrawElementsWithCounters( tri );
 
@@ -801,14 +792,11 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 
 			GL_SelectTexture( 0 );
 
-			qglDisable( GL_VERTEX_PROGRAM_ARB );
-			qglDisable( GL_FRAGMENT_PROGRAM_ARB );
-			// Fixme: Hack to get around an apparent bug in ATI drivers.  Should remove as soon as it gets fixed.
-			qglBindProgramARB( GL_VERTEX_PROGRAM_ARB, 0 );
+			R_UnbindGLSLProgram();
 
 			qglDisableClientState( GL_COLOR_ARRAY );
-			qglDisableVertexAttribArrayARB( 9 );
-			qglDisableVertexAttribArrayARB( 10 );
+			qglDisableVertexAttribArray( 9 );
+			qglDisableVertexAttribArray( 10 );
 			qglDisableClientState( GL_NORMAL_ARRAY );
 			continue;
 		}
@@ -1416,8 +1404,8 @@ void	RB_STD_DrawView( void ) {
 	RB_STD_FillDepthBuffer( drawSurfs, numDrawSurfs );
 
 	// Forward pipeline: z-prepass, baked lightmap/deluxemap, realtime lights.
-	RB_ARB2_DrawBakedLightmaps( drawSurfs, numDrawSurfs );
-	RB_ARB2_DrawInteractions();
+	RB_GLSL_DrawBakedLightmaps( drawSurfs, numDrawSurfs );
+	RB_GLSL_DrawInteractions();
 
 	// uplight the entire screen to crutch up not having better blending range
 	RB_STD_LightScale();

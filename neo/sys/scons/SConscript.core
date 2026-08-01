@@ -88,6 +88,7 @@ ogg_list = scons_utils.BuildList( 'sound/OggVorbis', ogg_string )
 renderer_string = ' \
 	Cinematic.cpp \
 	GuiModel.cpp \
+	GlslProgram.cpp \
 	Image_files.cpp \
 	Image_init.cpp \
 	Image_load.cpp \
@@ -116,7 +117,7 @@ renderer_string = ' \
 	RenderWorld_load.cpp \
 	RenderWorld_portals.cpp \
 	VertexCache.cpp \
-	draw_arb2.cpp \
+	draw_glsl.cpp \
 	draw_common.cpp \
 	tr_backend.cpp \
 	tr_deform.cpp \

@@ -83,7 +83,7 @@ BEGIN_MESSAGE_MAP(MEMainFrame, CFrameWnd)
 	ON_UPDATE_COMMAND_UI(ID_ME_EDIT_REDO, OnEditRedoUpdate )
 	
 	ON_COMMAND(ID_VIEW_INCLUDEFILENAME, OnViewIncludeFile)
-	ON_COMMAND(ID_PREVIEW_RELOADARBPROGRAMS, OnReloadArbPrograms)
+	ON_COMMAND(ID_PREVIEW_RELOADGLSLPROGRAMS, OnReloadGLSLPrograms)
 	ON_COMMAND(ID_PREVIEW_RELOADIMAGES, OnReloadImages )	
 END_MESSAGE_MAP()
 
@@ -886,10 +886,10 @@ void MEMainFrame::OnViewIncludeFile() {
 }
 
 /**
-* Executes the reloadARBPrograms console command for convinience.
+* Executes the reloadGLSLprograms console command for convenience.
 */
-void MEMainFrame::OnReloadArbPrograms() {
-	cmdSystem->BufferCommandText(CMD_EXEC_NOW, "reloadARBprograms");
+void MEMainFrame::OnReloadGLSLPrograms() {
+	cmdSystem->BufferCommandText(CMD_EXEC_NOW, "reloadGLSLprograms");
 }
 
 /**

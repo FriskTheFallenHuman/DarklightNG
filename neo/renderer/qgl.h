@@ -142,15 +142,41 @@ extern	PFNGLSETFRAGMENTSHADERCONSTANTATIPROC	qglSetFragmentShaderConstantATI;
 extern	PFNGLCOMPRESSEDTEXIMAGE2DARBPROC	qglCompressedTexImage2DARB;
 extern	PFNGLGETCOMPRESSEDTEXIMAGEARBPROC	qglGetCompressedTexImageARB;
 
-// ARB_vertex_program / ARB_fragment_program
-extern PFNGLVERTEXATTRIBPOINTERARBPROC		qglVertexAttribPointerARB;
-extern PFNGLENABLEVERTEXATTRIBARRAYARBPROC	qglEnableVertexAttribArrayARB;
-extern PFNGLDISABLEVERTEXATTRIBARRAYARBPROC	qglDisableVertexAttribArrayARB;
+// OpenGL 2.0 GLSL
+#ifndef GL_VERTEX_SHADER
+#define GL_VERTEX_SHADER			0x8B31
+#define GL_FRAGMENT_SHADER			0x8B30
+#define GL_COMPILE_STATUS			0x8B81
+#define GL_LINK_STATUS				0x8B82
+#define GL_INFO_LOG_LENGTH			0x8B84
+#endif
+
+extern GLuint ( APIENTRY *qglCreateShader )( GLenum type );
+extern void ( APIENTRY *qglShaderSource )( GLuint shader, GLsizei count, const char **strings, const GLint *lengths );
+extern void ( APIENTRY *qglCompileShader )( GLuint shader );
+extern void ( APIENTRY *qglGetShaderiv )( GLuint shader, GLenum pname, GLint *params );
+extern void ( APIENTRY *qglGetShaderInfoLog )( GLuint shader, GLsizei maxLength, GLsizei *length, char *infoLog );
+extern void ( APIENTRY *qglDeleteShader )( GLuint shader );
+extern GLuint ( APIENTRY *qglCreateProgram )( void );
+extern void ( APIENTRY *qglAttachShader )( GLuint program, GLuint shader );
+extern void ( APIENTRY *qglBindAttribLocation )( GLuint program, GLuint index, const char *name );
+extern void ( APIENTRY *qglLinkProgram )( GLuint program );
+extern void ( APIENTRY *qglGetProgramiv )( GLuint program, GLenum pname, GLint *params );
+extern void ( APIENTRY *qglGetProgramInfoLog )( GLuint program, GLsizei maxLength, GLsizei *length, char *infoLog );
+extern void ( APIENTRY *qglDeleteProgram )( GLuint program );
+extern void ( APIENTRY *qglUseProgram )( GLuint program );
+extern GLint ( APIENTRY *qglGetUniformLocation )( GLuint program, const char *name );
+extern void ( APIENTRY *qglUniform1i )( GLint location, GLint value );
+extern void ( APIENTRY *qglUniform4fv )( GLint location, GLsizei count, const GLfloat *value );
+extern void ( APIENTRY *qglVertexAttribPointer )( GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer );
+extern void ( APIENTRY *qglEnableVertexAttribArray )( GLuint index );
+extern void ( APIENTRY *qglDisableVertexAttribArray )( GLuint index );
+
+// Retained only for the legacy macOS ATI_fragment_shader compatibility shim.
 extern PFNGLPROGRAMSTRINGARBPROC			qglProgramStringARB;
 extern PFNGLBINDPROGRAMARBPROC				qglBindProgramARB;
 extern PFNGLGENPROGRAMSARBPROC				qglGenProgramsARB;
 extern PFNGLPROGRAMENVPARAMETER4FVARBPROC	qglProgramEnvParameter4fvARB;
-extern PFNGLPROGRAMLOCALPARAMETER4FVARBPROC	qglProgramLocalParameter4fvARB;
 
 // GL_EXT_depth_bounds_test
 
