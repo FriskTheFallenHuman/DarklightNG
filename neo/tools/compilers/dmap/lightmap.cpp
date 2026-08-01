@@ -13,6 +13,8 @@ the renderer while that map is loaded.
 #include "../../../idlib/precompiled.h"
 #pragma hdrstop
 
+#include <xmmintrin.h>
+
 #include "dmap.h"
 
 static const int LM_ATLAS_SIZE = 1024;
@@ -29,10 +31,15 @@ static const int LM_DEFAULT_DENOISE_PASSES = 3;
 static const float LM_DEFAULT_AO_STRENGTH = 0.65f;
 static const float LM_DEFAULT_AO_DISTANCE = 64.0f;
 
+template<class type>
+static void LM_DeletePointerVector( std::vector<type *> &values ) {
+	for ( size_t i = 0; i < values.size(); i++ ) {
+		delete values[i];
+	}
+	values.clear();
+}
+
 typedef struct {
-	idVec3 a;
-	idVec3 b;
-	idVec3 c;
 	idVec2 textureCoords[3];
 	idBounds bounds;
 	idVec3 center;
@@ -43,8 +50,42 @@ typedef struct {
 	bool castsShadow;
 } lmOccluder_t;
 
+// Compact, sequential data used for every candidate ray/triangle test.  Keep
+// material, UV and lightmap data in lmOccluder_t so triangle misses do not pull
+// it into cache.
 typedef struct {
-	idList<byte> rgba;
+	float originX;
+	float originY;
+	float originZ;
+	float planeX;
+	float planeY;
+	float planeZ;
+	float barycentricUX;
+	float barycentricUY;
+	float barycentricUZ;
+	float barycentricVX;
+	float barycentricVY;
+	float barycentricVZ;
+} lmTraceTriangle_t;
+
+struct __declspec(align(16)) lmTracePacket_t {
+	float originX[4];
+	float originY[4];
+	float originZ[4];
+	float planeX[4];
+	float planeY[4];
+	float planeZ[4];
+	float barycentricUX[4];
+	float barycentricUY[4];
+	float barycentricUZ[4];
+	float barycentricVX[4];
+	float barycentricVY[4];
+	float barycentricVZ[4];
+	int occluderIndex[4];
+};
+
+typedef struct {
+	std::vector<byte> rgba;
 	int width;
 	int height;
 	float threshold;
@@ -55,13 +96,13 @@ typedef struct {
 
 typedef struct {
 	const idMaterial *material;
-	idList<lmAlphaStage_t *> stages;
+	std::vector<lmAlphaStage_t *> stages;
 	bool opaqueFallback;
 } lmAlphaMask_t;
 
 typedef struct {
 	const idImage *source;
-	idList<byte> rgba;
+	std::vector<byte> rgba;
 	int width;
 	int height;
 	textureRepeat_t repeat;
@@ -78,7 +119,7 @@ typedef struct {
 typedef struct {
 	const mapLight_t *light;
 	lmCpuImage_t *falloff;
-	idList<lmBakedLightStage_t *> stages;
+	std::vector<lmBakedLightStage_t *> stages;
 	bool exact;
 } lmBakedLight_t;
 
@@ -89,40 +130,66 @@ typedef struct {
 	int children[2];
 } lmTraceNode_t;
 
+// The baker only needs two integers per runtime node.  A positive data1 marks
+// a leaf (data0 = packet, data1 = lane count); a negative data1 marks an inner
+// node (data0 = first child, -data1 - 1 = second child).
+struct __declspec(align(16)) lmPackedTraceNode_t {
+	idBounds bounds;
+	int data0;
+	int data1;
+};
+
+typedef struct {
+	int nodeIndex;
+	float nearFraction;
+} lmTraceStackEntry_t;
+
+typedef struct {
+	idBounds bounds;
+	int count;
+} lmTraceBuildBin_t;
+
 typedef struct {
 	int atlas;
 	const idMaterial *material;
-	idList<idDrawVert> verts;
-	idList<glIndex_t> indexes;
-	idList<idVec2> lightmapTexCoords;
+	std::vector<idDrawVert> verts;
+	std::vector<glIndex_t> indexes;
+	std::vector<idVec2> lightmapTexCoords;
 } lmSurface_t;
 
 typedef struct {
 	int cursorX;
 	int cursorY;
 	int rowHeight;
-	idList<byte> lightmap;
-	idList<byte> deluxemap;
-	idList<byte> valid;
-	idList<byte> directLightmap;
+	std::vector<byte> lightmap;
+	std::vector<byte> deluxemap;
+	std::vector<byte> valid;
+	std::vector<byte> directLightmap;
 } lmAtlas_t;
 
 typedef struct {
 	idStr name;
-	idList<byte> data;
+	std::vector<byte> data;
 	unsigned int crc;
 	unsigned int localOffset;
 } lmZipEntry_t;
 
 static idStr lmMapFileBase;
-static idList<lmSurface_t *> lmSurfaces;
-static idList<lmAtlas_t *> lmAtlases;
-static idList<lmOccluder_t> lmOccluders;
-static idList<lmAlphaMask_t *> lmAlphaMasks;
-static idList<lmCpuImage_t *> lmCpuImages;
-static idList<lmBakedLight_t *> lmBakedLights;
-static idList<int> lmOccluderOrder;
-static idList<lmTraceNode_t> lmTraceNodes;
+static std::vector<lmSurface_t *> lmSurfaces;
+static std::vector<lmAtlas_t *> lmAtlases;
+static std::vector<lmOccluder_t> lmOccluders;
+static std::vector<lmTraceTriangle_t> lmTraceTriangles;
+static std::vector<lmAlphaMask_t *> lmAlphaMasks;
+static std::vector<lmCpuImage_t *> lmCpuImages;
+static std::vector<lmBakedLight_t *> lmBakedLights;
+static std::vector<int> lmOccluderOrder;
+static std::vector<lmTraceNode_t> lmTraceNodes;
+static std::vector<lmTracePacket_t> lmTracePackets;
+static std::vector<lmPackedTraceNode_t> lmPackedTraceNodes;
+static std::vector<int> lmShadowOccluderOrder;
+static std::vector<lmTraceNode_t> lmShadowTraceNodes;
+static std::vector<lmTracePacket_t> lmShadowTracePackets;
+static std::vector<lmPackedTraceNode_t> lmPackedShadowTraceNodes;
 static float lmAmbient;
 static float lmDirectScale;
 static int lmShadowSamples;
@@ -153,6 +220,10 @@ static unsigned __int64 lmAlphaPassThroughs;
 static int lmExternalOccluders;
 static int lmDoorOccluders;
 static int lmExactBakedLights;
+static bool lmUseSSE2;
+
+static const int LM_TRACE_BINS = 12;
+static const int LM_TRACE_LEAF_TRIANGLES = 4;
 
 static unsigned short LM_PackRGB565( const byte *rgb );
 static void LM_UnpackRGB565( unsigned short color, byte *rgb );
@@ -171,23 +242,23 @@ static lmAtlas_t *LM_NewAtlas( void ) {
 	atlas->cursorX = 0;
 	atlas->cursorY = 0;
 	atlas->rowHeight = 0;
-	atlas->lightmap.SetNum( pixels * 4 );
-	atlas->deluxemap.SetNum( pixels * 4 );
-	atlas->valid.SetNum( pixels );
-	memset( atlas->lightmap.Ptr(), 0, atlas->lightmap.Num() );
-	memset( atlas->deluxemap.Ptr(), 0, atlas->deluxemap.Num() );
-	memset( atlas->valid.Ptr(), 0, atlas->valid.Num() );
-	lmAtlases.Append( atlas );
+	atlas->lightmap.resize( pixels * 4 );
+	atlas->deluxemap.resize( pixels * 4 );
+	atlas->valid.resize( pixels );
+	memset( atlas->lightmap.data(), 0, atlas->lightmap.size() );
+	memset( atlas->deluxemap.data(), 0, atlas->deluxemap.size() );
+	memset( atlas->valid.data(), 0, atlas->valid.size() );
+	lmAtlases.push_back( atlas );
 	return atlas;
 }
 
 static int LM_AllocChart( int width, int height, int &x, int &y ) {
 	lmAtlas_t *atlas;
 
-	if ( lmAtlases.Num() == 0 ) {
+	if ( lmAtlases.empty() ) {
 		LM_NewAtlas();
 	}
-	atlas = lmAtlases[lmAtlases.Num() - 1];
+	atlas = lmAtlases.back();
 	if ( atlas->cursorX + width > LM_ATLAS_SIZE ) {
 		atlas->cursorX = 0;
 		atlas->cursorY += atlas->rowHeight;
@@ -201,22 +272,24 @@ static int LM_AllocChart( int width, int height, int &x, int &y ) {
 	y = atlas->cursorY;
 	atlas->cursorX += width;
 	atlas->rowHeight = Max( atlas->rowHeight, height );
-	return lmAtlases.Num() - 1;
+	return (int)lmAtlases.size() - 1;
 }
 
 static void LM_ClearAlphaMasks( void ) {
-	for ( int maskIndex = 0; maskIndex < lmAlphaMasks.Num(); maskIndex++ ) {
-		lmAlphaMasks[maskIndex]->stages.DeleteContents( true );
+	for ( size_t maskIndex = 0; maskIndex < lmAlphaMasks.size(); maskIndex++ ) {
+		for ( size_t stageIndex = 0; stageIndex < lmAlphaMasks[maskIndex]->stages.size(); stageIndex++ ) {
+			delete lmAlphaMasks[maskIndex]->stages[stageIndex];
+		}
 		delete lmAlphaMasks[maskIndex];
 	}
-	lmAlphaMasks.Clear();
+	lmAlphaMasks.clear();
 }
 
 static int LM_GetAlphaMask( const idMaterial *material ) {
 	if ( !material || material->Coverage() != MC_PERFORATED ) {
 		return -1;
 	}
-	for ( int maskIndex = 0; maskIndex < lmAlphaMasks.Num(); maskIndex++ ) {
+	for ( size_t maskIndex = 0; maskIndex < lmAlphaMasks.size(); maskIndex++ ) {
 		if ( lmAlphaMasks[maskIndex]->material == material ) {
 			return maskIndex;
 		}
@@ -226,10 +299,10 @@ static int LM_GetAlphaMask( const idMaterial *material ) {
 	mask->material = material;
 	mask->opaqueFallback = false;
 
-	idList<float> evaluatedRegisters;
+	std::vector<float> evaluatedRegisters;
 	const float *registers = material->ConstantRegisters();
 	if ( !registers ) {
-		evaluatedRegisters.SetNum( material->GetNumRegisters() );
+		evaluatedRegisters.resize( material->GetNumRegisters() );
 		float shaderParms[MAX_ENTITY_SHADER_PARMS];
 		memset( shaderParms, 0, sizeof( shaderParms ) );
 		shaderParms[SHADERPARM_RED] = 1.0f;
@@ -238,8 +311,8 @@ static int LM_GetAlphaMask( const idMaterial *material ) {
 		shaderParms[SHADERPARM_ALPHA] = 1.0f;
 		viewDef_t view;
 		memset( &view, 0, sizeof( view ) );
-		material->EvaluateRegisters( evaluatedRegisters.Ptr(), shaderParms, &view, NULL );
-		registers = evaluatedRegisters.Ptr();
+		material->EvaluateRegisters( evaluatedRegisters.data(), shaderParms, &view, NULL );
+		registers = evaluatedRegisters.data();
 	}
 
 	bool hadActiveAlphaStage = false;
@@ -273,8 +346,8 @@ static int LM_GetAlphaMask( const idMaterial *material ) {
 		}
 
 		lmAlphaStage_t *alphaStage = new lmAlphaStage_t;
-		alphaStage->rgba.SetNum( width * height * 4 );
-		memcpy( alphaStage->rgba.Ptr(), pic, alphaStage->rgba.Num() );
+		alphaStage->rgba.resize( width * height * 4 );
+		memcpy( alphaStage->rgba.data(), pic, alphaStage->rgba.size() );
 		R_StaticFree( pic );
 		alphaStage->width = width;
 		alphaStage->height = height;
@@ -294,14 +367,15 @@ static int LM_GetAlphaMask( const idMaterial *material ) {
 				}
 			}
 		}
-		mask->stages.Append( alphaStage );
+		mask->stages.push_back( alphaStage );
 	}
 	if ( !hadActiveAlphaStage ) {
 		// This matches the depth renderer: if all alpha-test stages are disabled,
 		// a perforated material falls back to a solid depth surface.
 		mask->opaqueFallback = true;
 	}
-	return lmAlphaMasks.Append( mask );
+	lmAlphaMasks.push_back( mask );
+	return (int)lmAlphaMasks.size() - 1;
 }
 
 static int LM_WrapAlphaCoordinate( int coordinate, int size ) {
@@ -355,7 +429,7 @@ static bool LM_OccluderBlocksRay( const lmOccluder_t &occluder, float u, float v
 	const float w = 1.0f - u - v;
 	const idVec2 textureCoord = occluder.textureCoords[0] * w +
 		occluder.textureCoords[1] * u + occluder.textureCoords[2] * v;
-	for ( int stageIndex = 0; stageIndex < mask->stages.Num(); stageIndex++ ) {
+	for ( size_t stageIndex = 0; stageIndex < mask->stages.size(); stageIndex++ ) {
 		const lmAlphaStage_t *stage = mask->stages[stageIndex];
 		if ( LM_SampleAlpha( stage, textureCoord ) * stage->alphaScale > stage->threshold ) {
 			return true;
@@ -366,19 +440,24 @@ static bool LM_OccluderBlocksRay( const lmOccluder_t &occluder, float u, float v
 }
 
 static void LM_ClearBakedLights( void ) {
-	for ( int lightIndex = 0; lightIndex < lmBakedLights.Num(); lightIndex++ ) {
-		lmBakedLights[lightIndex]->stages.DeleteContents( true );
+	for ( size_t lightIndex = 0; lightIndex < lmBakedLights.size(); lightIndex++ ) {
+		for ( size_t stageIndex = 0; stageIndex < lmBakedLights[lightIndex]->stages.size(); stageIndex++ ) {
+			delete lmBakedLights[lightIndex]->stages[stageIndex];
+		}
 		delete lmBakedLights[lightIndex];
 	}
-	lmBakedLights.Clear();
-	lmCpuImages.DeleteContents( true );
+	lmBakedLights.clear();
+	for ( size_t imageIndex = 0; imageIndex < lmCpuImages.size(); imageIndex++ ) {
+		delete lmCpuImages[imageIndex];
+	}
+	lmCpuImages.clear();
 }
 
 static lmCpuImage_t *LM_GetCpuImage( const idImage *source ) {
 	if ( !source ) {
 		return NULL;
 	}
-	for ( int imageIndex = 0; imageIndex < lmCpuImages.Num(); imageIndex++ ) {
+	for ( size_t imageIndex = 0; imageIndex < lmCpuImages.size(); imageIndex++ ) {
 		if ( lmCpuImages[imageIndex]->source == source ) {
 			return lmCpuImages[imageIndex];
 		}
@@ -394,31 +473,31 @@ static lmCpuImage_t *LM_GetCpuImage( const idImage *source ) {
 	if ( source == globalImages->whiteImage || source == globalImages->noFalloffImage ) {
 		image->valid = true;
 		image->constantWhite = true;
-		lmCpuImages.Append( image );
+		lmCpuImages.push_back( image );
 		return image;
 	}
 	if ( source->generatorFunction || source->cubeFiles != CF_2D ) {
-		lmCpuImages.Append( image );
+		lmCpuImages.push_back( image );
 		return image;
 	}
 
 	byte *pic = NULL;
 	R_LoadImageProgram( source->imgName, &pic, &image->width, &image->height, NULL );
 	if ( pic && image->width > 0 && image->height > 0 ) {
-		image->rgba.SetNum( image->width * image->height * 4 );
-		memcpy( image->rgba.Ptr(), pic, image->rgba.Num() );
+		image->rgba.resize( image->width * image->height * 4 );
+		memcpy( image->rgba.data(), pic, image->rgba.size() );
 		image->valid = true;
 	}
 	if ( pic ) {
 		R_StaticFree( pic );
 	}
-	lmCpuImages.Append( image );
+	lmCpuImages.push_back( image );
 	return image;
 }
 
 static void LM_BuildBakedLights( void ) {
 	lmExactBakedLights = 0;
-	lmBakedLights.SetNum( dmapGlobals.mapLights.Num() );
+	lmBakedLights.resize( dmapGlobals.mapLights.Num() );
 	for ( int lightIndex = 0; lightIndex < dmapGlobals.mapLights.Num(); lightIndex++ ) {
 		const mapLight_t *light = dmapGlobals.mapLights[lightIndex];
 		lmBakedLight_t *baked = new lmBakedLight_t;
@@ -437,14 +516,14 @@ static void LM_BuildBakedLights( void ) {
 		}
 
 		const idMaterial *shader = light->def.lightShader;
-		idList<float> evaluatedRegisters;
+		std::vector<float> evaluatedRegisters;
 		const float *registers = shader->ConstantRegisters();
 		if ( !registers ) {
-			evaluatedRegisters.SetNum( shader->GetNumRegisters() );
+			evaluatedRegisters.resize( shader->GetNumRegisters() );
 			viewDef_t view;
 			memset( &view, 0, sizeof( view ) );
-			shader->EvaluateRegisters( evaluatedRegisters.Ptr(), light->def.parms.shaderParms, &view, NULL );
-			registers = evaluatedRegisters.Ptr();
+			shader->EvaluateRegisters( evaluatedRegisters.data(), light->def.parms.shaderParms, &view, NULL );
+			registers = evaluatedRegisters.data();
 		}
 
 		for ( int stageIndex = 0; stageIndex < shader->GetNumStages(); stageIndex++ ) {
@@ -474,9 +553,9 @@ static void LM_BuildBakedLights( void ) {
 					}
 				}
 			}
-			baked->stages.Append( bakedStage );
+			baked->stages.push_back( bakedStage );
 		}
-		if ( baked->stages.Num() == 0 ) {
+		if ( baked->stages.empty() ) {
 			baked->exact = false;
 		}
 		if ( baked->exact ) {
@@ -527,7 +606,7 @@ static idVec3 LM_SampleCpuImage( const lmCpuImage_t *image, float s, float t ) {
 
 static bool LM_SampleBakedLight( int lightIndex, const idVec3 &point, idVec3 &color ) {
 	color.Zero();
-	if ( lightIndex < 0 || lightIndex >= lmBakedLights.Num() || !lmBakedLights[lightIndex]->exact ) {
+	if ( lightIndex < 0 || lightIndex >= (int)lmBakedLights.size() || !lmBakedLights[lightIndex]->exact ) {
 		return false;
 	}
 	const lmBakedLight_t *baked = lmBakedLights[lightIndex];
@@ -540,7 +619,7 @@ static bool LM_SampleBakedLight( int lightIndex, const idVec3 &point, idVec3 &co
 	const float projectionT = light->def.lightProject[1].Distance( point ) / projectionQ;
 	const float falloffS = light->def.lightProject[3].Distance( point );
 	const idVec3 falloff = LM_SampleCpuImage( baked->falloff, falloffS, 0.5f );
-	for ( int stageIndex = 0; stageIndex < baked->stages.Num(); stageIndex++ ) {
+	for ( size_t stageIndex = 0; stageIndex < baked->stages.size(); stageIndex++ ) {
 		const lmBakedLightStage_t *stage = baked->stages[stageIndex];
 		const float s = projectionS * stage->matrix[0][0] + projectionT * stage->matrix[0][1] + stage->matrix[0][2];
 		const float t = projectionS * stage->matrix[1][0] + projectionT * stage->matrix[1][1] + stage->matrix[1][2];
@@ -558,20 +637,43 @@ static void LM_AddTraceTriangles( const srfTriangles_t *tri, const idVec3 &origi
 	const int alphaMask = LM_GetAlphaMask( material );
 	for ( int i = 0; i + 2 < tri->numIndexes; i += 3 ) {
 		lmOccluder_t occluder;
+		lmTraceTriangle_t traceTriangle;
 		const int indexes[3] = { tri->indexes[i + 0], tri->indexes[i + 1], tri->indexes[i + 2] };
-		occluder.a = origin + tri->verts[indexes[0]].xyz * axis;
-		occluder.b = origin + tri->verts[indexes[1]].xyz * axis;
-		occluder.c = origin + tri->verts[indexes[2]].xyz * axis;
+		const idVec3 a = origin + tri->verts[indexes[0]].xyz * axis;
+		const idVec3 b = origin + tri->verts[indexes[1]].xyz * axis;
+		const idVec3 c = origin + tri->verts[indexes[2]].xyz * axis;
+		const idVec3 edge1 = b - a;
+		const idVec3 edge2 = c - a;
+		const idVec3 tracePlane = edge1.Cross( edge2 );
+		const float edge11 = edge1 * edge1;
+		const float edge12 = edge1 * edge2;
+		const float edge22 = edge2 * edge2;
+		const float barycentricDet = edge11 * edge22 - edge12 * edge12;
+		const float inverseBarycentricDet = barycentricDet > 1e-30f ? 1.0f / barycentricDet : 0.0f;
+		const idVec3 barycentricU = ( edge1 * edge22 - edge2 * edge12 ) * inverseBarycentricDet;
+		const idVec3 barycentricV = ( edge2 * edge11 - edge1 * edge12 ) * inverseBarycentricDet;
+		traceTriangle.originX = a.x;
+		traceTriangle.originY = a.y;
+		traceTriangle.originZ = a.z;
+		traceTriangle.planeX = tracePlane.x;
+		traceTriangle.planeY = tracePlane.y;
+		traceTriangle.planeZ = tracePlane.z;
+		traceTriangle.barycentricUX = barycentricU.x;
+		traceTriangle.barycentricUY = barycentricU.y;
+		traceTriangle.barycentricUZ = barycentricU.z;
+		traceTriangle.barycentricVX = barycentricV.x;
+		traceTriangle.barycentricVY = barycentricV.y;
+		traceTriangle.barycentricVZ = barycentricV.z;
 		occluder.bounds.Clear();
-		occluder.bounds.AddPoint( occluder.a );
-		occluder.bounds.AddPoint( occluder.b );
-		occluder.bounds.AddPoint( occluder.c );
+		occluder.bounds.AddPoint( a );
+		occluder.bounds.AddPoint( b );
+		occluder.bounds.AddPoint( c );
 		occluder.bounds.ExpandSelf( 0.05f );
-		occluder.center = ( occluder.a + occluder.b + occluder.c ) * ( 1.0f / 3.0f );
+		occluder.center = ( a + b + c ) * ( 1.0f / 3.0f );
 		// Proc triangles use clockwise front-face winding.  Start with the
 		// corresponding outward geometric normal, then align it to the transformed
 		// vertex normals for meshes with mixed or repaired winding.
-		occluder.normal = ( occluder.c - occluder.a ).Cross( occluder.b - occluder.a );
+		occluder.normal = edge2.Cross( edge1 );
 		occluder.normal.Normalize();
 		idVec3 shadingNormal = ( tri->verts[indexes[0]].normal + tri->verts[indexes[1]].normal +
 			tri->verts[indexes[2]].normal ) * axis;
@@ -585,7 +687,8 @@ static void LM_AddTraceTriangles( const srfTriangles_t *tri, const idVec3 &origi
 			occluder.textureCoords[vertex] = tri->verts[indexes[vertex]].st;
 			occluder.lightmapTexCoords[vertex] = lightmapTexCoords ? ( *lightmapTexCoords )[indexes[vertex]] : idVec2( 0.0f, 0.0f );
 		}
-		lmOccluders.Append( occluder );
+		lmOccluders.push_back( occluder );
+		lmTraceTriangles.push_back( traceTriangle );
 		if ( doorShadow ) {
 			lmDoorOccluders++;
 		}
@@ -661,7 +764,8 @@ static void LM_AddExternalModelOccluders( void ) {
 	}
 }
 
-static int LM_BuildTraceNode( int first, int count ) {
+static int LM_BuildTraceNode( std::vector<int> &occluderOrder, std::vector<lmTraceNode_t> &traceNodes,
+		int first, int count ) {
 	lmTraceNode_t node;
 	idBounds centerBounds;
 	int nodeIndex;
@@ -669,138 +773,487 @@ static int LM_BuildTraceNode( int first, int count ) {
 	node.bounds.Clear();
 	centerBounds.Clear();
 	for ( int i = first; i < first + count; i++ ) {
-		const lmOccluder_t &occluder = lmOccluders[lmOccluderOrder[i]];
+		const lmOccluder_t &occluder = lmOccluders[occluderOrder[i]];
 		node.bounds.AddBounds( occluder.bounds );
 		centerBounds.AddPoint( occluder.center );
 	}
 	node.first = first;
 	node.count = count;
 	node.children[0] = node.children[1] = -1;
-	nodeIndex = lmTraceNodes.Append( node );
+	traceNodes.push_back( node );
+	nodeIndex = (int)traceNodes.size() - 1;
 
-	if ( count <= 8 ) {
+	if ( count <= LM_TRACE_LEAF_TRIANGLES ) {
 		return nodeIndex;
 	}
 
-	idVec3 size = centerBounds[1] - centerBounds[0];
-	int axis = 0;
-	if ( size[1] > size[axis] ) {
-		axis = 1;
+	// A small binned surface-area heuristic produces substantially tighter
+	// child bounds than a center midpoint split.  Bounce rays traverse the full
+	// geometry tree, so preventing child overlap saves many bounds tests per ray.
+	int bestAxis = -1;
+	int bestSplitBin = -1;
+	float bestCost = 1e30f;
+	for ( int axis = 0; axis < 3; axis++ ) {
+		const float extent = centerBounds[1][axis] - centerBounds[0][axis];
+		if ( extent <= 0.0001f ) {
+			continue;
+		}
+
+		lmTraceBuildBin_t bins[LM_TRACE_BINS];
+		for ( int bin = 0; bin < LM_TRACE_BINS; bin++ ) {
+			bins[bin].bounds.Clear();
+			bins[bin].count = 0;
+		}
+		const float binScale = LM_TRACE_BINS / extent;
+		for ( int i = first; i < first + count; i++ ) {
+			const lmOccluder_t &occluder = lmOccluders[occluderOrder[i]];
+			const int bin = idMath::ClampInt( 0, LM_TRACE_BINS - 1,
+				(int)( ( occluder.center[axis] - centerBounds[0][axis] ) * binScale ) );
+			bins[bin].bounds.AddBounds( occluder.bounds );
+			bins[bin].count++;
+		}
+
+		idBounds leftBounds[LM_TRACE_BINS - 1];
+		idBounds rightBounds[LM_TRACE_BINS - 1];
+		int leftCounts[LM_TRACE_BINS - 1];
+		int rightCounts[LM_TRACE_BINS - 1];
+		idBounds accumulatedBounds;
+		accumulatedBounds.Clear();
+		int accumulatedCount = 0;
+		for ( int bin = 0; bin < LM_TRACE_BINS - 1; bin++ ) {
+			if ( bins[bin].count > 0 ) {
+				accumulatedBounds.AddBounds( bins[bin].bounds );
+				accumulatedCount += bins[bin].count;
+			}
+			leftBounds[bin] = accumulatedBounds;
+			leftCounts[bin] = accumulatedCount;
+		}
+		accumulatedBounds.Clear();
+		accumulatedCount = 0;
+		for ( int bin = LM_TRACE_BINS - 1; bin > 0; bin-- ) {
+			if ( bins[bin].count > 0 ) {
+				accumulatedBounds.AddBounds( bins[bin].bounds );
+				accumulatedCount += bins[bin].count;
+			}
+			rightBounds[bin - 1] = accumulatedBounds;
+			rightCounts[bin - 1] = accumulatedCount;
+		}
+
+		for ( int splitBin = 0; splitBin < LM_TRACE_BINS - 1; splitBin++ ) {
+			if ( leftCounts[splitBin] == 0 || rightCounts[splitBin] == 0 ) {
+				continue;
+			}
+			const idVec3 leftSize = leftBounds[splitBin][1] - leftBounds[splitBin][0];
+			const idVec3 rightSize = rightBounds[splitBin][1] - rightBounds[splitBin][0];
+			const float leftArea = leftSize[0] * leftSize[1] + leftSize[0] * leftSize[2] +
+				leftSize[1] * leftSize[2];
+			const float rightArea = rightSize[0] * rightSize[1] + rightSize[0] * rightSize[2] +
+				rightSize[1] * rightSize[2];
+			const float cost = leftArea * leftCounts[splitBin] + rightArea * rightCounts[splitBin];
+			if ( cost < bestCost ) {
+				bestCost = cost;
+				bestAxis = axis;
+				bestSplitBin = splitBin;
+			}
+		}
 	}
-	if ( size[2] > size[axis] ) {
-		axis = 2;
-	}
-	const float split = ( centerBounds[0][axis] + centerBounds[1][axis] ) * 0.5f;
+
 	int left = first;
 	int right = first + count - 1;
-	while ( left <= right ) {
-		if ( lmOccluders[lmOccluderOrder[left]].center[axis] < split ) {
-			left++;
-		} else {
-			idSwap( lmOccluderOrder[left], lmOccluderOrder[right] );
-			right--;
+	if ( bestAxis >= 0 ) {
+		const float extent = centerBounds[1][bestAxis] - centerBounds[0][bestAxis];
+		const float binScale = LM_TRACE_BINS / extent;
+		while ( left <= right ) {
+			const int bin = idMath::ClampInt( 0, LM_TRACE_BINS - 1,
+				(int)( ( lmOccluders[occluderOrder[left]].center[bestAxis] -
+				centerBounds[0][bestAxis] ) * binScale ) );
+			if ( bin <= bestSplitBin ) {
+				left++;
+			} else {
+				idSwap( occluderOrder[left], occluderOrder[right] );
+				right--;
+			}
 		}
 	}
 	int leftCount = left - first;
 	if ( leftCount == 0 || leftCount == count ) {
+		// All centers are coincident.  Spatial ordering cannot improve this node,
+		// but a balanced arbitrary split still keeps traversal depth bounded.
 		leftCount = count / 2;
 	}
 
-	lmTraceNodes[nodeIndex].count = 0;
-	lmTraceNodes[nodeIndex].children[0] = LM_BuildTraceNode( first, leftCount );
-	lmTraceNodes[nodeIndex].children[1] = LM_BuildTraceNode( first + leftCount, count - leftCount );
+	traceNodes[nodeIndex].count = 0;
+	traceNodes[nodeIndex].children[0] = LM_BuildTraceNode( occluderOrder, traceNodes, first, leftCount );
+	traceNodes[nodeIndex].children[1] = LM_BuildTraceNode( occluderOrder, traceNodes,
+		first + leftCount, count - leftCount );
 	return nodeIndex;
 }
 
-static bool LM_IntersectTriangle( const lmOccluder_t &tri, const idVec3 &start, const idVec3 &dir,
+static void LM_PackTraceTree( const std::vector<int> &occluderOrder,
+		const std::vector<lmTraceNode_t> &traceNodes, std::vector<lmTracePacket_t> &tracePackets,
+		std::vector<lmPackedTraceNode_t> &packedNodes ) {
+	tracePackets.clear();
+	packedNodes.resize( traceNodes.size() );
+	tracePackets.reserve( ( traceNodes.size() + 1 ) / 2 );
+	for ( size_t nodeIndex = 0; nodeIndex < traceNodes.size(); nodeIndex++ ) {
+		const lmTraceNode_t &sourceNode = traceNodes[nodeIndex];
+		lmPackedTraceNode_t &packedNode = packedNodes[nodeIndex];
+		packedNode.bounds = sourceNode.bounds;
+		if ( sourceNode.count <= 0 ) {
+			packedNode.data0 = sourceNode.children[0];
+			packedNode.data1 = -sourceNode.children[1] - 1;
+			continue;
+		}
+
+		assert( sourceNode.count <= 4 );
+		lmTracePacket_t packet;
+		memset( &packet, 0, sizeof( packet ) );
+		for ( int lane = 0; lane < 4; lane++ ) {
+			packet.occluderIndex[lane] = -1;
+		}
+		for ( int lane = 0; lane < sourceNode.count; lane++ ) {
+			const int occluderIndex = occluderOrder[sourceNode.first + lane];
+			const lmTraceTriangle_t &triangle = lmTraceTriangles[occluderIndex];
+			packet.originX[lane] = triangle.originX;
+			packet.originY[lane] = triangle.originY;
+			packet.originZ[lane] = triangle.originZ;
+			packet.planeX[lane] = triangle.planeX;
+			packet.planeY[lane] = triangle.planeY;
+			packet.planeZ[lane] = triangle.planeZ;
+			packet.barycentricUX[lane] = triangle.barycentricUX;
+			packet.barycentricUY[lane] = triangle.barycentricUY;
+			packet.barycentricUZ[lane] = triangle.barycentricUZ;
+			packet.barycentricVX[lane] = triangle.barycentricVX;
+			packet.barycentricVY[lane] = triangle.barycentricVY;
+			packet.barycentricVZ[lane] = triangle.barycentricVZ;
+			packet.occluderIndex[lane] = occluderIndex;
+		}
+		packedNode.data0 = (int)tracePackets.size();
+		packedNode.data1 = sourceNode.count;
+		tracePackets.push_back( packet );
+	}
+}
+
+static ID_INLINE bool LM_IntersectTriangle( const lmTraceTriangle_t &tri, const idVec3 &start, const idVec3 &dir,
 		float &fraction, float &u, float &v ) {
-	const idVec3 edge1 = tri.b - tri.a;
-	const idVec3 edge2 = tri.c - tri.a;
-	const idVec3 p = dir.Cross( edge2 );
-	const float det = edge1 * p;
+	const float det = tri.planeX * dir.x + tri.planeY * dir.y + tri.planeZ * dir.z;
 	// Deliberately use the absolute determinant: all baked visibility rays
 	// intersect both front and back faces, independent of material cull mode.
 	if ( idMath::Fabs( det ) < 0.000001f ) {
 		return false;
 	}
-	const float invDet = 1.0f / det;
-	const idVec3 tvec = start - tri.a;
-	u = ( tvec * p ) * invDet;
+	const float relativeX = start.x - tri.originX;
+	const float relativeY = start.y - tri.originY;
+	const float relativeZ = start.z - tri.originZ;
+	fraction = -( tri.planeX * relativeX + tri.planeY * relativeY + tri.planeZ * relativeZ ) / det;
+	if ( fraction <= 0.0001f || fraction >= 0.9999f ) {
+		return false;
+	}
+	const float hitX = relativeX + dir.x * fraction;
+	const float hitY = relativeY + dir.y * fraction;
+	const float hitZ = relativeZ + dir.z * fraction;
+	u = tri.barycentricUX * hitX + tri.barycentricUY * hitY + tri.barycentricUZ * hitZ;
 	if ( u < 0.0f || u > 1.0f ) {
 		return false;
 	}
-	const idVec3 q = tvec.Cross( edge1 );
-	v = ( dir * q ) * invDet;
+	v = tri.barycentricVX * hitX + tri.barycentricVY * hitY + tri.barycentricVZ * hitZ;
 	if ( v < 0.0f || u + v > 1.0f ) {
 		return false;
 	}
-	fraction = ( edge2 * q ) * invDet;
-	return fraction > 0.0001f && fraction < 0.9999f;
+	return true;
 }
 
-static bool LM_TraceNode( int nodeIndex, const idVec3 &start, const idVec3 &end, const idVec3 &dir ) {
-	const lmTraceNode_t &node = lmTraceNodes[nodeIndex];
-	if ( !node.bounds.LineIntersection( start, end ) ) {
-		return false;
+static ID_INLINE int LM_IntersectTracePacketSSE2( const lmTracePacket_t &triangles, int triangleCount,
+		const idVec3 &start, const idVec3 &dir, float maxFraction, float *fractions, float *u, float *v ) {
+	const __m128 directionX = _mm_set1_ps( dir.x );
+	const __m128 directionY = _mm_set1_ps( dir.y );
+	const __m128 directionZ = _mm_set1_ps( dir.z );
+	const __m128 planeX = _mm_load_ps( triangles.planeX );
+	const __m128 planeY = _mm_load_ps( triangles.planeY );
+	const __m128 planeZ = _mm_load_ps( triangles.planeZ );
+	const __m128 det = _mm_add_ps( _mm_add_ps( _mm_mul_ps( planeX, directionX ),
+		_mm_mul_ps( planeY, directionY ) ), _mm_mul_ps( planeZ, directionZ ) );
+	const __m128 signBit = _mm_set1_ps( -0.0f );
+	const __m128 absoluteDet = _mm_andnot_ps( signBit, det );
+	__m128 hitMask = _mm_cmpge_ps( absoluteDet, _mm_set1_ps( 0.000001f ) );
+
+	const __m128 relativeX = _mm_sub_ps( _mm_set1_ps( start.x ), _mm_load_ps( triangles.originX ) );
+	const __m128 relativeY = _mm_sub_ps( _mm_set1_ps( start.y ), _mm_load_ps( triangles.originY ) );
+	const __m128 relativeZ = _mm_sub_ps( _mm_set1_ps( start.z ), _mm_load_ps( triangles.originZ ) );
+	const __m128 planeDistance = _mm_add_ps( _mm_add_ps( _mm_mul_ps( planeX, relativeX ),
+		_mm_mul_ps( planeY, relativeY ) ), _mm_mul_ps( planeZ, relativeZ ) );
+	const __m128 fraction = _mm_div_ps( _mm_sub_ps( _mm_setzero_ps(), planeDistance ), det );
+	const float upperFraction = Min( maxFraction, 0.9999f );
+	hitMask = _mm_and_ps( hitMask, _mm_cmpgt_ps( fraction, _mm_set1_ps( 0.0001f ) ) );
+	hitMask = _mm_and_ps( hitMask, _mm_cmplt_ps( fraction, _mm_set1_ps( upperFraction ) ) );
+	int mask = _mm_movemask_ps( hitMask ) & ( ( 1 << triangleCount ) - 1 );
+	if ( mask == 0 ) {
+		return 0;
 	}
-	if ( node.count > 0 ) {
-		for ( int i = node.first; i < node.first + node.count; i++ ) {
-			const lmOccluder_t &occluder = lmOccluders[lmOccluderOrder[i]];
-			float fraction;
-			float u;
-			float v;
-			if ( occluder.castsShadow && LM_IntersectTriangle( occluder, start, dir, fraction, u, v ) &&
-				LM_OccluderBlocksRay( occluder, u, v ) ) {
-				return true;
-			}
+
+	const __m128 hitX = _mm_add_ps( relativeX, _mm_mul_ps( directionX, fraction ) );
+	const __m128 hitY = _mm_add_ps( relativeY, _mm_mul_ps( directionY, fraction ) );
+	const __m128 hitZ = _mm_add_ps( relativeZ, _mm_mul_ps( directionZ, fraction ) );
+	const __m128 barycentricU = _mm_add_ps( _mm_add_ps(
+		_mm_mul_ps( _mm_load_ps( triangles.barycentricUX ), hitX ),
+		_mm_mul_ps( _mm_load_ps( triangles.barycentricUY ), hitY ) ),
+		_mm_mul_ps( _mm_load_ps( triangles.barycentricUZ ), hitZ ) );
+	const __m128 zero = _mm_setzero_ps();
+	const __m128 one = _mm_set1_ps( 1.0f );
+	hitMask = _mm_and_ps( hitMask, _mm_cmpge_ps( barycentricU, zero ) );
+	hitMask = _mm_and_ps( hitMask, _mm_cmple_ps( barycentricU, one ) );
+	mask = _mm_movemask_ps( hitMask ) & ( ( 1 << triangleCount ) - 1 );
+	if ( mask == 0 ) {
+		return 0;
+	}
+
+	const __m128 barycentricV = _mm_add_ps( _mm_add_ps(
+		_mm_mul_ps( _mm_load_ps( triangles.barycentricVX ), hitX ),
+		_mm_mul_ps( _mm_load_ps( triangles.barycentricVY ), hitY ) ),
+		_mm_mul_ps( _mm_load_ps( triangles.barycentricVZ ), hitZ ) );
+	hitMask = _mm_and_ps( hitMask, _mm_cmpge_ps( barycentricV, zero ) );
+	hitMask = _mm_and_ps( hitMask, _mm_cmple_ps( _mm_add_ps( barycentricU, barycentricV ), one ) );
+	mask = _mm_movemask_ps( hitMask ) & ( ( 1 << triangleCount ) - 1 );
+	if ( mask == 0 ) {
+		return 0;
+	}
+
+	_mm_storeu_ps( fractions, fraction );
+	_mm_storeu_ps( u, barycentricU );
+	_mm_storeu_ps( v, barycentricV );
+	return mask;
+}
+
+static ID_INLINE int LM_NearestPacketLane( int mask, const float *fractions ) {
+	int nearestLane = -1;
+	float nearestFraction = 1e30f;
+	for ( int lane = 0; lane < 4; lane++ ) {
+		if ( ( mask & ( 1 << lane ) ) && fractions[lane] < nearestFraction ) {
+			nearestFraction = fractions[lane];
+			nearestLane = lane;
 		}
+	}
+	return nearestLane;
+}
+
+static ID_INLINE int LM_SetupRay( const idVec3 &dir, idVec3 &inverseDir ) {
+	int directionSigns = 0;
+	for ( int axis = 0; axis < 3; axis++ ) {
+		if ( idMath::Fabs( dir[axis] ) < 1e-20f ) {
+			// A large finite reciprocal handles parallel slabs without a branch or
+			// the 0 * infinity NaN case at an exact bounds plane.
+			inverseDir[axis] = dir[axis] < 0.0f ? -1e30f : 1e30f;
+		} else {
+			inverseDir[axis] = 1.0f / dir[axis];
+		}
+		if ( inverseDir[axis] < 0.0f ) {
+			directionSigns |= 1 << axis;
+		}
+	}
+	return directionSigns;
+}
+
+static ID_INLINE bool LM_RayBounds( const idBounds &bounds, const idVec3 &start,
+		const idVec3 &inverseDir, int directionSigns, float maxFraction, float &nearFraction ) {
+	const int signX = directionSigns & 1;
+	const int signY = ( directionSigns >> 1 ) & 1;
+	const int signZ = ( directionSigns >> 2 ) & 1;
+	float minimum = ( bounds[signX][0] - start[0] ) * inverseDir[0];
+	float maximum = ( bounds[signX ^ 1][0] - start[0] ) * inverseDir[0];
+	const float minimumY = ( bounds[signY][1] - start[1] ) * inverseDir[1];
+	const float maximumY = ( bounds[signY ^ 1][1] - start[1] ) * inverseDir[1];
+	if ( minimum > maximumY || minimumY > maximum ) {
 		return false;
 	}
-	return LM_TraceNode( node.children[0], start, end, dir ) || LM_TraceNode( node.children[1], start, end, dir );
+	minimum = Max( minimum, minimumY );
+	maximum = Min( maximum, maximumY );
+	const float minimumZ = ( bounds[signZ][2] - start[2] ) * inverseDir[2];
+	const float maximumZ = ( bounds[signZ ^ 1][2] - start[2] ) * inverseDir[2];
+	if ( minimum > maximumZ || minimumZ > maximum ) {
+		return false;
+	}
+	minimum = Max( minimum, minimumZ );
+	maximum = Min( maximum, maximumZ );
+	if ( maximum < 0.0f || minimum > maxFraction ) {
+		return false;
+	}
+	nearFraction = Max( 0.0f, minimum );
+	return true;
 }
 
 static bool LM_Occluded( const idVec3 &start, const idVec3 &end ) {
-	if ( lmTraceNodes.Num() == 0 ) {
+	if ( lmPackedShadowTraceNodes.empty() ) {
 		return false;
 	}
-	return LM_TraceNode( 0, start, end, end - start );
-}
 
-static void LM_TraceNearestNode( int nodeIndex, const idVec3 &start, const idVec3 &dir,
-		float &nearestFraction, int &nearestTriangle, float &nearestU, float &nearestV ) {
-	const lmTraceNode_t &node = lmTraceNodes[nodeIndex];
-	const idVec3 nearestEnd = start + dir * nearestFraction;
-	if ( !node.bounds.LineIntersection( start, nearestEnd ) ) {
-		return;
+	// Use stable raw views for the complete traversal.  MSVC's debug STL and
+	// idList both validate operator[]; neither check belongs in this per-ray loop.
+	const lmPackedTraceNode_t *traceNodeData = lmPackedShadowTraceNodes.data();
+	const lmTracePacket_t *tracePackets = lmShadowTracePackets.data();
+	const lmOccluder_t *occluders = lmOccluders.data();
+	const lmTraceTriangle_t *traceTriangles = lmTraceTriangles.data();
+	const idVec3 dir = end - start;
+	idVec3 inverseDir;
+	const int directionSigns = LM_SetupRay( dir, inverseDir );
+	lmTraceStackEntry_t stack[256];
+	int stackCount = 0;
+	float rootNear;
+	if ( !LM_RayBounds( traceNodeData[0].bounds, start, inverseDir, directionSigns, 1.0f, rootNear ) ) {
+		return false;
 	}
-	if ( node.count > 0 ) {
-		for ( int i = node.first; i < node.first + node.count; i++ ) {
-			const int triangleIndex = lmOccluderOrder[i];
-			float fraction;
-			float u;
-			float v;
-			if ( LM_IntersectTriangle( lmOccluders[triangleIndex], start, dir, fraction, u, v ) &&
-				fraction < nearestFraction && LM_OccluderBlocksRay( lmOccluders[triangleIndex], u, v ) ) {
-				nearestFraction = fraction;
-				nearestTriangle = triangleIndex;
-				nearestU = u;
-				nearestV = v;
+	stack[stackCount].nodeIndex = 0;
+	stack[stackCount++].nearFraction = rootNear;
+
+	while ( stackCount > 0 ) {
+		const lmTraceStackEntry_t entry = stack[--stackCount];
+		const lmPackedTraceNode_t &node = traceNodeData[entry.nodeIndex];
+		if ( node.data1 > 0 ) {
+			const int triangleCount = node.data1;
+			const lmTracePacket_t &packet = tracePackets[node.data0];
+			if ( lmUseSSE2 && triangleCount >= 3 ) {
+				float fractions[4];
+				float hitU[4];
+				float hitV[4];
+				int hitMask = LM_IntersectTracePacketSSE2( packet, triangleCount, start, dir,
+					1.0f, fractions, hitU, hitV );
+				while ( hitMask != 0 ) {
+					const int lane = LM_NearestPacketLane( hitMask, fractions );
+					const int candidate = packet.occluderIndex[lane];
+					if ( LM_OccluderBlocksRay( occluders[candidate], hitU[lane], hitV[lane] ) ) {
+						return true;
+					}
+					hitMask &= ~( 1 << lane );
+				}
+				continue;
 			}
+
+			for ( int lane = 0; lane < triangleCount; lane++ ) {
+				const int candidate = packet.occluderIndex[lane];
+				const lmOccluder_t &occluder = occluders[candidate];
+				float fraction;
+				float u;
+				float v;
+				if ( LM_IntersectTriangle( traceTriangles[candidate], start, dir, fraction, u, v ) &&
+					LM_OccluderBlocksRay( occluder, u, v ) ) {
+					return true;
+				}
+			}
+			continue;
 		}
-		return;
+
+		const int child0 = node.data0;
+		const int child1 = -node.data1 - 1;
+		float childNear[2];
+		const bool hit0 = LM_RayBounds( traceNodeData[child0].bounds, start,
+			inverseDir, directionSigns, 1.0f, childNear[0] );
+		const bool hit1 = LM_RayBounds( traceNodeData[child1].bounds, start,
+			inverseDir, directionSigns, 1.0f, childNear[1] );
+		if ( hit0 && hit1 ) {
+			const int nearChild = childNear[0] <= childNear[1] ? 0 : 1;
+			const int farChild = nearChild ^ 1;
+			stack[stackCount].nodeIndex = farChild == 0 ? child0 : child1;
+			stack[stackCount++].nearFraction = childNear[farChild];
+			stack[stackCount].nodeIndex = nearChild == 0 ? child0 : child1;
+			stack[stackCount++].nearFraction = childNear[nearChild];
+		} else if ( hit0 || hit1 ) {
+			const int child = hit0 ? 0 : 1;
+			stack[stackCount].nodeIndex = child == 0 ? child0 : child1;
+			stack[stackCount++].nearFraction = childNear[child];
+		}
 	}
-	LM_TraceNearestNode( node.children[0], start, dir, nearestFraction, nearestTriangle, nearestU, nearestV );
-	LM_TraceNearestNode( node.children[1], start, dir, nearestFraction, nearestTriangle, nearestU, nearestV );
+	return false;
 }
 
 static bool LM_TraceNearest( const idVec3 &start, const idVec3 &end, int &triangleIndex, float &fraction,
 		float &u, float &v ) {
-	if ( lmTraceNodes.Num() == 0 ) {
+	if ( lmPackedTraceNodes.empty() ) {
 		return false;
 	}
+	const lmPackedTraceNode_t *traceNodeData = lmPackedTraceNodes.data();
+	const lmTracePacket_t *tracePackets = lmTracePackets.data();
+	const lmOccluder_t *occluders = lmOccluders.data();
+	const lmTraceTriangle_t *traceTriangles = lmTraceTriangles.data();
+	const idVec3 dir = end - start;
+	idVec3 inverseDir;
+	const int directionSigns = LM_SetupRay( dir, inverseDir );
 	fraction = 1.0f;
 	triangleIndex = -1;
-	LM_TraceNearestNode( 0, start, end - start, fraction, triangleIndex, u, v );
+	lmTraceStackEntry_t stack[256];
+	int stackCount = 0;
+	float rootNear;
+	if ( !LM_RayBounds( traceNodeData[0].bounds, start, inverseDir, directionSigns, fraction, rootNear ) ) {
+		return false;
+	}
+	stack[stackCount].nodeIndex = 0;
+	stack[stackCount++].nearFraction = rootNear;
+
+	while ( stackCount > 0 ) {
+		const lmTraceStackEntry_t entry = stack[--stackCount];
+		if ( entry.nearFraction >= fraction ) {
+			continue;
+		}
+		const lmPackedTraceNode_t &node = traceNodeData[entry.nodeIndex];
+		if ( node.data1 > 0 ) {
+			const int triangleCount = node.data1;
+			const lmTracePacket_t &packet = tracePackets[node.data0];
+			if ( lmUseSSE2 && triangleCount >= 3 ) {
+				float fractions[4];
+				float hitU[4];
+				float hitV[4];
+				int hitMask = LM_IntersectTracePacketSSE2( packet, triangleCount, start, dir,
+					fraction, fractions, hitU, hitV );
+				while ( hitMask != 0 ) {
+					const int lane = LM_NearestPacketLane( hitMask, fractions );
+					const int candidate = packet.occluderIndex[lane];
+					if ( fractions[lane] < fraction &&
+						LM_OccluderBlocksRay( occluders[candidate], hitU[lane], hitV[lane] ) ) {
+						fraction = fractions[lane];
+						triangleIndex = candidate;
+						u = hitU[lane];
+						v = hitV[lane];
+						break;
+					}
+					hitMask &= ~( 1 << lane );
+				}
+				continue;
+			}
+
+			for ( int lane = 0; lane < triangleCount; lane++ ) {
+				const int candidate = packet.occluderIndex[lane];
+				float hitFraction;
+				float hitU;
+				float hitV;
+				if ( LM_IntersectTriangle( traceTriangles[candidate], start, dir, hitFraction, hitU, hitV ) &&
+					hitFraction < fraction && LM_OccluderBlocksRay( occluders[candidate], hitU, hitV ) ) {
+					fraction = hitFraction;
+					triangleIndex = candidate;
+					u = hitU;
+					v = hitV;
+				}
+			}
+			continue;
+		}
+
+		const int child0 = node.data0;
+		const int child1 = -node.data1 - 1;
+		float childNear[2];
+		const bool hit0 = LM_RayBounds( traceNodeData[child0].bounds, start,
+			inverseDir, directionSigns, fraction, childNear[0] );
+		const bool hit1 = LM_RayBounds( traceNodeData[child1].bounds, start,
+			inverseDir, directionSigns, fraction, childNear[1] );
+		if ( hit0 && hit1 ) {
+			const int nearChild = childNear[0] <= childNear[1] ? 0 : 1;
+			const int farChild = nearChild ^ 1;
+			stack[stackCount].nodeIndex = farChild == 0 ? child0 : child1;
+			stack[stackCount++].nearFraction = childNear[farChild];
+			stack[stackCount].nodeIndex = nearChild == 0 ? child0 : child1;
+			stack[stackCount++].nearFraction = childNear[nearChild];
+		} else if ( hit0 || hit1 ) {
+			const int child = hit0 ? 0 : 1;
+			stack[stackCount].nodeIndex = child == 0 ? child0 : child1;
+			stack[stackCount++].nearFraction = childNear[child];
+		}
+	}
 	return triangleIndex >= 0;
 }
 
@@ -964,7 +1417,7 @@ static void LM_ShadePoint( const idVec3 &point, const idVec3 &normal, const idVe
 static void LM_RasterizeSurface( const lmSurface_t *surface ) {
 	lmAtlas_t *atlas = lmAtlases[surface->atlas];
 
-	for ( int index = 0; index + 2 < surface->indexes.Num(); index += 3 ) {
+	for ( int index = 0; index + 2 < (int)surface->indexes.size(); index += 3 ) {
 		const int ia = surface->indexes[index + 0];
 		const int ib = surface->indexes[index + 1];
 		const int ic = surface->indexes[index + 2];
@@ -1059,11 +1512,11 @@ static void LM_RasterizeSurface( const lmSurface_t *surface ) {
 }
 
 static bool LM_SampleDirectLight( const lmOccluder_t &triangle, float u, float v, idVec3 &irradiance ) {
-	if ( triangle.lightmapAtlas < 0 || triangle.lightmapAtlas >= lmAtlases.Num() ) {
+	if ( triangle.lightmapAtlas < 0 || triangle.lightmapAtlas >= (int)lmAtlases.size() ) {
 		return false;
 	}
 	const lmAtlas_t *atlas = lmAtlases[triangle.lightmapAtlas];
-	if ( atlas->directLightmap.Num() != LM_ATLAS_SIZE * LM_ATLAS_SIZE * 3 ) {
+	if ( atlas->directLightmap.size() != LM_ATLAS_SIZE * LM_ATLAS_SIZE * 3 ) {
 		return false;
 	}
 	const float w = 1.0f - u - v;
@@ -1162,8 +1615,8 @@ static void LM_ShadeBouncePoint( const idVec3 &point, const idVec3 &normal, cons
 }
 
 static void LM_MarkBounceSurfaceOwners( const lmSurface_t *surface, int surfaceIndex,
-		idList<int> &bounceOwners, idList<idVec3> &positions, idList<idVec3> &normals ) {
-	for ( int index = 0; index + 2 < surface->indexes.Num(); index += 3 ) {
+		std::vector<int> &bounceOwners, std::vector<idVec3> &positions, std::vector<idVec3> &normals ) {
+	for ( int index = 0; index + 2 < (int)surface->indexes.size(); index += 3 ) {
 		const idDrawVert &a = surface->verts[surface->indexes[index + 0]];
 		const idDrawVert &b = surface->verts[surface->indexes[index + 1]];
 		const idDrawVert &c = surface->verts[surface->indexes[index + 2]];
@@ -1205,8 +1658,8 @@ static void LM_MarkBounceSurfaceOwners( const lmSurface_t *surface, int surfaceI
 	}
 }
 
-static bool LM_IsBounceAnchor( int x, int y, int surfaceIndex, const idList<int> &bounceOwners,
-		const idList<idVec3> &positions, const idList<idVec3> &normals ) {
+static bool LM_IsBounceAnchor( int x, int y, int surfaceIndex, const std::vector<int> &bounceOwners,
+		const std::vector<idVec3> &positions, const std::vector<idVec3> &normals ) {
 	if ( ( x % lmBounceSpacing ) == 0 && ( y % lmBounceSpacing ) == 0 ) {
 		return true;
 	}
@@ -1234,10 +1687,10 @@ static bool LM_IsBounceAnchor( int x, int y, int surfaceIndex, const idList<int>
 }
 
 static void LM_RasterizeBounceSurface( const lmSurface_t *surface, int surfaceIndex,
-		idList<unsigned short> &bounce, idList<unsigned short> &ambientVisibility,
-		idList<byte> &bounceAnchors, const idList<int> &bounceOwners,
-		const idList<idVec3> &positions, const idList<idVec3> &normals ) {
-	for ( int index = 0; index + 2 < surface->indexes.Num(); index += 3 ) {
+		std::vector<unsigned short> &bounce, std::vector<unsigned short> &ambientVisibility,
+		std::vector<byte> &bounceAnchors, const std::vector<int> &bounceOwners,
+		const std::vector<idVec3> &positions, const std::vector<idVec3> &normals ) {
+	for ( int index = 0; index + 2 < (int)surface->indexes.size(); index += 3 ) {
 		const idDrawVert &a = surface->verts[surface->indexes[index + 0]];
 		const idDrawVert &b = surface->verts[surface->indexes[index + 1]];
 		const idDrawVert &c = surface->verts[surface->indexes[index + 2]];
@@ -1307,18 +1760,16 @@ static void LM_RasterizeBounceSurface( const lmSurface_t *surface, int surfaceIn
 	}
 }
 
-static void LM_DenoiseIndirect( const lmAtlas_t *atlas, const idList<int> &bounceOwners,
-		const idList<idVec3> &positions, const idList<idVec3> &normals,
-		idList<unsigned short> &bounce, idList<unsigned short> &ambientVisibility ) {
+static void LM_DenoiseIndirect( const lmAtlas_t *atlas, const std::vector<int> &bounceOwners,
+		const std::vector<idVec3> &positions, const std::vector<idVec3> &normals,
+		std::vector<unsigned short> &bounce, std::vector<unsigned short> &ambientVisibility ) {
 	if ( lmDenoisePasses <= 0 ) {
 		return;
 	}
 	const int pixels = LM_ATLAS_SIZE * LM_ATLAS_SIZE;
 	const int kernel[3] = { 1, 2, 1 };
-	idList<unsigned short> nextBounce;
-	idList<unsigned short> nextAO;
-	nextBounce.SetNum( pixels * 3 );
-	nextAO.SetNum( pixels );
+	std::vector<unsigned short> nextBounce( pixels * 3 );
+	std::vector<unsigned short> nextAO( pixels );
 
 	// Three edge-aware a-trous passes cover a fifteen-luxel footprint without
 	// repeatedly blurring immediate neighbors.  Surface ownership, normals and
@@ -1371,22 +1822,18 @@ static void LM_DenoiseIndirect( const lmAtlas_t *atlas, const idList<int> &bounc
 				nextAO[pixel] = (unsigned short)( ( aoTotal + totalWeight / 2 ) / totalWeight );
 			}
 		}
-		bounce.Swap( nextBounce );
-		ambientVisibility.Swap( nextAO );
+		bounce.swap( nextBounce );
+		ambientVisibility.swap( nextAO );
 	}
 }
 
-static void LM_FilterAndApplyBounce( lmAtlas_t *atlas, const idList<unsigned short> &bounce,
-		const idList<unsigned short> &ambientVisibility, const idList<byte> &bounceAnchors,
-		const idList<int> &bounceOwners, const idList<idVec3> &positions,
-		const idList<idVec3> &normals ) {
+static void LM_FilterAndApplyBounce( lmAtlas_t *atlas, const std::vector<unsigned short> &bounce,
+		const std::vector<unsigned short> &ambientVisibility, const std::vector<byte> &bounceAnchors,
+		const std::vector<int> &bounceOwners, const std::vector<idVec3> &positions,
+		const std::vector<idVec3> &normals ) {
 	const int pixels = LM_ATLAS_SIZE * LM_ATLAS_SIZE;
-	idList<unsigned short> filtered;
-	idList<unsigned short> filteredAO;
-	filtered.SetNum( pixels * 3 );
-	filteredAO.SetNum( pixels );
-	memset( filtered.Ptr(), 0, filtered.Num() * sizeof( filtered[0] ) );
-	memset( filteredAO.Ptr(), 0xFF, filteredAO.Num() * sizeof( filteredAO[0] ) );
+	std::vector<unsigned short> filtered( pixels * 3, 0 );
+	std::vector<unsigned short> filteredAO( pixels, 0xFFFF );
 	const int kernel[5] = { 1, 4, 6, 4, 1 };
 
 	for ( int y = 0; y < LM_ATLAS_SIZE; y++ ) {
@@ -1464,7 +1911,7 @@ static void LM_FilterAndApplyBounce( lmAtlas_t *atlas, const idList<unsigned sho
 }
 
 static void LM_BakeSecondaryBounce( void ) {
-	if ( ( lmBounceScale <= 0.0f && lmAOStrength <= 0.0f ) || lmBounceSamples <= 0 || lmAtlases.Num() == 0 ) {
+	if ( ( lmBounceScale <= 0.0f && lmAOStrength <= 0.0f ) || lmBounceSamples <= 0 || lmAtlases.empty() ) {
 		return;
 	}
 	const int pixels = LM_ATLAS_SIZE * LM_ATLAS_SIZE;
@@ -1472,9 +1919,9 @@ static void LM_BakeSecondaryBounce( void ) {
 		lmBounceScale, lmBounceSamples, lmBounceSpacing, lmBounceSpacing, lmBounceDistance,
 		lmAOStrength, lmAODistance, lmDenoisePasses );
 	if ( lmBounceScale > 0.0f ) {
-		for ( int atlasIndex = 0; atlasIndex < lmAtlases.Num(); atlasIndex++ ) {
+		for ( int atlasIndex = 0; atlasIndex < (int)lmAtlases.size(); atlasIndex++ ) {
 			lmAtlas_t *atlas = lmAtlases[atlasIndex];
-			atlas->directLightmap.SetNum( pixels * 3 );
+			atlas->directLightmap.resize( pixels * 3 );
 			for ( int pixel = 0; pixel < pixels; pixel++ ) {
 				for ( int component = 0; component < 3; component++ ) {
 					atlas->directLightmap[pixel * 3 + component] = atlas->lightmap[pixel * 4 + component];
@@ -1483,30 +1930,20 @@ static void LM_BakeSecondaryBounce( void ) {
 		}
 	}
 
-	for ( int atlasIndex = 0; atlasIndex < lmAtlases.Num(); atlasIndex++ ) {
-		idList<unsigned short> bounce;
-		idList<unsigned short> ambientVisibility;
-		idList<byte> bounceAnchors;
-		idList<int> bounceOwners;
-		idList<idVec3> positions;
-		idList<idVec3> normals;
-		bounce.SetNum( pixels * 3 );
-		ambientVisibility.SetNum( pixels );
-		bounceAnchors.SetNum( pixels );
-		bounceOwners.SetNum( pixels );
-		positions.SetNum( pixels );
-		normals.SetNum( pixels );
-		memset( bounce.Ptr(), 0, bounce.Num() * sizeof( bounce[0] ) );
-		memset( ambientVisibility.Ptr(), 0xFF, ambientVisibility.Num() * sizeof( ambientVisibility[0] ) );
-		memset( bounceAnchors.Ptr(), 0, bounceAnchors.Num() * sizeof( bounceAnchors[0] ) );
-		memset( bounceOwners.Ptr(), 0xFF, bounceOwners.Num() * sizeof( bounceOwners[0] ) );
-		for ( int surfaceIndex = 0; surfaceIndex < lmSurfaces.Num(); surfaceIndex++ ) {
+	for ( int atlasIndex = 0; atlasIndex < (int)lmAtlases.size(); atlasIndex++ ) {
+		std::vector<unsigned short> bounce( pixels * 3, 0 );
+		std::vector<unsigned short> ambientVisibility( pixels, 0xFFFF );
+		std::vector<byte> bounceAnchors( pixels, 0 );
+		std::vector<int> bounceOwners( pixels, -1 );
+		std::vector<idVec3> positions( pixels );
+		std::vector<idVec3> normals( pixels );
+		for ( int surfaceIndex = 0; surfaceIndex < (int)lmSurfaces.size(); surfaceIndex++ ) {
 			if ( lmSurfaces[surfaceIndex]->atlas == atlasIndex ) {
 				LM_MarkBounceSurfaceOwners( lmSurfaces[surfaceIndex], surfaceIndex,
 					bounceOwners, positions, normals );
 			}
 		}
-		for ( int surfaceIndex = 0; surfaceIndex < lmSurfaces.Num(); surfaceIndex++ ) {
+		for ( int surfaceIndex = 0; surfaceIndex < (int)lmSurfaces.size(); surfaceIndex++ ) {
 			if ( lmSurfaces[surfaceIndex]->atlas == atlasIndex ) {
 				LM_RasterizeBounceSurface( lmSurfaces[surfaceIndex], surfaceIndex, bounce,
 					ambientVisibility, bounceAnchors, bounceOwners, positions, normals );
@@ -1523,24 +1960,21 @@ static void LM_BakeSecondaryBounce( void ) {
 	common->Printf( "\n%llu gather points, %llu bounce/AO rays, %llu geometry hits, %llu lit-surface hits, average bounce %.2f / 255, coverage %.1f%%, average AO visibility %.3f\n",
 		lmBounceAnchorTexels, lmBounceRays, lmBounceHits, lmBounceContributingHits,
 		averageBounceByte, bounceCoverage, averageAO );
-	for ( int atlasIndex = 0; atlasIndex < lmAtlases.Num(); atlasIndex++ ) {
-		lmAtlases[atlasIndex]->directLightmap.Clear();
+	for ( int atlasIndex = 0; atlasIndex < (int)lmAtlases.size(); atlasIndex++ ) {
+		lmAtlases[atlasIndex]->directLightmap.clear();
 	}
 }
 
 static void LM_DilateAtlas( lmAtlas_t *atlas ) {
 	const int pixels = LM_ATLAS_SIZE * LM_ATLAS_SIZE;
-	idList<byte> nextLight;
-	idList<byte> nextDeluxe;
-	idList<byte> nextValid;
-	nextLight.SetNum( pixels * 4 );
-	nextDeluxe.SetNum( pixels * 4 );
-	nextValid.SetNum( pixels );
+	std::vector<byte> nextLight( pixels * 4 );
+	std::vector<byte> nextDeluxe( pixels * 4 );
+	std::vector<byte> nextValid( pixels );
 
 	for ( int pass = 0; pass < LM_PADDING; pass++ ) {
-		memcpy( nextLight.Ptr(), atlas->lightmap.Ptr(), nextLight.Num() );
-		memcpy( nextDeluxe.Ptr(), atlas->deluxemap.Ptr(), nextDeluxe.Num() );
-		memcpy( nextValid.Ptr(), atlas->valid.Ptr(), nextValid.Num() );
+		memcpy( nextLight.data(), atlas->lightmap.data(), nextLight.size() );
+		memcpy( nextDeluxe.data(), atlas->deluxemap.data(), nextDeluxe.size() );
+		memcpy( nextValid.data(), atlas->valid.data(), nextValid.size() );
 		for ( int y = 0; y < LM_ATLAS_SIZE; y++ ) {
 			for ( int x = 0; x < LM_ATLAS_SIZE; x++ ) {
 				const int pixel = y * LM_ATLAS_SIZE + x;
@@ -1565,9 +1999,9 @@ static void LM_DilateAtlas( lmAtlas_t *atlas ) {
 				}
 			}
 		}
-		memcpy( atlas->lightmap.Ptr(), nextLight.Ptr(), nextLight.Num() );
-		memcpy( atlas->deluxemap.Ptr(), nextDeluxe.Ptr(), nextDeluxe.Num() );
-		memcpy( atlas->valid.Ptr(), nextValid.Ptr(), nextValid.Num() );
+		memcpy( atlas->lightmap.data(), nextLight.data(), nextLight.size() );
+		memcpy( atlas->deluxemap.data(), nextDeluxe.data(), nextDeluxe.size() );
+		memcpy( atlas->valid.data(), nextValid.data(), nextValid.size() );
 	}
 }
 
@@ -1677,7 +2111,7 @@ static void LM_CompressDXT1Block( const byte pixels[16][4], byte output[8] ) {
 	output[7] = (byte)( ( indices >> 24 ) & 255 );
 }
 
-static void LM_MakeDDS( const idList<byte> &rgba, idList<byte> &dds ) {
+static void LM_MakeDDS( const std::vector<byte> &rgba, std::vector<byte> &dds ) {
 	const int blockWidth = ( LM_ATLAS_SIZE + 3 ) / 4;
 	const int blockHeight = ( LM_ATLAS_SIZE + 3 ) / 4;
 	const int compressedBytes = blockWidth * blockHeight * 8;
@@ -1693,10 +2127,10 @@ static void LM_MakeDDS( const idList<byte> &rgba, idList<byte> &dds ) {
 	header.ddspf.dwFourCC = DDS_MAKEFOURCC( 'D', 'X', 'T', '1' );
 	header.dwCaps1 = DDSF_TEXTURE;
 
-	dds.SetNum( 4 + sizeof( header ) + compressedBytes );
-	memcpy( dds.Ptr(), "DDS ", 4 );
-	memcpy( dds.Ptr() + 4, &header, sizeof( header ) );
-	byte *compressed = dds.Ptr() + 4 + sizeof( header );
+	dds.resize( 4 + sizeof( header ) + compressedBytes );
+	memcpy( dds.data(), "DDS ", 4 );
+	memcpy( dds.data() + 4, &header, sizeof( header ) );
+	byte *compressed = dds.data() + 4 + sizeof( header );
 	for ( int blockY = 0; blockY < blockHeight; blockY++ ) {
 		for ( int blockX = 0; blockX < blockWidth; blockX++ ) {
 			byte block[16][4];
@@ -1714,26 +2148,26 @@ static void LM_MakeDDS( const idList<byte> &rgba, idList<byte> &dds ) {
 	}
 }
 
-static void LM_ZipAdd( idList<lmZipEntry_t *> &entries, const char *name, const void *data, int length ) {
+static void LM_ZipAdd( std::vector<lmZipEntry_t *> &entries, const char *name, const void *data, int length ) {
 	lmZipEntry_t *entry = new lmZipEntry_t;
 	entry->name = name;
 	entry->name.BackSlashesToSlashes();
-	entry->data.SetNum( length );
+	entry->data.resize( length );
 	if ( length > 0 ) {
-		memcpy( entry->data.Ptr(), data, length );
+		memcpy( entry->data.data(), data, length );
 	}
 	entry->crc = (unsigned int)CRC32_BlockChecksum( data, length );
 	entry->localOffset = 0;
-	entries.Append( entry );
+	entries.push_back( entry );
 }
 
-static void LM_WriteZip( const char *qpath, idList<lmZipEntry_t *> &entries ) {
+static void LM_WriteZip( const char *qpath, std::vector<lmZipEntry_t *> &entries ) {
 	idFile *file = fileSystem->OpenFileWrite( qpath, "fs_devpath" );
 	if ( !file ) {
 		common->Error( "Lightmap baker could not create %s", qpath );
 	}
 
-	for ( int i = 0; i < entries.Num(); i++ ) {
+	for ( size_t i = 0; i < entries.size(); i++ ) {
 		lmZipEntry_t *entry = entries[i];
 		entry->localOffset = (unsigned int)file->Tell();
 		file->WriteUnsignedInt( 0x04034b50 );
@@ -1743,16 +2177,16 @@ static void LM_WriteZip( const char *qpath, idList<lmZipEntry_t *> &entries ) {
 		file->WriteUnsignedShort( 0 );
 		file->WriteUnsignedShort( 0 );
 		file->WriteUnsignedInt( entry->crc );
-		file->WriteUnsignedInt( entry->data.Num() );
-		file->WriteUnsignedInt( entry->data.Num() );
+		file->WriteUnsignedInt( (unsigned int)entry->data.size() );
+		file->WriteUnsignedInt( (unsigned int)entry->data.size() );
 		file->WriteUnsignedShort( (unsigned short)entry->name.Length() );
 		file->WriteUnsignedShort( 0 );
 		file->Write( entry->name.c_str(), entry->name.Length() );
-		file->Write( entry->data.Ptr(), entry->data.Num() );
+		file->Write( entry->data.data(), (int)entry->data.size() );
 	}
 
 	const unsigned int centralOffset = (unsigned int)file->Tell();
-	for ( int i = 0; i < entries.Num(); i++ ) {
+	for ( size_t i = 0; i < entries.size(); i++ ) {
 		const lmZipEntry_t *entry = entries[i];
 		file->WriteUnsignedInt( 0x02014b50 );
 		file->WriteUnsignedShort( 20 );
@@ -1762,8 +2196,8 @@ static void LM_WriteZip( const char *qpath, idList<lmZipEntry_t *> &entries ) {
 		file->WriteUnsignedShort( 0 );
 		file->WriteUnsignedShort( 0 );
 		file->WriteUnsignedInt( entry->crc );
-		file->WriteUnsignedInt( entry->data.Num() );
-		file->WriteUnsignedInt( entry->data.Num() );
+		file->WriteUnsignedInt( (unsigned int)entry->data.size() );
+		file->WriteUnsignedInt( (unsigned int)entry->data.size() );
 		file->WriteUnsignedShort( (unsigned short)entry->name.Length() );
 		file->WriteUnsignedShort( 0 );
 		file->WriteUnsignedShort( 0 );
@@ -1777,8 +2211,8 @@ static void LM_WriteZip( const char *qpath, idList<lmZipEntry_t *> &entries ) {
 	file->WriteUnsignedInt( 0x06054b50 );
 	file->WriteUnsignedShort( 0 );
 	file->WriteUnsignedShort( 0 );
-	file->WriteUnsignedShort( (unsigned short)entries.Num() );
-	file->WriteUnsignedShort( (unsigned short)entries.Num() );
+	file->WriteUnsignedShort( (unsigned short)entries.size() );
+	file->WriteUnsignedShort( (unsigned short)entries.size() );
 	file->WriteUnsignedInt( centralSize );
 	file->WriteUnsignedInt( centralOffset );
 	file->WriteUnsignedShort( 0 );
@@ -1786,13 +2220,21 @@ static void LM_WriteZip( const char *qpath, idList<lmZipEntry_t *> &entries ) {
 }
 
 void Lightmap_Begin( const char *mapFileBase ) {
-	lmSurfaces.DeleteContents( true );
-	lmAtlases.DeleteContents( true );
+	LM_DeletePointerVector( lmSurfaces );
+	LM_DeletePointerVector( lmAtlases );
 	LM_ClearAlphaMasks();
 	LM_ClearBakedLights();
-	lmOccluders.Clear();
-	lmOccluderOrder.Clear();
-	lmTraceNodes.Clear();
+	lmOccluders.clear();
+	lmTraceTriangles.clear();
+	lmOccluderOrder.clear();
+	lmTraceNodes.clear();
+	lmTracePackets.clear();
+	lmPackedTraceNodes.clear();
+	lmShadowOccluderOrder.clear();
+	lmShadowTraceNodes.clear();
+	lmShadowTracePackets.clear();
+	lmPackedShadowTraceNodes.clear();
+	lmUseSSE2 = ( Sys_GetProcessorId() & CPUID_SSE2 ) != 0;
 	lmMapFileBase = mapFileBase;
 	lmAmbient = LM_DEFAULT_AMBIENT;
 	lmDirectScale = LM_DEFAULT_DIRECT_SCALE;
@@ -1933,33 +2375,60 @@ int Lightmap_AddSurface( int entityNum, const idMaterial *material, const srfTri
 	lmSurface_t *surface = new lmSurface_t;
 	surface->atlas = atlasIndex;
 	surface->material = material;
-	surface->verts.SetNum( tri->numVerts );
-	surface->indexes.SetNum( tri->numIndexes );
-	surface->lightmapTexCoords = lightmapTexCoords;
-	memcpy( surface->verts.Ptr(), tri->verts, tri->numVerts * sizeof( idDrawVert ) );
-	memcpy( surface->indexes.Ptr(), tri->indexes, tri->numIndexes * sizeof( glIndex_t ) );
-	for ( int i = 0; i < surface->verts.Num(); i++ ) {
+	surface->verts.resize( tri->numVerts );
+	surface->indexes.resize( tri->numIndexes );
+	surface->lightmapTexCoords.resize( lightmapTexCoords.Num() );
+	memcpy( surface->verts.data(), tri->verts, tri->numVerts * sizeof( idDrawVert ) );
+	memcpy( surface->indexes.data(), tri->indexes, tri->numIndexes * sizeof( glIndex_t ) );
+	memcpy( surface->lightmapTexCoords.data(), lightmapTexCoords.Ptr(),
+		lightmapTexCoords.Num() * sizeof( idVec2 ) );
+	for ( int i = 0; i < (int)surface->verts.size(); i++ ) {
 		surface->verts[i].xyz = entityOrigin + surface->verts[i].xyz * entityAxis;
 		surface->verts[i].normal = surface->verts[i].normal * entityAxis;
 		surface->verts[i].tangents[0] = surface->verts[i].tangents[0] * entityAxis;
 		surface->verts[i].tangents[1] = surface->verts[i].tangents[1] * entityAxis;
 	}
-	lmSurfaces.Append( surface );
+	lmSurfaces.push_back( surface );
 	return atlasIndex;
 }
 
 void Lightmap_End( void ) {
-	common->Printf( "%i lightmap surfaces, %i atlases, %i trace triangles (%i door shadow-only)\n",
-		lmSurfaces.Num(), lmAtlases.Num(), lmOccluders.Num(), lmDoorOccluders );
-
-	lmOccluderOrder.SetNum( lmOccluders.Num() );
-	for ( int i = 0; i < lmOccluderOrder.Num(); i++ ) {
+	assert( lmTraceTriangles.size() == lmOccluders.size() );
+	lmOccluderOrder.resize( lmOccluders.size() );
+	lmShadowOccluderOrder.reserve( lmOccluders.size() );
+	lmTraceNodes.reserve( lmOccluders.size() * 2 );
+	lmShadowTraceNodes.reserve( lmOccluders.size() * 2 );
+	for ( int i = 0; i < (int)lmOccluderOrder.size(); i++ ) {
 		lmOccluderOrder[i] = i;
+		if ( lmOccluders[i].castsShadow ) {
+			lmShadowOccluderOrder.push_back( i );
+		}
 	}
-	if ( lmOccluderOrder.Num() > 0 ) {
-		LM_BuildTraceNode( 0, lmOccluderOrder.Num() );
+	const int shadowTraceTriangleCount = (int)lmShadowOccluderOrder.size();
+	if ( !lmOccluderOrder.empty() ) {
+		LM_BuildTraceNode( lmOccluderOrder, lmTraceNodes, 0, (int)lmOccluderOrder.size() );
 	}
-	for ( int i = 0; i < lmSurfaces.Num(); i++ ) {
+	if ( !lmShadowOccluderOrder.empty() ) {
+		LM_BuildTraceNode( lmShadowOccluderOrder, lmShadowTraceNodes, 0,
+			(int)lmShadowOccluderOrder.size() );
+	}
+	LM_PackTraceTree( lmOccluderOrder, lmTraceNodes, lmTracePackets, lmPackedTraceNodes );
+	LM_PackTraceTree( lmShadowOccluderOrder, lmShadowTraceNodes, lmShadowTracePackets,
+		lmPackedShadowTraceNodes );
+	assert( sizeof( lmPackedTraceNode_t ) == 32 );
+	assert( lmTracePackets.empty() || ( (UINT_PTR)lmTracePackets.data() & 15 ) == 0 );
+	assert( lmShadowTracePackets.empty() || ( (UINT_PTR)lmShadowTracePackets.data() & 15 ) == 0 );
+	std::vector<lmTraceNode_t>().swap( lmTraceNodes );
+	std::vector<lmTraceNode_t>().swap( lmShadowTraceNodes );
+	std::vector<int>().swap( lmOccluderOrder );
+	std::vector<int>().swap( lmShadowOccluderOrder );
+	common->Printf( "%i lightmap surfaces, %i atlases, %i trace triangles, %i shadow triangles (%i door shadow-only)\n",
+		(int)lmSurfaces.size(), (int)lmAtlases.size(), (int)lmOccluders.size(),
+		shadowTraceTriangleCount, lmDoorOccluders );
+	common->Printf( "%s packet tracing, %i-byte BVH nodes, %i GI leaf packets, %i shadow leaf packets\n",
+		lmUseSSE2 ? "SSE2" : "scalar", (int)sizeof( lmPackedTraceNode_t ),
+		(int)lmTracePackets.size(), (int)lmShadowTracePackets.size() );
+	for ( int i = 0; i < (int)lmSurfaces.size(); i++ ) {
 		LM_RasterizeSurface( lmSurfaces[i] );
 		if ( ( i & 31 ) == 31 ) {
 			common->Printf( "." );
@@ -1967,11 +2436,11 @@ void Lightmap_End( void ) {
 	}
 	LM_BakeSecondaryBounce();
 
-	idList<lmZipEntry_t *> entries;
+	std::vector<lmZipEntry_t *> entries;
 	idStr manifest;
 	unsigned __int64 validTexels = 0;
 	unsigned __int64 lightByteSum = 0;
-	for ( int atlasIndex = 0; atlasIndex < lmAtlases.Num(); atlasIndex++ ) {
+	for ( int atlasIndex = 0; atlasIndex < (int)lmAtlases.size(); atlasIndex++ ) {
 		const lmAtlas_t *atlas = lmAtlases[atlasIndex];
 		for ( int pixel = 0; pixel < LM_ATLAS_SIZE * LM_ATLAS_SIZE; pixel++ ) {
 			if ( !atlas->valid[pixel] ) {
@@ -1989,7 +2458,7 @@ void Lightmap_End( void ) {
 	common->Printf( "%llu shadow rays, %llu mixed-coverage shadow tests refined\n",
 		lmShadowRays, lmMixedShadowTests );
 	common->Printf( "%i alpha-test materials, %llu alpha intersections, %llu passed through holes\n",
-		lmAlphaMasks.Num(), lmAlphaTests, lmAlphaPassThroughs );
+		(int)lmAlphaMasks.size(), lmAlphaTests, lmAlphaPassThroughs );
 	common->Printf( "%llu valid luxels, average light %.1f / 255\n", validTexels, averageLightByte );
 
 	manifest = "lightmapArchiveVersion 3\n";
@@ -2016,15 +2485,16 @@ void Lightmap_End( void ) {
 	manifest += va( "aoDistance %g\n", lmAODistance );
 	manifest += va( "averageAOVisibility %g\n", lmBounceTexels ?
 		(double)lmAOByteSum / ( lmBounceTexels * 255.0 ) : 1.0 );
-	manifest += va( "alphaTestMaterials %i\n", lmAlphaMasks.Num() );
+	manifest += va( "alphaTestMaterials %i\n", (int)lmAlphaMasks.size() );
 	manifest += va( "alphaTestIntersections %llu\n", lmAlphaTests );
 	manifest += va( "alphaPassThroughs %llu\n", lmAlphaPassThroughs );
 	manifest += va( "doorShadowTriangles %i\n", lmDoorOccluders );
+	manifest += va( "shadowTraceTriangles %i\n", shadowTraceTriangleCount );
 	manifest += va( "ambient %g\n", lmAmbient );
 	manifest += va( "directScale %g\n", lmDirectScale );
 	manifest += va( "exactLightShaderLights %i\n", lmExactBakedLights );
 	manifest += va( "averageLightByte %g\n", averageLightByte );
-	manifest += va( "numAtlases %i\n", lmAtlases.Num() );
+	manifest += va( "numAtlases %i\n", (int)lmAtlases.size() );
 	int numBakedLights = 0;
 	for ( int i = 0; i < dmapGlobals.mapLights.Num(); i++ ) {
 		if ( dmapGlobals.mapLights[i]->bake ) {
@@ -2040,16 +2510,16 @@ void Lightmap_End( void ) {
 	idStr manifestName = lmMapFileBase + "/lightmaps.manifest";
 	LM_ZipAdd( entries, manifestName, manifest.c_str(), manifest.Length() );
 
-	for ( int i = 0; i < lmAtlases.Num(); i++ ) {
+	for ( int i = 0; i < (int)lmAtlases.size(); i++ ) {
 		LM_DilateAtlas( lmAtlases[i] );
-		idList<byte> dds;
+		std::vector<byte> dds;
 		idStr imageName;
 		LM_MakeDDS( lmAtlases[i]->lightmap, dds );
 		imageName = va( "dds/%s/lightmap_%03i.dds", lmMapFileBase.c_str(), i );
-		LM_ZipAdd( entries, imageName, dds.Ptr(), dds.Num() );
+		LM_ZipAdd( entries, imageName, dds.data(), (int)dds.size() );
 		LM_MakeDDS( lmAtlases[i]->deluxemap, dds );
 		imageName = va( "dds/%s/deluxemap_%03i.dds", lmMapFileBase.c_str(), i );
-		LM_ZipAdd( entries, imageName, dds.Ptr(), dds.Num() );
+		LM_ZipAdd( entries, imageName, dds.data(), (int)dds.size() );
 	}
 
 	idStr archiveName = lmMapFileBase;
@@ -2057,12 +2527,19 @@ void Lightmap_End( void ) {
 	LM_WriteZip( archiveName, entries );
 	common->Printf( "wrote %s\n", archiveName.c_str() );
 
-	entries.DeleteContents( true );
-	lmSurfaces.DeleteContents( true );
-	lmAtlases.DeleteContents( true );
+	LM_DeletePointerVector( entries );
+	LM_DeletePointerVector( lmSurfaces );
+	LM_DeletePointerVector( lmAtlases );
 	LM_ClearAlphaMasks();
 	LM_ClearBakedLights();
-	lmOccluders.Clear();
-	lmOccluderOrder.Clear();
-	lmTraceNodes.Clear();
+	lmOccluders.clear();
+	lmTraceTriangles.clear();
+	lmOccluderOrder.clear();
+	lmTraceNodes.clear();
+	lmTracePackets.clear();
+	lmPackedTraceNodes.clear();
+	lmShadowOccluderOrder.clear();
+	lmShadowTraceNodes.clear();
+	lmShadowTracePackets.clear();
+	lmPackedShadowTraceNodes.clear();
 }

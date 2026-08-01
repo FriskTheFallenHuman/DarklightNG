@@ -94,7 +94,7 @@ idCVar r_skipPostProcess( "r_skipPostProcess", "0", CVAR_RENDERER | CVAR_BOOL, "
 idCVar r_skipLightScale( "r_skipLightScale", "0", CVAR_RENDERER | CVAR_BOOL, "don't do any post-interaction light scaling, makes things dim on low-dynamic range cards" );
 idCVar r_skipInteractions( "r_skipInteractions", "0", CVAR_RENDERER | CVAR_BOOL, "skip all light/surface interaction drawing" );
 idCVar r_skipBakedLightmaps( "r_skipBakedLightmaps", "0", CVAR_RENDERER | CVAR_BOOL, "disable baked map lighting and retain realtime static lights" );
-idCVar r_bakedLightmapScale( "r_bakedLightmapScale", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "brightness multiplier for baked map lighting", 0.0f, 8.0f );
+idCVar r_bakedLightmapScale( "r_bakedLightmapScale", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "brightness adjustment after baked lightmap decode normalization", 0.0f, 8.0f );
 idCVar r_skipDynamicTextures( "r_skipDynamicTextures", "0", CVAR_RENDERER | CVAR_BOOL, "don't dynamically create textures" );
 idCVar r_skipCopyTexture( "r_skipCopyTexture", "0", CVAR_RENDERER | CVAR_BOOL, "do all rendering, but don't actually copyTexSubImage2D" );
 idCVar r_skipBackEnd( "r_skipBackEnd", "0", CVAR_RENDERER | CVAR_BOOL, "don't draw anything" );

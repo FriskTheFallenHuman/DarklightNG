@@ -126,6 +126,19 @@ list(REMOVE_ITEM ENGINE_SOURCES
 )
 
 add_executable(doom3 WIN32 ${ENGINE_SOURCES})
+# Dmap's offline light baker is a compute kernel.  Keep the rest of the Debug
+# engine fully debuggable, but compile this translation unit with optimization
+# and frame pointers so SIMD packet tracing does not spill every lane to the
+# stack and profiler call stacks remain usable.
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tools/compilers/dmap/lightmap.cpp" APPEND PROPERTY COMPILE_OPTIONS
+	"$<$<CONFIG:Debug>:/O2>"
+	"$<$<CONFIG:Debug>:/Ob2>"
+	"$<$<CONFIG:Debug>:/Oy->"
+)
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tools/compilers/dmap/lightmap.cpp" APPEND PROPERTY VS_SETTINGS
+	"BasicRuntimeChecks=Default"
+)
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tools/compilers/dmap/lightmap.cpp" PROPERTY SKIP_PRECOMPILE_HEADERS ON)
 target_compile_definitions(doom3 PRIVATE
 	__DOOM__
 	__DOOM_DLL__

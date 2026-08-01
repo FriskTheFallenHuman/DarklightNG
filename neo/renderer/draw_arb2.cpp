@@ -345,7 +345,12 @@ static void RB_ARB2_DrawBakedStage( const drawSurf_t *surf, idImage *bumpImage, 
 	if ( !stageImage || stageColor[0] + stageColor[1] + stageColor[2] <= 0.0f ) {
 		return;
 	}
-	const float bakedScale = r_bakedLightmapScale.GetFloat();
+	// Dmap stores baked irradiance using Doom 3's conventional r_lightScale=2
+	// interaction range.  Unlike a realtime interaction, the atlas is already
+	// in that expanded range when sampled here, so normalize it once before the
+	// material diffuse/specular stages consume it.  Keep r_bakedLightmapScale as
+	// a user-facing adjustment around the correctly decoded value of 1.0.
+	const float bakedScale = 0.75f * r_bakedLightmapScale.GetFloat();
 	stageColor[0] *= bakedScale;
 	stageColor[1] *= bakedScale;
 	stageColor[2] *= bakedScale;
