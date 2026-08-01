@@ -75,7 +75,6 @@
 		812258780912BC79005D34B9 /* Image_load.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8122571B0912BC79005D34B9 /* Image_load.cpp */; };
 		812258790912BC79005D34B9 /* Image_process.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8122571C0912BC79005D34B9 /* Image_process.cpp */; };
 		8122587A0912BC79005D34B9 /* Image_program.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8122571D0912BC79005D34B9 /* Image_program.cpp */; };
-		8122587B0912BC79005D34B9 /* tr_interaction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8122571E0912BC79005D34B9 /* tr_interaction.cpp */; };
 		8122587C0912BC79005D34B9 /* jcapimin.c in Sources */ = {isa = PBXBuildFile; fileRef = 812257210912BC79005D34B9 /* jcapimin.c */; };
 		8122587D0912BC79005D34B9 /* jcapistd.c in Sources */ = {isa = PBXBuildFile; fileRef = 812257220912BC79005D34B9 /* jcapistd.c */; };
 		8122587E0912BC79005D34B9 /* jccoefct.c in Sources */ = {isa = PBXBuildFile; fileRef = 812257230912BC79005D34B9 /* jccoefct.c */; };
@@ -404,7 +403,6 @@
 		8122571B0912BC79005D34B9 /* Image_load.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = Image_load.cpp; sourceTree = "<group>"; };
 		8122571C0912BC79005D34B9 /* Image_process.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = Image_process.cpp; sourceTree = "<group>"; };
 		8122571D0912BC79005D34B9 /* Image_program.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = Image_program.cpp; sourceTree = "<group>"; };
-		8122571E0912BC79005D34B9 /* tr_interaction.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = tr_interaction.cpp; sourceTree = "<group>"; };
 		812257210912BC79005D34B9 /* jcapimin.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = jcapimin.c; sourceTree = "<group>"; };
 		812257220912BC79005D34B9 /* jcapistd.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = jcapistd.c; sourceTree = "<group>"; };
 		812257230912BC79005D34B9 /* jccoefct.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = jccoefct.c; sourceTree = "<group>"; };
@@ -971,7 +969,6 @@
 				8122571B0912BC79005D34B9 /* Image_load.cpp */,
 				8122571C0912BC79005D34B9 /* Image_process.cpp */,
 				8122571D0912BC79005D34B9 /* Image_program.cpp */,
-				8122571E0912BC79005D34B9 /* tr_interaction.cpp */,
 				812257200912BC79005D34B9 /* jpeg-6 */,
 				8122575F0912BC79005D34B9 /* Material.cpp */,
 				812257600912BC79005D34B9 /* Material.h */,
@@ -1488,7 +1485,6 @@
 				812258780912BC79005D34B9 /* Image_load.cpp in Sources */,
 				812258790912BC79005D34B9 /* Image_process.cpp in Sources */,
 				8122587A0912BC79005D34B9 /* Image_program.cpp in Sources */,
-				8122587B0912BC79005D34B9 /* tr_interaction.cpp in Sources */,
 				8122587C0912BC79005D34B9 /* jcapimin.c in Sources */,
 				8122587D0912BC79005D34B9 /* jcapistd.c in Sources */,
 				8122587E0912BC79005D34B9 /* jccoefct.c in Sources */,

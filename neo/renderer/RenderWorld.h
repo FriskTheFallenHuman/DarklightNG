@@ -142,10 +142,8 @@ typedef struct renderEntity_s {
 	bool					noSelfShadow;			// cast shadows onto other objects,but not self
 	bool					noShadow;				// no shadow at all
 
-	bool					noDynamicInteractions;	// don't create any light / shadow interactions after
-													// the level load is completed.  This is a performance hack
-													// for the gigantic outdoor meshes in the monorail map, so
-													// all the lights in the moving monorail don't touch the meshes
+	bool					noDynamicInteractions;	// retained in saves and demos for compatibility;
+													// transient realtime lighting ignores this legacy hint
 
 	bool					weaponDepthHack;		// squash depth range so view weapons don't poke into walls
 													// this automatically implies noShadow
@@ -290,10 +288,6 @@ public:
 	virtual	void			UpdateLightDef( qhandle_t lightHandle, const renderLight_t *rlight ) = 0;
 	virtual	void			FreeLightDef( qhandle_t lightHandle ) = 0;
 	virtual const renderLight_t *GetRenderLight( qhandle_t lightHandle ) const = 0;
-
-	// Force the generation of all light / surface interactions at the start of a level
-	// If this isn't called, they will all be dynamically generated
-	virtual	void			GenerateAllInteractions() = 0;
 
 	// returns true if this area model needs portal sky to draw
 	virtual bool			CheckAreaForPortalSky( int areaNum ) = 0;

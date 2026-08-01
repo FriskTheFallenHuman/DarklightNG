@@ -294,11 +294,6 @@ int R_TriSurfMemory( const srfTriangles_t *tri ) {
 		return total;
 	}
 
-	// used as a flag in interations
-	if ( tri == LIGHT_TRIS_DEFERRED ) {
-		return total;
-	}
-
 	if ( tri->shadowVertexes != NULL ) {
 		total += tri->numVerts * sizeof( tri->shadowVertexes[0] );
 	} else if ( tri->verts != NULL ) {
@@ -386,7 +381,7 @@ void R_ReallyFreeStaticTriSurf( srfTriangles_t *tri ) {
 	R_FreeStaticTriSurfVertexCaches( tri );
 
 	if ( tri->verts != NULL ) {
-		// R_CreateLightTris points tri->verts at the verts of the ambient surface
+		// Referenced surfaces may point at the verts of an ambient surface.
 		if ( tri->ambientSurface == NULL || tri->verts != tri->ambientSurface->verts ) {
 			triVertexAllocator.Free( tri->verts );
 		}
@@ -398,7 +393,7 @@ void R_ReallyFreeStaticTriSurf( srfTriangles_t *tri ) {
 
 	if ( !tri->deformedSurface ) {
 		if ( tri->indexes != NULL ) {
-			// if a surface is completely inside a light volume R_CreateLightTris points tri->indexes at the indexes of the ambient surface
+			// Referenced surfaces may point at the indexes of an ambient surface.
 			if ( tri->ambientSurface == NULL || tri->indexes != tri->ambientSurface->indexes ) {
 				triIndexAllocator.Free( tri->indexes );
 			}
@@ -446,7 +441,7 @@ void R_CheckStaticTriSurfMemory( const srfTriangles_t *tri ) {
 	}
 
 	if ( tri->verts != NULL ) {
-		// R_CreateLightTris points tri->verts at the verts of the ambient surface
+		// Referenced surfaces may point at the verts of an ambient surface.
 		if ( tri->ambientSurface == NULL || tri->verts != tri->ambientSurface->verts ) {
 			const char *error = triVertexAllocator.CheckMemory( tri->verts );
 			assert( error == NULL );
@@ -455,7 +450,7 @@ void R_CheckStaticTriSurfMemory( const srfTriangles_t *tri ) {
 
 	if ( !tri->deformedSurface ) {
 		if ( tri->indexes != NULL ) {
-			// if a surface is completely inside a light volume R_CreateLightTris points tri->indexes at the indexes of the ambient surface
+			// Referenced surfaces may point at the indexes of an ambient surface.
 			if ( tri->ambientSurface == NULL || tri->indexes != tri->ambientSurface->indexes ) {
 				const char *error = triIndexAllocator.CheckMemory( tri->indexes );
 				assert( error == NULL );

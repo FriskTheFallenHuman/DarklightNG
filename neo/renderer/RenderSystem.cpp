@@ -90,8 +90,7 @@ static void R_PerformanceCounters( void ) {
 	}
 
 	if ( r_showInteractions.GetBool() ) {
-		common->Printf( "createInteractions:%i createLightTris:%i\n",
-			tr.pc.c_createInteractions, tr.pc.c_createLightTris );
+		common->Printf( "transientLightSurfaces:%i\n", tr.pc.c_createLightTris );
  	}
 	if ( r_showDefs.GetBool() ) {
 		common->Printf( "viewEntities:%i  viewLights:%i\n",

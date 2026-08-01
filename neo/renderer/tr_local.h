@@ -95,60 +95,8 @@ SURFACES
 #include "ModelDecal.h"
 #include "ModelOverlay.h"
 
-// Persistent light/entity pairs cache the subset of each model surface that
-// is touched by a realtime light.  Shadow volumes used to live in the same
-// structure; the forward pipeline only needs light receiving geometry now.
-#define LIGHT_TRIS_DEFERRED			((srfTriangles_t *)-1)
-#define LIGHT_CULL_ALL_FRONT		((byte *)-1)
-#define LIGHT_CLIP_EPSILON			0.1f
-
-typedef struct {
-	byte *					facing;
-	byte *					cullBits;
-	idPlane					localClipPlanes[6];
-} srfCullInfo_t;
-
-typedef struct {
-	srfTriangles_t *		lightTris;
-	srfTriangles_t *		ambientTris;
-	const idMaterial *		shader;
-	srfCullInfo_t			cullInfo;
-} surfaceInteraction_t;
-
 class idRenderEntityLocal;
 class idRenderLightLocal;
-
-class idInteraction {
-public:
-	int						numSurfaces;
-	surfaceInteraction_t *	surfaces;
-	idRenderEntityLocal *	entityDef;
-	idRenderLightLocal *	lightDef;
-	idInteraction *			lightNext;
-	idInteraction *			lightPrev;
-	idInteraction *			entityNext;
-	idInteraction *			entityPrev;
-
-							idInteraction( void );
-	static idInteraction *	AllocAndLink( idRenderEntityLocal *edef, idRenderLightLocal *ldef );
-	void					UnlinkAndFree( void );
-	void					FreeSurfaces( void );
-	void					MakeEmpty( void );
-	bool					IsEmpty( void ) const { return numSurfaces == 0; }
-	bool					IsDeferred( void ) const { return numSurfaces == -1; }
-	int						MemoryUsed( void ) const;
-	void					AddActiveInteraction( void );
-
-private:
-	int						dynamicModelFrameCount;
-	void					CreateInteraction( const idRenderModel *model );
-	void					Unlink( void );
-};
-
-void R_CalcInteractionFacing( const idRenderEntityLocal *ent, const srfTriangles_t *tri, const idRenderLightLocal *light, srfCullInfo_t &cullInfo );
-void R_CalcInteractionCullBits( const idRenderEntityLocal *ent, const srfTriangles_t *tri, const idRenderLightLocal *light, srfCullInfo_t &cullInfo );
-void R_FreeInteractionCullInfo( srfCullInfo_t &cullInfo );
-void R_ShowInteractionMemory_f( const idCmdArgs &args );
 
 
 // drawSurf_t structures command the back end to render surfaces
@@ -256,9 +204,6 @@ public:
 	struct viewLight_s *	viewLight;
 
 	areaReference_t *		references;				// each area the light is present in will have a lightRef
-	idInteraction *			firstInteraction;		// doubly linked list
-	idInteraction *			lastInteraction;
-
 	struct doublePortal_s *	foggedPortals;
 };
 
@@ -312,9 +257,6 @@ public:
 	idRenderModelOverlay *	overlay;				// blood overlays on animated models
 
 	areaReference_t *		entityRefs;				// chain of all references
-	idInteraction *			firstInteraction;		// doubly linked list
-	idInteraction *			lastInteraction;
-
 	bool					needsPortalSky;
 };
 
@@ -583,7 +525,6 @@ const idMaterial *R_RemapShaderBySkin( const idMaterial *shader, const idDeclSki
 typedef struct {
 	int		c_sphere_cull_in, c_sphere_cull_clip, c_sphere_cull_out;
 	int		c_box_cull_in, c_box_cull_out;
-	int		c_createInteractions;	// number of calls to idInteraction::CreateInteraction
 	int		c_createLightTris;
 	int		c_generateMd5;
 	int		c_entityDefCallbacks;
@@ -832,7 +773,6 @@ extern idCVar r_renderer;				// forward ARB2 renderer
 extern idCVar r_checkBounds;			// compare all surface bounds with precalculated ones
 
 extern idCVar r_useConstantMaterials;	// 1 = use pre-calculated material registers if possible
-extern idCVar r_useInteractionTable;	// create a full entityDefs * lightDefs table to make finding interactions faster
 extern idCVar r_useNodeCommonChildren;	// stop pushing reference bounds early when possible
 extern idCVar r_useSilRemap;			// 1 = consider verts with the same XYZ, but different ST the same for shadows
 extern idCVar r_useCulling;				// 0 = none, 1 = sphere, 2 = sphere + box
@@ -842,7 +782,6 @@ extern idCVar r_useClippedLightScissors;// 0 = full screen when near clipped, 1 
 extern idCVar r_useEntityCulling;		// 0 = none, 1 = box
 extern idCVar r_useEntityScissors;		// 1 = use custom scissor rectangle for each entity
 extern idCVar r_useFrustumFarDistance;	// if != 0 force the view frustum far distance to this distance
-extern idCVar r_usePreciseTriangleInteractions;	// 1 = do winding clipping to determine if each ambiguous tri should be lit
 extern idCVar r_useDeferredTangents;	// 1 = don't always calc tangents after deform
 extern idCVar r_useCachedDynamicModels;	// 1 = cache snapshots of dynamic models
 extern idCVar r_useInfiniteFarZ;		// 1 = use the no-far-clip-plane trick
@@ -1147,7 +1086,6 @@ void R_LinkLightSurf( const drawSurf_t **link, const srfTriangles_t *tri, const 
 				   const idMaterial *shader, const idScreenRect &scissor );
 
 bool R_CreateAmbientCache( srfTriangles_t *tri, bool needsLighting );
-bool R_CreateLightingCache( const idRenderEntityLocal *ent, const idRenderLightLocal *light, srfTriangles_t *tri );
 
 /*
 ============================================================

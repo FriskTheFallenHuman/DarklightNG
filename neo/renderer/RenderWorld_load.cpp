@@ -102,7 +102,6 @@ void idRenderWorldLocal::FreeWorld() {
 	bakedDrawReported = false;
 
 	areaReferenceAllocator.Shutdown();
-	interactionAllocator.Shutdown();
 
 	mapName = "<FREED>";
 }
@@ -468,19 +467,10 @@ void idRenderWorldLocal::ClearWorld() {
 /*
 =================
 idRenderWorldLocal::FreeDefs
-
-dump all the interactions
 =================
 */
 void idRenderWorldLocal::FreeDefs() {
 	int		i;
-
-	generateAllInteractionsCalled = false;
-
-	if ( interactionTable ) {
-		R_StaticFree( interactionTable );
-		interactionTable = NULL;
-	}
 
 	// free all lightDefs
 	for ( i = 0 ; i < lightDefs.Num() ; i++ ) {

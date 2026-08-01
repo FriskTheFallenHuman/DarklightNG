@@ -122,7 +122,6 @@ renderer_string = ' \
 	tr_deform.cpp \
 	tr_font.cpp \
 	tr_guisurf.cpp \
-	tr_interaction.cpp \
 	tr_light.cpp \
 	tr_lightrun.cpp \
 	tr_main.cpp \

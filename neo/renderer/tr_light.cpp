@@ -75,18 +75,6 @@ bool R_CreateAmbientCache( srfTriangles_t *tri, bool needsLighting ) {
 
 /*
 ==================
-R_CreateLightingCache
-
-Returns false if the cache couldn't be allocated, in which case the surface should be skipped.
-==================
-*/
-bool R_CreateLightingCache( const idRenderEntityLocal *ent, const idRenderLightLocal *light, srfTriangles_t *tri ) {
-	// The sole backend computes light vectors in the interaction vertex program.
-	return true;
-}
-
-/*
-==================
 R_SkyboxTexGen
 ==================
 */
@@ -223,7 +211,7 @@ static void R_SpecularTexGen( drawSurf_t *surf, const idVec3 &globalLightOrigin,
 	bool *used = (bool *)_alloca16( tri->numVerts * sizeof( used[0] ) );
 	memset( used, 0, tri->numVerts * sizeof( used[0] ) );
 
-	// because the interaction may be a very small subset of the full surface,
+	// because a realtime light may use a small subset of the full surface,
 	// it makes sense to only deal with the verts used
 	for ( int j = 0; j < tri->numIndexes; j++ ) {
 		int i = tri->indexes[j];
@@ -296,13 +284,9 @@ viewEntity_t *R_SetEntityDefViewEntity( idRenderEntityLocal *def ) {
 
 	R_AxisToModelMatrix( def->parms.axis, def->parms.origin, vModel->modelMatrix );
 
-	// GenerateAllInteractions may create records outside a rendered view.
-	if ( tr.viewDef ) {
-		myGlMultMatrix( vModel->modelMatrix, tr.viewDef->worldSpace.modelViewMatrix, vModel->modelViewMatrix );
-
-		vModel->next = tr.viewDef->viewEntitys;
-		tr.viewDef->viewEntitys = vModel;
-	}
+	myGlMultMatrix( vModel->modelMatrix, tr.viewDef->worldSpace.modelViewMatrix, vModel->modelViewMatrix );
+	vModel->next = tr.viewDef->viewEntitys;
+	tr.viewDef->viewEntitys = vModel;
 
 	def->viewEntity = vModel;
 
@@ -352,120 +336,6 @@ viewLight_t *R_SetLightDefViewLight( idRenderLightLocal *light ) {
 
 	return vLight;
 }
-
-/*
-=================
-idRenderWorldLocal::CreateLightDefInteractions
-
-When a lightDef is determined to effect the view (contact the frustum and non-0 light), it will check to
-make sure that it has interactions for all the entityDefs that it might possibly contact.
-
-This does not guarantee that all possible interactions for this light are generated, only that
-the ones that may effect the current view are generated. so it does need to be called every view.
-
-This does not cause entityDefs to create dynamic models, all work is done on the referenceBounds.
-
-Only entities visible in the current view need active realtime interactions.
-
-Interactions are usually removed when a entityDef or lightDef is modified, unless the change
-is known to not effect them, so there is no danger of getting a stale interaction, we just need to
-check that needed ones are created.
-
-An interaction can be at three levels:
-
-Don't interact (but share an area) (numSurfaces = 0)
-Entity reference bounds touches light frustum, but surfaces haven't been generated (numSurfaces = -1)
-Light surfaces have been generated and may still be empty due to conservative bounds.
-
-=================
-*/
-void idRenderWorldLocal::CreateLightDefInteractions( idRenderLightLocal *ldef ) {
-	areaReference_t		*eref;
-	areaReference_t		*lref;
-	idRenderEntityLocal		*edef;
-	portalArea_t	*area;
-	idInteraction	*inter;
-
-	for ( lref = ldef->references ; lref ; lref = lref->ownerNext ) {
-		area = lref->area;
-
-		// check all the models in this area
-		for ( eref = area->entityRefs.areaNext ; eref != &area->entityRefs ; eref = eref->areaNext ) {
-			edef = eref->entity;
-
-			// if the entity doesn't have any light-interacting surfaces, we could skip this,
-			// but we don't want to instantiate dynamic models yet, so we can't check that on
-			// most things
-
-			// Off-screen entities do not participate in this view's realtime pass.
-			// GenerateAllInteractions still runs without a viewDef.
-			if ( tr.viewDef && edef->viewCount != tr.viewCount ) {
-				continue;
-			}
-
-			// some big outdoor meshes are flagged to not create any dynamic interactions
-			// when the level designer knows that nearby moving lights shouldn't actually hit them
-			if ( edef->parms.noDynamicInteractions && edef->world->generateAllInteractionsCalled ) {
-				continue;
-			}
-
-			// if any of the edef's interaction match this light, we don't
-			// need to consider it. 
-			if ( r_useInteractionTable.GetBool() && this->interactionTable ) {
-				// allocating these tables may take several megs on big maps, but it saves 3% to 5% of
-				// the CPU time.  The table is updated at interaction::AllocAndLink() and interaction::UnlinkAndFree()
-				int index = ldef->index * this->interactionTableWidth + edef->index;
-				inter = this->interactionTable[ index ];
-				if ( inter ) {
-					continue;
-				}
-			} else {
-				// scan the doubly linked lists, which may have several dozen entries
-
-				// we could check either model refs or light refs for matches, but it is
-				// assumed that there will be less lights in an area than models
-				// so the entity chains should be somewhat shorter (they tend to be fairly close).
-				for ( inter = edef->firstInteraction; inter != NULL; inter = inter->entityNext ) {
-					if ( inter->lightDef == ldef ) {
-						break;
-					}
-				}
-
-				// if we already have an interaction, we don't need to do anything
-				if ( inter != NULL ) {
-					continue;
-				}
-			}
-
-			//
-			// create a new interaction, but don't do any work other than bbox to frustum culling
-			//
-			idInteraction *inter = idInteraction::AllocAndLink( edef, ldef );
-
-			// do a check of the entity reference bounds against the light frustum,
-			// trying to avoid creating a viewEntity if it hasn't been already
-			float	modelMatrix[16];
-			float	*m;
-
-			if ( edef->viewCount == tr.viewCount ) {
-				m = edef->viewEntity->modelMatrix;
-			} else {
-				R_AxisToModelMatrix( edef->parms.axis, edef->parms.origin, modelMatrix );
-				m = modelMatrix;
-			}
-
-			if ( R_CullLocalBox( edef->referenceBounds, m, 6, ldef->frustum ) ) {
-				inter->MakeEmpty();
-				continue;
-			}
-
-			// we will do a more precise per-surface check when we are checking the entity
-
-		}
-	}
-}
-
-//===============================================================================================================
 
 /*
 =================
@@ -587,8 +457,7 @@ idScreenRect R_ClippedLightScissorRectangle( viewLight_t *vLight ) {
 ==================
 R_CalcLightScissorRectangle
 
-The light screen bounds will be used to crop the scissor rect during
-stencil clears and interaction drawing
+The light screen bounds crop realtime lighting work.
 ==================
 */
 int	c_clippedLight, c_unclippedLight;
@@ -667,8 +536,7 @@ if it is determined to not have any visible effect due to being flashed off or t
 Removes lights from the viewLights list if they are completely
 turned off, or completely off screen.
 
-Create any new interactions needed between the viewLights
-and the viewEntitys due to game movement
+Realtime light surfaces are generated later while walking visible entities.
 =================
 */
 void R_AddLightSurfaces( void ) {
@@ -748,7 +616,7 @@ void R_AddLightSurfaces( void ) {
 			if ( lightStageNum == lightShader->GetNumStages() ) {
 				// we went through all the stages and didn't find one that adds anything
 				// remove the light from the viewLights list, and change its frame marker
-				// so interaction generation doesn't think the light is visible
+				// so transient light generation does not treat it as visible
 				*ptr = vLight->next;
 				light->viewCount = -1;
 				continue;
@@ -779,9 +647,6 @@ void R_AddLightSurfaces( void ) {
 		// this one stays on the list
 		ptr = &vLight->next;
 
-		// Create interactions with visible entities the light may touch. Any
-		// per-surface work is deferred until we walk through the viewEntities.
-		tr.viewDef->renderWorld->CreateLightDefInteractions( light );
 		tr.pc.c_viewLights++;
 
 		// fog lights will need to draw the light frustum triangles, so make sure they
@@ -1169,7 +1034,7 @@ static void R_AddAmbientDrawsurfs( viewEntity_t *vEntity ) {
 			// add the surface for drawing
 			R_AddDrawSurf( tri, vEntity, &vEntity->entityDef->parms, shader, vEntity->scissorRect );
 
-			// ambientViewCount is used to allow light interactions to be rejected
+			// ambientViewCount lets transient realtime lighting reject surfaces
 			// if the ambient surface isn't visible at all
 			tri->ambientViewCount = tr.viewCount;
 		}
@@ -1178,6 +1043,175 @@ static void R_AddAmbientDrawsurfs( viewEntity_t *vEntity ) {
 	// add the lightweight decal surfaces
 	for ( idRenderModelDecal *decal = def->decals; decal; decal = decal->Next() ) {
 		decal->AddDecalDrawSurf( vEntity );
+	}
+}
+
+/*
+====================
+R_CreateTransientLightTris
+
+Builds a frame-local subset of a visible surface for one realtime light.
+Nothing is retained on the entity or light after the view is submitted.
+====================
+*/
+static srfTriangles_t *R_CreateTransientLightTris( const idRenderEntityLocal *entityDef,
+		const srfTriangles_t *tri, const idRenderLightLocal *lightDef, const idMaterial *shader ) {
+	static const float LIGHT_CLIP_EPSILON = 0.1f;
+	idPlane localClipPlanes[6];
+	int frontBits = 0;
+
+	for ( int i = 0; i < 6; i++ ) {
+		R_GlobalPlaneToLocal( entityDef->modelMatrix, -lightDef->frustum[i], localClipPlanes[i] );
+		if ( tri->bounds.PlaneDistance( localClipPlanes[i] ) >= LIGHT_CLIP_EPSILON ) {
+			frontBits |= 1 << i;
+		}
+	}
+
+	const bool allInside = frontBits == ( ( 1 << 6 ) - 1 );
+	const bool includeBackFaces = r_lightAllBackFaces.GetBool() ||
+		lightDef->lightShader->LightEffectsBackSides() || shader->ReceivesLightingOnBackSides() ||
+		entityDef->parms.noSelfShadow || entityDef->parms.noShadow;
+
+	byte *facing = NULL;
+	if ( !includeBackFaces ) {
+		const int numFaces = tri->numIndexes / 3;
+		if ( !tri->facePlanes || !tri->facePlanesCalculated ) {
+			R_DeriveFacePlanes( const_cast<srfTriangles_t *>( tri ) );
+		}
+
+		idVec3 localLightOrigin;
+		R_GlobalPointToLocal( entityDef->modelMatrix, lightDef->globalLightOrigin, localLightOrigin );
+		facing = (byte *)_alloca16( numFaces * sizeof( facing[0] ) );
+		float *planeSide = (float *)_alloca16( numFaces * sizeof( planeSide[0] ) );
+		SIMDProcessor->Dot( planeSide, localLightOrigin, tri->facePlanes, numFaces );
+		SIMDProcessor->CmpGE( facing, planeSide, 0.0f, numFaces );
+	}
+
+	if ( allInside && includeBackFaces ) {
+		srfTriangles_t *lightTris = (srfTriangles_t *)R_ClearedFrameAlloc( sizeof( *lightTris ) );
+		lightTris->ambientSurface = const_cast<srfTriangles_t *>( tri );
+		lightTris->verts = tri->verts;
+		lightTris->numVerts = tri->numVerts;
+		lightTris->indexes = tri->indexes;
+		lightTris->numIndexes = tri->numIndexes;
+		lightTris->bounds = tri->bounds;
+		lightTris->ambientCache = tri->ambientCache;
+		lightTris->indexCache = tri->indexCache;
+		tr.pc.c_createLightTris++;
+		return lightTris;
+	}
+
+	byte *cullBits = NULL;
+	if ( !allInside ) {
+		cullBits = (byte *)_alloca16( tri->numVerts * sizeof( cullBits[0] ) );
+		SIMDProcessor->Memset( cullBits, 0, tri->numVerts * sizeof( cullBits[0] ) );
+		float *planeSide = (float *)_alloca16( tri->numVerts * sizeof( planeSide[0] ) );
+
+		for ( int i = 0; i < 6; i++ ) {
+			if ( frontBits & ( 1 << i ) ) {
+				continue;
+			}
+			SIMDProcessor->Dot( planeSide, localClipPlanes[i], tri->verts, tri->numVerts );
+			SIMDProcessor->CmpLT( cullBits, i, planeSide, LIGHT_CLIP_EPSILON, tri->numVerts );
+		}
+	}
+
+	glIndex_t *indexes = (glIndex_t *)R_FrameAlloc( tri->numIndexes * sizeof( indexes[0] ) );
+	int numIndexes = 0;
+	for ( int i = 0, faceNum = 0; i < tri->numIndexes; i += 3, faceNum++ ) {
+		if ( facing && !facing[faceNum] ) {
+			continue;
+		}
+
+		const int i0 = tri->indexes[i + 0];
+		const int i1 = tri->indexes[i + 1];
+		const int i2 = tri->indexes[i + 2];
+		if ( cullBits && ( cullBits[i0] & cullBits[i1] & cullBits[i2] ) ) {
+			continue;
+		}
+
+		indexes[numIndexes + 0] = i0;
+		indexes[numIndexes + 1] = i1;
+		indexes[numIndexes + 2] = i2;
+		numIndexes += 3;
+	}
+
+	if ( numIndexes == 0 ) {
+		return NULL;
+	}
+
+	srfTriangles_t *lightTris = (srfTriangles_t *)R_ClearedFrameAlloc( sizeof( *lightTris ) );
+	lightTris->ambientSurface = const_cast<srfTriangles_t *>( tri );
+	lightTris->verts = tri->verts;
+	lightTris->numVerts = tri->numVerts;
+	lightTris->indexes = indexes;
+	lightTris->numIndexes = numIndexes;
+	lightTris->ambientCache = tri->ambientCache;
+	SIMDProcessor->MinMax( lightTris->bounds[0], lightTris->bounds[1], tri->verts, indexes, numIndexes );
+	tr.pc.c_createLightTris++;
+	return lightTris;
+}
+
+/*
+====================
+R_AddTransientLightSurfaces
+
+Adds frame-local realtime, fog, and blend-light surfaces for one visible entity.
+====================
+*/
+static void R_AddTransientLightSurfaces( viewEntity_t *vEntity, const idRenderModel *model ) {
+	idRenderEntityLocal *entityDef = vEntity->entityDef;
+	const idBounds modelBounds = model->Bounds( &entityDef->parms );
+
+	for ( viewLight_t *vLight = tr.viewDef->viewLights; vLight; vLight = vLight->next ) {
+		idRenderLightLocal *lightDef = vLight->lightDef;
+		idScreenRect lightScissor = vLight->scissorRect;
+		lightScissor.Intersect( vEntity->scissorRect );
+		if ( lightScissor.IsEmpty() || R_CullLocalBox( modelBounds, vEntity->modelMatrix, 6, lightDef->frustum ) ) {
+			continue;
+		}
+
+		const bool useBakedSurfaceLighting = lightDef->world && lightDef->world->hasBakedLightmaps &&
+			!r_skipBakedLightmaps.GetBool() && lightDef->parms.bakedLight && !lightDef->lightHasMoved;
+
+		for ( int i = 0; i < model->NumSurfaces(); i++ ) {
+			const modelSurface_t *surface = model->Surface( i );
+			const srfTriangles_t *tri = surface->geometry;
+			if ( !tri || !tri->numIndexes || tri->ambientViewCount != tr.viewCount ) {
+				continue;
+			}
+
+			const idMaterial *shader = R_RemapShaderBySkin( surface->shader,
+				entityDef->parms.customSkin, entityDef->parms.customShader );
+			if ( !shader || !shader->ReceivesLighting() ||
+				shader->Spectrum() != vLight->lightShader->Spectrum() ) {
+				continue;
+			}
+			if ( R_CullLocalBox( tri->bounds, vEntity->modelMatrix, 6, lightDef->frustum ) ) {
+				continue;
+			}
+			if ( useBakedSurfaceLighting && tri->lightmapAtlas >= 0 && tri->lightmapTexCoords &&
+				tri->bakedLightmap && tri->bakedDeluxemap ) {
+				continue;
+			}
+
+			srfTriangles_t *lightTris = R_CreateTransientLightTris( entityDef, tri, lightDef, shader );
+			if ( !lightTris ) {
+				continue;
+			}
+
+			const idMaterial *drawShader = shader;
+			R_GlobalShaderOverride( &drawShader );
+			if ( !drawShader ) {
+				continue;
+			}
+
+			if ( shader->Coverage() == MC_TRANSLUCENT ) {
+				R_LinkLightSurf( &vLight->translucentInteractions, lightTris, vEntity, drawShader, lightScissor );
+			} else {
+				R_LinkLightSurf( &vLight->interactions, lightTris, vEntity, drawShader, lightScissor );
+			}
+		}
 	}
 }
 
@@ -1199,15 +1233,14 @@ idScreenRect R_CalcEntityScissorRectangle( viewEntity_t *vEntity ) {
 ===================
 R_AddModelSurfaces
 
-Here is where dynamic models actually get instantiated and necessary
-realtime interactions are created. This is done on a sort-by-model basis
+Here is where dynamic models are instantiated and their transient realtime
+light surfaces are created. This is done on a sort-by-model basis
 to keep source data in cache (most likely L2), since dynamic models will
 typically be lit by two or more lights.
 ===================
 */
 void R_AddModelSurfaces( void ) {
 	viewEntity_t		*vEntity;
-	idInteraction		*inter, *next;
 	idRenderModel		*model;
 
 	// clear the ambient surface list
@@ -1267,36 +1300,8 @@ void R_AddModelSurfaces( void ) {
 			}
 
 			R_AddAmbientDrawsurfs( vEntity );
+			R_AddTransientLightSurfaces( vEntity, model );
 			tr.pc.c_visibleViewEntities++;
-		}
-
-		//
-		// for all the entity / light interactions on this entity, add them to the view
-		//
-		if ( tr.viewDef->isXraySubview ) {
-			if ( vEntity->entityDef->parms.xrayIndex == 2 ) {
-				for ( inter = vEntity->entityDef->firstInteraction; inter != NULL && !inter->IsEmpty(); inter = next ) {
-					next = inter->entityNext;
-					if ( inter->lightDef->viewCount != tr.viewCount ) {
-						continue;
-					}
-					inter->AddActiveInteraction();
-				}
-			}
-		} else {
-			// all empty interactions are at the end of the list so once the
-			// first is encountered all the remaining interactions are empty
-			for ( inter = vEntity->entityDef->firstInteraction; inter != NULL && !inter->IsEmpty(); inter = next ) {
-				next = inter->entityNext;
-
-				// skip any lights that aren't currently visible
-				// this is run after any lights that are turned off have already
-				// been removed from the viewLights list, and had their viewCount cleared
-				if ( inter->lightDef->viewCount != tr.viewCount ) {
-					continue;
-				}
-				inter->AddActiveInteraction();
-			}
 		}
 
 		if ( vEntity->entityDef->parms.timeGroup ) {

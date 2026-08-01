@@ -92,7 +92,6 @@ public:
 
 	virtual bool			CheckAreaForPortalSky( int areaNum );
 
-	virtual	void			GenerateAllInteractions();
 	virtual void			RegenerateWorld();
 
 	virtual void			ProjectDecalOntoWorld( const idFixedWinding &winding, const idVec3 &projectionOrigin, const bool parallel, const float fadeDepth, const idMaterial *material, const int startTime );
@@ -163,19 +162,6 @@ public:
 	idList<idRenderLightLocal*>		lightDefs;
 
 	idBlockAlloc<areaReference_t, 1024> areaReferenceAllocator;
-	idBlockAlloc<idInteraction, 256>	interactionAllocator;
-
-	// all light / entity interactions are referenced here for fast lookup without
-	// having to crawl the doubly linked lists.  EnntityDefs are sequential for better
-	// cache access, because the table is accessed by light in idRenderWorldLocal::CreateLightDefInteractions()
-	// Growing this table is time consuming, so we add a pad value to the number
-	// of entityDefs and lightDefs
-	idInteraction **		interactionTable;
-	int						interactionTableWidth;		// entityDefs
-	int						interactionTableHeight;		// lightDefs
-
-
-	bool					generateAllInteractionsCalled;
 
 	//-----------------------
 	// RenderWorld_load.cpp
@@ -238,7 +224,6 @@ public:
 	//--------------------------
 	// RenderWorld.cpp
 
-	void					ResizeInteractionTable();
 
 	void					AddEntityRefToArea( idRenderEntityLocal *def, portalArea_t *area );
 	void					AddLightRefToArea( idRenderLightLocal *light, portalArea_t *area );
@@ -249,15 +234,10 @@ public:
 
 	float					DrawTextLength( const char *text, float scale, int len = 0 );
 
-	void					FreeInteractions();
-
 	void					PushVolumeIntoTree_r( idRenderEntityLocal *def, idRenderLightLocal *light, const idSphere *sphere, int numPoints, const idVec3 (*points), int nodeNum );
 
 	void					PushVolumeIntoTree( idRenderEntityLocal *def, idRenderLightLocal *light, int numPoints, const idVec3 (*points) );
 
-	//-------------------------------
-	// tr_light.c
-	void					CreateLightDefInteractions( idRenderLightLocal *ldef );
 };
 
 #endif /* !__RENDERWORLDLOCAL_H__ */

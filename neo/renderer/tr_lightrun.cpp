@@ -31,8 +31,8 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "tr_local.h"
 
-/* Runtime lights retain persistent entity/light interaction records. Static
-   world lighting is supplied by the baked lightmap and deluxemap pass. */
+/* Static world lighting is supplied by the baked lightmap and deluxemap pass.
+   Realtime light surfaces are generated transiently for each visible view. */
 
 /*
 =================================================================================
@@ -502,7 +502,7 @@ void R_CreateLightDefFogPortals( idRenderLightLocal *ldef ) {
 ====================
 R_FreeLightDefDerivedData
 
-Frees all references and lit surfaces from the light
+Frees all references and derived data from the light
 ====================
 */
 void R_FreeLightDefDerivedData( idRenderLightLocal *ldef ) {
@@ -511,11 +511,6 @@ void R_FreeLightDefDerivedData( idRenderLightLocal *ldef ) {
 	// rmove any portal fog references
 	for ( doublePortal_t *dp = ldef->foggedPortals ; dp ; dp = dp->nextFoggedPortal ) {
 		dp->fogLight = NULL;
-	}
-
-	// free all the interactions
-	while ( ldef->firstInteraction != NULL ) {
-		ldef->firstInteraction->UnlinkAndFree();
 	}
 
 	// free all the references to the light
@@ -565,11 +560,6 @@ void R_FreeEntityDefDerivedData( idRenderEntityLocal *def, bool keepDecals, bool
 		}
 	}
 
-	// free all the interactions
-	while ( def->firstInteraction != NULL ) {
-		def->firstInteraction->UnlinkAndFree();
-	}
-
 	// clear the dynamic model if present
 	if ( def->dynamicModel ) {
 		def->dynamicModel = NULL;
@@ -609,11 +599,6 @@ R_FreeEntityDefDerivedData
 ==================
 */
 void R_ClearEntityDefDynamicModel( idRenderEntityLocal *def ) {
-	// free all the interaction surfaces
-	for( idInteraction *inter = def->firstInteraction; inter != NULL && !inter->IsEmpty(); inter = inter->entityNext ) {
-		inter->FreeSurfaces();
-	}
-
 	// clear the dynamic model if present
 	if ( def->dynamicModel ) {
 		def->dynamicModel = NULL;
@@ -730,8 +715,7 @@ void R_ReCreateWorldReferences( void ) {
 	idRenderEntityLocal *def;
 	idRenderLightLocal *light;
 
-	// let the interaction generation code know this shouldn't be optimized for
-	// a particular view
+	// Rebuilt references are not associated with a particular view.
 	tr.viewDef = NULL;
 
 	for ( j = 0; j < tr.worlds.Num(); j++ ) {
@@ -768,8 +752,7 @@ void R_ReCreateWorldReferences( void ) {
 ===================
 R_RegenerateWorld_f
 
-Frees and regenerates all references and interactions, which
-must be done when switching between display list mode and immediate mode
+Frees and regenerates all world references after renderer data changes.
 ===================
 */
 void R_RegenerateWorld_f( const idCmdArgs &args ) {

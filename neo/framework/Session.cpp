@@ -1672,9 +1672,6 @@ void idSessionLocal::ExecuteMapChange( bool noFadeWipe ) {
 	int	msec = Sys_Milliseconds() - start;
 	common->Printf( "%6d msec to load %s\n", msec, mapString.c_str() );
 
-	// let the renderSystem generate interactions now that everything is spawned
-	rw->GenerateAllInteractions();
-
 	common->PrintWarnings();
 
 	if ( guiLoading && bytesNeededForMapLoad ) {

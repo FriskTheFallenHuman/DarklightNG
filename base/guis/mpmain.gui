@@ -4776,58 +4776,6 @@ gui::str_voteValue: the corresponding value voted for
 					visible	1
 				}
 			}
-			windowDef ADV2
-			{
-				rect	20,85,351,16
-				visible	1
-				windowDef ADV2L
-				{
-					rect	0, 0, 8, 16
-					background	"gui/mainmenu/select_edge"
-					matcolor	0, 0, 0, 1
-					noevents	1
-				}
-				windowDef ADV2M
-				{
-					rect	8, 0, 320, 16
-					background	"gui/mainmenu/select_border"
-					matcolor	0, 0, 0, 1
-					noevents	1
-					visible	1
-				}
-				windowDef ADV2R
-				{
-					rect	328, 0, 8, 16
-					background	"gui/mainmenu/select_angle"
-					matcolor	0, 0, 0, 1
-					noevents	1
-					visible	1
-				}
-				windowDef ADV2Title
-				{
-					rect	1, 1, 260, 14
-					text	"#str_04123"
-					font	"fonts/bank"
-					textscale	0.25
-					textalign	2
-					textaligny	-6
-					forecolor	1, 1, 1, 1
-					visible	1
-				}
-				choiceDef ADV2Primary
-				{
-					rect	290, 1, 50, 14
-					choices	"#str_04221"
-					cvar	"r_shadows"
-					choiceType	0
-					font	"fonts/bank"
-					textscale	0.25
-					textalign	1
-					textaligny	-6
-					forecolor	0.6, 0.8, 0.8, 1
-					visible	1
-				}
-			}
 /*
 			windowDef ADV3
 			{
