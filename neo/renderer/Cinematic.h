@@ -32,7 +32,7 @@ If you have questions concerning this license or the applicable additional terms
 /*
 ===============================================================================
 
-	RoQ cinematic
+	Bink cinematic
 
 	Multiple idCinematics can run simultaniously.
 	A single idCinematic can be reused for multiple files if desired.

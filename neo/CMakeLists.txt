@@ -104,6 +104,7 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
 file(GLOB WIN32_SOURCES CONFIGURE_DEPENDS "sys/win32/*.cpp")
 list(APPEND ENGINE_SOURCES
 	${WIN32_SOURCES}
+	"${CMAKE_CURRENT_SOURCE_DIR}/libbink/bink.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/sys/sys_local.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/sys/win32/rc/CreateResourceIDs.cpp"
 )
@@ -139,6 +140,7 @@ set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tools/compilers/dmap/lightmap.c
 	"BasicRuntimeChecks=Default"
 )
 set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tools/compilers/dmap/lightmap.cpp" PROPERTY SKIP_PRECOMPILE_HEADERS ON)
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/libbink/bink.cpp" PROPERTY SKIP_PRECOMPILE_HEADERS ON)
 target_compile_definitions(doom3 PRIVATE
 	__DOOM__
 	__DOOM_DLL__

@@ -170,7 +170,7 @@ ID_INLINE void idCmdSystem::ArgCompletion_ImageName( const idCmdArgs &args, void
 }
 
 ID_INLINE void idCmdSystem::ArgCompletion_VideoName( const idCmdArgs &args, void(*callback)( const char *s ) ) {
-	cmdSystem->ArgCompletion_FolderExtension( args, callback, "video/", false, ".roq", NULL );
+	cmdSystem->ArgCompletion_FolderExtension( args, callback, "video/", false, ".bik", NULL );
 }
 
 ID_INLINE void idCmdSystem::ArgCompletion_ConfigName( const idCmdArgs &args, void(*callback)( const char *s ) ) {
