@@ -420,8 +420,8 @@ void RB_GLSL_DrawBakedLightmaps( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 				visibleBakedSurfaces++;
 			}
 		}
-		common->Printf( "Baked map draw active: %i/%i visible surfaces, %i atlas surfaces, %i/%i static lights using baked surfaces (%i moved)\n",
-			visibleBakedSurfaces, numDrawSurfs, renderWorld->bakedSurfaceCount,
+		common->Printf( "Baked map draw active: %i/%i visible batches, %i runtime batches from %i atlas surfaces, %i/%i static lights using baked surfaces (%i moved)\n",
+			visibleBakedSurfaces, numDrawSurfs, renderWorld->bakedBatchCount, renderWorld->bakedSurfaceCount,
 			renderWorld->bakedLightSuppressionCount, renderWorld->bakedLightCandidateCount, renderWorld->bakedLightMovedCount );
 		renderWorld->bakedDrawReported = true;
 	}

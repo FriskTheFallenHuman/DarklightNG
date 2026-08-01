@@ -2028,7 +2028,8 @@ void R_RemoveUnusedVerts( srfTriangles_t *tri ) {
 =================
 R_MergeSurfaceList
 
-Only deals with vertexes and indexes, not silhouettes, planes, etc.
+Merges vertexes, indexes, and a compatible secondary lightmap stream, but not
+silhouettes, planes, etc.
 Does NOT perform a cleanup triangles, so there may be duplicated verts in the result.
 =================
 */
@@ -2038,6 +2039,24 @@ srfTriangles_t	*R_MergeSurfaceList( const srfTriangles_t **surfaces, int numSurf
 	int				i, j;
 	int				totalVerts;
 	int				totalIndexes;
+	bool			mergeLightmapTexCoords;
+
+	if ( numSurfaces <= 0 ) {
+		return NULL;
+	}
+
+	mergeLightmapTexCoords = surfaces[0]->lightmapTexCoords != NULL;
+	for ( i = 1; i < numSurfaces; i++ ) {
+		if ( ( surfaces[i]->lightmapTexCoords != NULL ) != mergeLightmapTexCoords ) {
+			common->Error( "R_MergeSurfaceList: inconsistent secondary lightmap streams" );
+		}
+		if ( mergeLightmapTexCoords &&
+			( surfaces[i]->lightmapAtlas != surfaces[0]->lightmapAtlas ||
+			  surfaces[i]->bakedLightmap != surfaces[0]->bakedLightmap ||
+			  surfaces[i]->bakedDeluxemap != surfaces[0]->bakedDeluxemap ) ) {
+			common->Error( "R_MergeSurfaceList: incompatible baked lightmap atlases" );
+		}
+	}
 
 	totalVerts = 0;
 	totalIndexes = 0;
@@ -2051,12 +2070,22 @@ srfTriangles_t	*R_MergeSurfaceList( const srfTriangles_t **surfaces, int numSurf
 	newTri->numIndexes = totalIndexes;
 	R_AllocStaticTriSurfVerts( newTri, newTri->numVerts );
 	R_AllocStaticTriSurfIndexes( newTri, newTri->numIndexes );
+	if ( mergeLightmapTexCoords ) {
+		newTri->lightmapTexCoords = (idVec2 *)R_StaticAlloc( newTri->numVerts * sizeof( newTri->lightmapTexCoords[0] ) );
+		newTri->lightmapAtlas = surfaces[0]->lightmapAtlas;
+		newTri->bakedLightmap = surfaces[0]->bakedLightmap;
+		newTri->bakedDeluxemap = surfaces[0]->bakedDeluxemap;
+	}
 
 	totalVerts = 0;
 	totalIndexes = 0;
 	for ( i = 0 ; i < numSurfaces ; i++ ) {
 		tri = surfaces[i];
 		memcpy( newTri->verts + totalVerts, tri->verts, tri->numVerts * sizeof( *tri->verts ) );
+		if ( mergeLightmapTexCoords ) {
+			memcpy( newTri->lightmapTexCoords + totalVerts, tri->lightmapTexCoords,
+				tri->numVerts * sizeof( tri->lightmapTexCoords[0] ) );
+		}
 		for ( j = 0 ; j < tri->numIndexes ; j++ ) {
 			newTri->indexes[ totalIndexes + j ] = totalVerts + tri->indexes[j];
 		}
@@ -2071,7 +2100,8 @@ srfTriangles_t	*R_MergeSurfaceList( const srfTriangles_t **surfaces, int numSurf
 =================
 R_MergeTriangles
 
-Only deals with vertexes and indexes, not silhouettes, planes, etc.
+Merges vertexes, indexes, and a compatible secondary lightmap stream, but not
+silhouettes, planes, etc.
 Does NOT perform a cleanup triangles, so there may be duplicated verts in the result.
 =================
 */

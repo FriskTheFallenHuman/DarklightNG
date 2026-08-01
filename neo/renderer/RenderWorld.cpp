@@ -114,6 +114,7 @@ idRenderWorldLocal::idRenderWorldLocal() {
 	mapArchiveTimeStamp = FILE_NOT_FOUND_TIMESTAMP;
 	hasBakedLightmaps = false;
 	bakedSurfaceCount = 0;
+	bakedBatchCount = 0;
 	bakedLightSuppressionCount = 0;
 	bakedLightCandidateCount = 0;
 	bakedLightMovedCount = 0;

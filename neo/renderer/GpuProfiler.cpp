@@ -46,6 +46,8 @@ struct gpuMarkerQuery_t {
 	int depth;
 	int startQuery;
 	int endQuery;
+	int startDrawCalls;
+	int drawCalls;
 };
 
 struct gpuQueryFrame_t {
@@ -60,6 +62,7 @@ struct gpuQueryFrame_t {
 struct gpuResolvedMarker_t {
 	char name[48];
 	int depth;
+	int drawCalls;
 	gpuTimestamp_t start;
 	gpuTimestamp_t end;
 };
@@ -135,6 +138,7 @@ void RB_GPUProfilerResolveFrames( void ) {
 			gpuResolvedMarker_t &resolvedMarker = resolved.markers[markerIndex];
 			idStr::Copynz( resolvedMarker.name, queryMarker.name, sizeof( resolvedMarker.name ) );
 			resolvedMarker.depth = queryMarker.depth;
+			resolvedMarker.drawCalls = queryMarker.drawCalls;
 			qglGpuGetQueryObjectui64v( queryFrame.queries[queryMarker.startQuery], GL_QUERY_RESULT, &resolvedMarker.start );
 			qglGpuGetQueryObjectui64v( queryFrame.queries[queryMarker.endQuery], GL_QUERY_RESULT, &resolvedMarker.end );
 		}
@@ -171,6 +175,8 @@ int RB_GPUProfilerBeginMarker( const char *name ) {
 	marker.depth = depth;
 	marker.startQuery = 2 + markerIndex * 2;
 	marker.endQuery = marker.startQuery + 1;
+	marker.startDrawCalls = backEnd.pc.c_drawElements;
+	marker.drawCalls = 0;
 	qglGpuQueryCounter( queryFrame.queries[marker.startQuery], GL_TIMESTAMP_VALUE );
 	return markerIndex;
 }
@@ -182,7 +188,9 @@ void RB_GPUProfilerEndMarker( int markerHandle ) {
 
 	if ( markerHandle >= 0 && gpuProfiler.activeFrame >= 0 ) {
 		gpuQueryFrame_t &queryFrame = gpuProfiler.frames[gpuProfiler.activeFrame];
-		qglGpuQueryCounter( queryFrame.queries[queryFrame.markers[markerHandle].endQuery], GL_TIMESTAMP_VALUE );
+		gpuMarkerQuery_t &marker = queryFrame.markers[markerHandle];
+		marker.drawCalls = backEnd.pc.c_drawElements - marker.startDrawCalls;
+		qglGpuQueryCounter( queryFrame.queries[marker.endQuery], GL_TIMESTAMP_VALUE );
 	}
 
 	if ( gpuProfiler.markerDepth > 0 ) {
@@ -385,8 +393,8 @@ void RB_GPUProfilerDraw( void ) {
 	const gpuResolvedFrame_t &frame = gpuProfiler.displayFrame;
 	const int rowCount = frame.valid ? frame.numMarkers : 0;
 	const float panelHeight = 52.0f + rowCount * 11.0f + ( frame.droppedMarkers ? 11.0f : 0.0f );
-	const float graphX = 255.0f;
-	const float graphWidth = 369.0f;
+	const float graphX = 292.0f;
+	const float graphWidth = 332.0f;
 	const float graphTop = 41.0f;
 	const idVec4 panelColor( 0.015f, 0.02f, 0.03f, 0.88f );
 	const idVec4 gridColor( 0.25f, 0.3f, 0.38f, 0.45f );
@@ -446,6 +454,7 @@ void RB_GPUProfilerDraw( void ) {
 	idStr::snPrintf( text, sizeof( text ), "GPU FRAME %u   START 0.000 ms   END %.3f ms   TOTAL %.3f ms   DELAY %u",
 		frame.serial, frameMilliseconds, frameMilliseconds, frameDelay );
 	RB_GPUProfilerDrawText( fontImage, 15.0f, 14.0f, textColor, text );
+	RB_GPUProfilerDrawText( fontImage, 15.0f, 27.0f, mutedTextColor, "D = DRAWS" );
 	RB_GPUProfilerDrawText( fontImage, graphX - 2.0f, 27.0f, mutedTextColor, "0" );
 	idStr::snPrintf( text, sizeof( text ), "%.3f ms", frameMilliseconds );
 	RB_GPUProfilerDrawText( fontImage, graphX + graphWidth - idStr::Length( text ) * 6.0f, 27.0f, mutedTextColor, text );
@@ -460,9 +469,9 @@ void RB_GPUProfilerDraw( void ) {
 		const double startMilliseconds = double( markerStart - frame.start ) * 0.000001;
 		const double endMilliseconds = double( markerEnd - frame.start ) * 0.000001;
 		const double durationMilliseconds = endMilliseconds - startMilliseconds;
-		idStr::snPrintf( text, sizeof( text ), "%*s%-16.16s %5.2f-%5.2f %5.2fms", marker.depth, "", marker.name,
-			startMilliseconds, endMilliseconds, durationMilliseconds );
-		RB_GPUProfilerDrawText( fontImage, 15.0f, graphTop + markerIndex * 11.0f, textColor, text, 39 );
+		idStr::snPrintf( text, sizeof( text ), "%*s%-14.14s %4iD %5.2f-%5.2f %5.2fms", marker.depth, "", marker.name,
+			marker.drawCalls, startMilliseconds, endMilliseconds, durationMilliseconds );
+		RB_GPUProfilerDrawText( fontImage, 15.0f, graphTop + markerIndex * 11.0f, textColor, text, 45 );
 	}
 	if ( frame.droppedMarkers ) {
 		idStr::snPrintf( text, sizeof( text ), "+ %i GPU MARKERS OMITTED", frame.droppedMarkers );

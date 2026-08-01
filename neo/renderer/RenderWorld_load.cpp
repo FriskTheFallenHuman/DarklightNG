@@ -96,6 +96,7 @@ void idRenderWorldLocal::FreeWorld() {
 		hasBakedLightmaps = false;
 	}
 	bakedSurfaceCount = 0;
+	bakedBatchCount = 0;
 	bakedLightSuppressionCount = 0;
 	bakedLightCandidateCount = 0;
 	bakedLightMovedCount = 0;
@@ -121,6 +122,66 @@ void idRenderWorldLocal::TouchWorldModels( void ) {
 
 /*
 ================
+R_CanBatchBakedSurfaces
+================
+*/
+static bool R_CanBatchBakedSurfaces( const modelSurface_t &first, const modelSurface_t &second ) {
+	const srfTriangles_t *firstTri = first.geometry;
+	const srfTriangles_t *secondTri = second.geometry;
+	if ( !firstTri || !secondTri || first.shader != second.shader ) {
+		return false;
+	}
+	if ( first.shader->Coverage() != MC_OPAQUE || !first.shader->ReceivesLighting() || first.shader->IsDiscrete() ) {
+		return false;
+	}
+	return firstTri->lightmapAtlas >= 0 &&
+		firstTri->lightmapAtlas == secondTri->lightmapAtlas &&
+		firstTri->lightmapTexCoords && secondTri->lightmapTexCoords &&
+		firstTri->bakedLightmap && firstTri->bakedLightmap == secondTri->bakedLightmap &&
+		firstTri->bakedDeluxemap && firstTri->bakedDeluxemap == secondTri->bakedDeluxemap;
+}
+
+/*
+================
+R_AddBatchedModelSurfaces
+
+Dmap lightmap charts are intentionally separate surfaces in mapProcFile004.
+Consecutive charts with identical draw state remain spatially local, so merge
+them into one resident VBO/IBO without broadening culling to an entire model.
+================
+*/
+static int R_AddBatchedModelSurfaces( idRenderModel *model, idList<modelSurface_t> &surfaces ) {
+	int bakedBatches = 0;
+	for ( int first = 0; first < surfaces.Num(); ) {
+		int end = first + 1;
+		while ( end < surfaces.Num() && R_CanBatchBakedSurfaces( surfaces[first], surfaces[end] ) ) {
+			end++;
+		}
+
+		modelSurface_t outputSurface = surfaces[first];
+		if ( end - first > 1 ) {
+			idList<const srfTriangles_t *> batch;
+			batch.SetNum( end - first );
+			for ( int i = first; i < end; i++ ) {
+				batch[i - first] = surfaces[i].geometry;
+			}
+			outputSurface.geometry = R_MergeSurfaceList( batch.Ptr(), batch.Num() );
+			for ( int i = first; i < end; i++ ) {
+				R_FreeStaticTriSurf( surfaces[i].geometry );
+			}
+		}
+
+		model->AddSurface( outputSurface );
+		if ( outputSurface.geometry->bakedLightmap && outputSurface.geometry->bakedDeluxemap ) {
+			bakedBatches++;
+		}
+		first = end;
+	}
+	return bakedBatches;
+}
+
+/*
+================
 idRenderWorldLocal::ParseModel
 ================
 */
@@ -130,6 +191,7 @@ idRenderModel *idRenderWorldLocal::ParseModel( idLexer *src, bool hasLightmapUVs
 	int				i, j;
 	srfTriangles_t	*tri;
 	modelSurface_t	surf;
+	idList<modelSurface_t> parsedSurfaces;
 
 	src->ExpectTokenString( "{" );
 
@@ -150,6 +212,7 @@ idRenderModel *idRenderWorldLocal::ParseModel( idLexer *src, bool hasLightmapUVs
 		src->ExpectAnyToken( &token );
 
 		surf.shader = declManager->FindMaterial( token );
+		surf.id = i;
 
 		((idMaterial*)surf.shader)->AddReference();
 
@@ -208,12 +271,18 @@ idRenderModel *idRenderWorldLocal::ParseModel( idLexer *src, bool hasLightmapUVs
 		}
 		src->ExpectTokenString( "}" );
 
-		// add the completed surface to the model
-		model->AddSurface( surf );
+		parsedSurfaces.Append( surf );
 	}
 
 	src->ExpectTokenString( "}" );
 
+	if ( hasBakedLightmaps ) {
+		bakedBatchCount += R_AddBatchedModelSurfaces( model, parsedSurfaces );
+	} else {
+		for ( i = 0; i < parsedSurfaces.Num(); i++ ) {
+			model->AddSurface( parsedSurfaces[i] );
+		}
+	}
 	model->FinishSurfaces();
 
 	return model;
@@ -664,8 +733,13 @@ bool idRenderWorldLocal::InitFromMap( const char *name ) {
 	AddWorldModelEntities();
 	ClearPortalStates();
 	if ( procHasLightmapUVs ) {
-		common->Printf( "Baked map load: archive=%s, atlas surfaces=%i\n",
-			hasBakedLightmaps ? "mounted" : "missing (realtime fallback)", bakedSurfaceCount );
+		if ( hasBakedLightmaps && bakedBatchCount > 0 ) {
+			common->Printf( "Baked map load: archive=mounted, atlas surfaces=%i, runtime batches=%i (%.1fx fewer surfaces)\n",
+				bakedSurfaceCount, bakedBatchCount, (float)bakedSurfaceCount / bakedBatchCount );
+		} else {
+			common->Printf( "Baked map load: archive=%s, atlas surfaces=%i\n",
+				hasBakedLightmaps ? "mounted" : "missing (realtime fallback)", bakedSurfaceCount );
+		}
 	}
 
 	// done!
