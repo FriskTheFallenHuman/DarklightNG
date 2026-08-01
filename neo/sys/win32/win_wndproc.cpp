@@ -71,10 +71,6 @@ void WIN_Sizing(WORD side, RECT *rect)
 		return;
 	}
 
-	if ( idKeyInput::IsDown( K_CTRL ) ) {
-		return;
-	}
-
 	int width = rect->right - rect->left;
 	int height = rect->bottom - rect->top;
 
@@ -88,8 +84,8 @@ void WIN_Sizing(WORD side, RECT *rect)
 	height -= decoHeight;
 
 	// Clamp to a minimum size
-	int minWidth = 160;
-	int minHeight = minWidth * SCREEN_HEIGHT / SCREEN_WIDTH;
+	int minWidth = 640;
+	int minHeight = minWidth * DISPLAY_ASPECT_HEIGHT / DISPLAY_ASPECT_WIDTH;
 
 	if ( width < minWidth ) {
 		width = minWidth;
@@ -102,29 +98,29 @@ void WIN_Sizing(WORD side, RECT *rect)
 	switch ( side ) {
 	case WMSZ_LEFT:
 		rect->left = rect->right - width - decoWidth;
-		rect->bottom = rect->top + ( width * SCREEN_HEIGHT / SCREEN_WIDTH ) + decoHeight;
+		rect->bottom = rect->top + ( width * DISPLAY_ASPECT_HEIGHT / DISPLAY_ASPECT_WIDTH ) + decoHeight;
 		break;
 	case WMSZ_RIGHT:
 		rect->right = rect->left + width + decoWidth;
-		rect->bottom = rect->top + ( width * SCREEN_HEIGHT / SCREEN_WIDTH ) + decoHeight;
+		rect->bottom = rect->top + ( width * DISPLAY_ASPECT_HEIGHT / DISPLAY_ASPECT_WIDTH ) + decoHeight;
 		break;
 	case WMSZ_BOTTOM:
 	case WMSZ_BOTTOMRIGHT:
 		rect->bottom = rect->top + height + decoHeight;
-		rect->right = rect->left + ( height * SCREEN_WIDTH / SCREEN_HEIGHT ) + decoWidth;
+		rect->right = rect->left + ( height * DISPLAY_ASPECT_WIDTH / DISPLAY_ASPECT_HEIGHT ) + decoWidth;
 		break;
 	case WMSZ_TOP:
 	case WMSZ_TOPRIGHT:
 		rect->top = rect->bottom - height - decoHeight;
-		rect->right = rect->left + ( height * SCREEN_WIDTH / SCREEN_HEIGHT ) + decoWidth;
+		rect->right = rect->left + ( height * DISPLAY_ASPECT_WIDTH / DISPLAY_ASPECT_HEIGHT ) + decoWidth;
 		break;
 	case WMSZ_BOTTOMLEFT:
 		rect->bottom = rect->top + height + decoHeight;
-		rect->left = rect->right - ( height * SCREEN_WIDTH / SCREEN_HEIGHT ) - decoWidth;
+		rect->left = rect->right - ( height * DISPLAY_ASPECT_WIDTH / DISPLAY_ASPECT_HEIGHT ) - decoWidth;
 		break;
 	case WMSZ_TOPLEFT:
 		rect->top = rect->bottom - height - decoHeight;
-		rect->left = rect->right - ( height * SCREEN_WIDTH / SCREEN_HEIGHT ) - decoWidth;
+		rect->left = rect->right - ( height * DISPLAY_ASPECT_WIDTH / DISPLAY_ASPECT_HEIGHT ) - decoWidth;
 		break;
 	}
 }

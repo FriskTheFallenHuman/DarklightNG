@@ -146,6 +146,15 @@ const int BIGCHAR_HEIGHT		= 16;
 const int SCREEN_WIDTH			= 640;
 const int SCREEN_HEIGHT			= 480;
 
+// The game view is always presented at 16:9. The 4:3 SCREEN_* dimensions
+// above remain the virtual coordinate system used by legacy GUI assets.
+const int DISPLAY_ASPECT_WIDTH	= 16;
+const int DISPLAY_ASPECT_HEIGHT	= 9;
+
+// Full-width 2D overlays such as the console use a wider virtual canvas so
+// text retains its proportions instead of being stretched horizontally.
+const int WIDESCREEN_WIDTH		= 854;
+
 class idRenderWorld;
 
 
@@ -188,6 +197,7 @@ public:
 	// GUI drawing just involves shader parameter setting and axial image subsections
 	virtual void			SetColor( const idVec4 &rgba ) = 0;
 	virtual void			SetColor4( float r, float g, float b, float a ) = 0;
+	virtual void			SetGuiPillarbox( bool pillarbox ) = 0;
 
 	virtual void			DrawStretchPic( const idDrawVert *verts, const glIndex_t *indexes, int vertCount, int indexCount, const idMaterial *material,
 											bool clip = true, float min_x = 0.0f, float min_y = 0.0f, float max_x = 640.0f, float max_y = 480.0f ) = 0;

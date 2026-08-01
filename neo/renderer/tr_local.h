@@ -646,6 +646,7 @@ public:
 	virtual bool			RegisterFont( const char *fontName, fontInfoEx_t &font );
 	virtual void			SetColor( const idVec4 &rgba );
 	virtual void			SetColor4( float r, float g, float b, float a );
+	virtual void			SetGuiPillarbox( bool pillarbox );
 	virtual void			DrawStretchPic ( const idDrawVert *verts, const glIndex_t *indexes, int vertCount, int indexCount, const idMaterial *material,
 											bool clip = true, float x = 0.0f, float y = 0.0f, float w = 640.0f, float h = 0.0f );
 	virtual void			DrawStretchPic ( float x, float y, float w, float h, float s1, float t1, float s2, float t2, const idMaterial *material );
@@ -729,6 +730,7 @@ public:
 
 	// GUI drawing variables for surface creation
 	int						guiRecursionLevel;		// to prevent infinite overruns
+	bool					guiPillarbox;			// center legacy 4:3 fullscreen GUI batches
 	class idGuiModel *		guiModel;
 	class idGuiModel *		demoGuiModel;
 
@@ -750,6 +752,7 @@ extern idCVar r_mode;					// video mode number
 extern idCVar r_displayRefresh;			// optional display refresh rate option for vid mode
 extern idCVar r_fullscreen;				// 0 = windowed, 1 = full screen
 extern idCVar r_multiSamples;			// number of antialiasing samples
+extern idCVar r_weaponFovOffset;		// view-model horizontal FOV minus world horizontal FOV
 
 extern idCVar r_ignore;					// used for random debugging without defining new vars
 extern idCVar r_ignore2;				// used for random debugging without defining new vars
@@ -982,7 +985,7 @@ typedef struct {
 
 bool		GLimp_Init( glimpParms_t parms );
 // If the desired mode can't be set satisfactorily, false will be returned.
-// The renderer will then reset the glimpParms to "safe mode" of 640x480
+// The renderer will then reset the glimpParms to the safe 1280x720 mode.
 // fullscreen and try again.  If that also fails, the error will be fatal.
 
 bool		GLimp_SetScreenParms( glimpParms_t parms );

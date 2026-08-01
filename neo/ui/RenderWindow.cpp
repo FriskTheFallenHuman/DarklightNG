@@ -153,9 +153,15 @@ void idRenderWindow::Draw(int time, float x, float y) {
 	refdef.shaderParms[2] = 1;
 	refdef.shaderParms[3] = 1;
 
-	refdef.x = drawRect.x;
+	// Fullscreen GUIs occupy a centered 4:3 canvas inside the 16:9 display.
+	// renderDef windows create independent 3D views, so map their horizontal
+	// viewport into that same canvas to avoid stretching models such as Mars.
+	const float guiScaleX = static_cast<float>( SCREEN_WIDTH * DISPLAY_ASPECT_HEIGHT ) /
+		( SCREEN_HEIGHT * DISPLAY_ASPECT_WIDTH );
+	const float guiOffsetX = SCREEN_WIDTH * ( 1.0f - guiScaleX ) * 0.5f;
+	refdef.x = guiOffsetX + drawRect.x * guiScaleX;
 	refdef.y = drawRect.y;
-	refdef.width = drawRect.w;
+	refdef.width = drawRect.w * guiScaleX;
 	refdef.height = drawRect.h;
 	refdef.fov_x = 90;
 	refdef.fov_y = 2 * atan((float)drawRect.h / drawRect.w) * idMath::M_RAD2DEG;

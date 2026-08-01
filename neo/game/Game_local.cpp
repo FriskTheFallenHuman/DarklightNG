@@ -2596,14 +2596,12 @@ gameReturn_t idGameLocal::RunFrame( const usercmd_t *clientCmds ) {
 ====================
 idGameLocal::CalcFov
 
-Calculates the horizontal and vertical field of view based on a horizontal field of view and custom aspect ratio
+Calculates a Hor+ 16:9 field of view from the legacy 4:3 horizontal FOV.
 ====================
 */
 void idGameLocal::CalcFov( float base_fov, float &fov_x, float &fov_y ) const {
 	float	x;
 	float	y;
-	float	ratio_x;
-	float	ratio_y;
 	
 	if ( !sys->FPU_StackIsEmpty() ) {
 		Printf( sys->FPU_GetState() );
@@ -2622,34 +2620,14 @@ void idGameLocal::CalcFov( float base_fov, float &fov_x, float &fov_y ) const {
 		Error( "idGameLocal::CalcFov: bad result" );
 	}
 
-	switch( r_aspectRatio.GetInteger() ) {
-	default :
-	case 0 :
-		// 4:3
-		fov_x = base_fov;
-		return;
-		break;
-
-	case 1 :
-		// 16:9
-		ratio_x = 16.0f;
-		ratio_y = 9.0f;
-		break;
-
-	case 2 :
-		// 16:10
-		ratio_x = 16.0f;
-		ratio_y = 10.0f;
-		break;
-	}
-
-	y = ratio_y / tan( fov_y / 360.0f * idMath::PI );
-	fov_x = atan2( ratio_x, y ) * 360.0f / idMath::PI;
+	// Expand the horizontal view to 16:9 without changing the vertical view.
+	y = DISPLAY_ASPECT_HEIGHT / tan( fov_y / 360.0f * idMath::PI );
+	fov_x = atan2( static_cast<float>( DISPLAY_ASPECT_WIDTH ), y ) * 360.0f / idMath::PI;
 
 	if ( fov_x < base_fov ) {
 		fov_x = base_fov;
-		x = ratio_x / tan( fov_x / 360.0f * idMath::PI );
-		fov_y = atan2( ratio_y, x ) * 360.0f / idMath::PI;
+		x = DISPLAY_ASPECT_WIDTH / tan( fov_x / 360.0f * idMath::PI );
+		fov_y = atan2( static_cast<float>( DISPLAY_ASPECT_HEIGHT ), x ) * 360.0f / idMath::PI;
 	}
 
 	// FIXME: somehow, this is happening occasionally

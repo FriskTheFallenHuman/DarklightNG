@@ -47,11 +47,12 @@ const char *r_rendererArgs[] = { "best", "glsl", NULL };
 idCVar r_inhibitGLSL( "r_inhibitGLSL", "0", CVAR_RENDERER | CVAR_BOOL, "disable the GLSL renderer" );
 idCVar r_glDriver( "r_glDriver", "", CVAR_RENDERER, "\"opengl32\", etc." );
 idCVar r_multiSamples( "r_multiSamples", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "number of antialiasing samples" );
+idCVar r_weaponFovOffset( "r_weaponFovOffset", "10", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "horizontal FOV added to the first-person weapon view", 0.0f, 30.0f );
 idCVar r_mode( "r_mode", "3", CVAR_ARCHIVE | CVAR_RENDERER | CVAR_INTEGER, "video mode number" );
 idCVar r_displayRefresh( "r_displayRefresh", "0", CVAR_RENDERER | CVAR_INTEGER | CVAR_NOCHEAT, "optional display refresh rate option for vid mode", 0.0f, 200.0f );
 idCVar r_fullscreen( "r_fullscreen", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "0 = windowed, 1 = full screen" );
-idCVar r_customWidth( "r_customWidth", "720", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "custom screen width. set r_mode to -1 to activate" );
-idCVar r_customHeight( "r_customHeight", "486", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "custom screen height. set r_mode to -1 to activate" );
+idCVar r_customWidth( "r_customWidth", "1280", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "custom 16:9 screen width. set r_mode to -1 to activate" );
+idCVar r_customHeight( "r_customHeight", "720", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "custom 16:9 screen height. set r_mode to -1 to activate" );
 idCVar r_singleTriangle( "r_singleTriangle", "0", CVAR_RENDERER | CVAR_BOOL, "only draw a single triangle per primitive" );
 idCVar r_checkBounds( "r_checkBounds", "0", CVAR_RENDERER | CVAR_BOOL, "compare all surface bounds with precalculated ones" );
 
@@ -550,17 +551,28 @@ typedef struct vidmode_s {
 } vidmode_t;
 
 vidmode_t r_vidModes[] = {
-    { "Mode  0: 320x240",		320,	240 },
-    { "Mode  1: 400x300",		400,	300 },
-    { "Mode  2: 512x384",		512,	384 },
-    { "Mode  3: 640x480",		640,	480 },
-    { "Mode  4: 800x600",		800,	600 },
-    { "Mode  5: 1024x768",		1024,	768 },
-    { "Mode  6: 1152x864",		1152,	864 },
-    { "Mode  7: 1280x1024",		1280,	1024 },
-    { "Mode  8: 1600x1200",		1600,	1200 },
+    { "Mode  0: 640x360",		640,	360 },
+    { "Mode  1: 854x480",		854,	480 },
+    { "Mode  2: 960x540",		960,	540 },
+    { "Mode  3: 1280x720",		1280,	720 },
+    { "Mode  4: 1366x768",		1366,	768 },
+    { "Mode  5: 1600x900",		1600,	900 },
+    { "Mode  6: 1920x1080",		1920,	1080 },
+    { "Mode  7: 2560x1440",		2560,	1440 },
+    { "Mode  8: 3840x2160",		3840,	2160 },
 };
 static int	s_numVidModes = ( sizeof( r_vidModes ) / sizeof( r_vidModes[0] ) );
+
+static bool R_Is16By9( int width, int height ) {
+	if ( width <= 0 || height <= 0 ) {
+		return false;
+	}
+
+	// 1366x768 is marketed and used as 16:9 despite the small rounding error.
+	const float aspect = static_cast<float>( width ) / static_cast<float>( height );
+	const float targetAspect = static_cast<float>( DISPLAY_ASPECT_WIDTH ) / DISPLAY_ASPECT_HEIGHT;
+	return idMath::Fabs( aspect - targetAspect ) < 0.01f;
+}
 
 #if MACOS_X
 bool R_GetModeInfo( int *width, int *height, int mode ) {
@@ -577,8 +589,18 @@ static bool R_GetModeInfo( int *width, int *height, int mode ) {
 	}
 
 	if ( mode == -1 ) {
-		*width = r_customWidth.GetInteger();
-		*height = r_customHeight.GetInteger();
+		const int customWidth = r_customWidth.GetInteger();
+		const int customHeight = r_customHeight.GetInteger();
+		if ( !R_Is16By9( customWidth, customHeight ) ) {
+			common->Warning( "Custom resolution %dx%d is not 16:9", customWidth, customHeight );
+			return false;
+		}
+		if ( width ) {
+			*width = customWidth;
+		}
+		if ( height ) {
+			*height = customHeight;
+		}
 		return true;
 	}
 
@@ -631,7 +653,11 @@ void R_InitOpenGL( void ) {
 	//
 	for ( i = 0 ; i < 2 ; i++ ) {
 		// set the parameters we are trying
-		R_GetModeInfo( &glConfig.vidWidth, &glConfig.vidHeight, r_mode.GetInteger() );
+		if ( !R_GetModeInfo( &glConfig.vidWidth, &glConfig.vidHeight, r_mode.GetInteger() ) ) {
+			common->Warning( "Invalid or non-16:9 video mode %d; using 1280x720", r_mode.GetInteger() );
+			r_mode.SetInteger( 3 );
+			R_GetModeInfo( &glConfig.vidWidth, &glConfig.vidHeight, r_mode.GetInteger() );
+		}
 
 		parms.width = glConfig.vidWidth;
 		parms.height = glConfig.vidHeight;
@@ -2062,6 +2088,7 @@ void idRenderSystemLocal::Clear( void ) {
 	memset( renderCrops, 0, sizeof( renderCrops ) );
 	currentRenderCrop = 0;
 	guiRecursionLevel = 0;
+	guiPillarbox = true;
 	guiModel = NULL;
 	demoGuiModel = NULL;
 	memset( gammaTable, 0, sizeof( gammaTable ) );

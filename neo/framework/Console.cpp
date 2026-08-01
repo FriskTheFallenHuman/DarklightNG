@@ -32,7 +32,7 @@ If you have questions concerning this license or the applicable additional terms
 void SCR_DrawTextLeftAlign( float &y, const char *text, ... ) id_attribute((format(printf,2,3)));
 void SCR_DrawTextRightAlign( float &y, const char *text, ... ) id_attribute((format(printf,2,3)));
 
-#define	LINE_WIDTH				78
+#define	LINE_WIDTH				( WIDESCREEN_WIDTH / SMALLCHAR_WIDTH - 2 )
 #define	NUM_CON_TIMES			4
 #define	CON_TEXTSIZE			0x30000
 #define	TOTAL_LINES				(CON_TEXTSIZE / LINE_WIDTH)
@@ -165,7 +165,7 @@ void SCR_DrawTextRightAlign( float &y, const char *text, ... ) {
 	va_start( argptr, text );
 	int i = idStr::vsnPrintf( string, sizeof( string ), text, argptr );
 	va_end( argptr );
-	renderSystem->DrawSmallStringExt( 635 - i * SMALLCHAR_WIDTH, y + 2, string, colorWhite, true, localConsole.charSetShader );
+	renderSystem->DrawSmallStringExt( WIDESCREEN_WIDTH - 5 - i * SMALLCHAR_WIDTH, y + 2, string, colorWhite, true, localConsole.charSetShader );
 	y += SMALLCHAR_HEIGHT + 4;
 }
 
@@ -211,7 +211,7 @@ float SCR_DrawFPS( float y ) {
 		s = va( "%ifps", fps );
 		w = strlen( s ) * BIGCHAR_WIDTH;
 
-		renderSystem->DrawBigStringExt( 635 - w, idMath::FtoiFast( y ) + 2, s, colorWhite, true, localConsole.charSetShader);
+		renderSystem->DrawBigStringExt( WIDESCREEN_WIDTH - 5 - w, idMath::FtoiFast( y ) + 2, s, colorWhite, true, localConsole.charSetShader);
 	}
 
 	return y + BIGCHAR_HEIGHT + 4;
@@ -965,7 +965,7 @@ void idConsoleLocal::DrawInput() {
 
 	renderSystem->DrawSmallChar( 1 * SMALLCHAR_WIDTH, y, ']', localConsole.charSetShader );
 
-	consoleField.Draw(2 * SMALLCHAR_WIDTH, y, SCREEN_WIDTH - 3 * SMALLCHAR_WIDTH, true, charSetShader );
+	consoleField.Draw(2 * SMALLCHAR_WIDTH, y, WIDESCREEN_WIDTH - 3 * SMALLCHAR_WIDTH, true, charSetShader );
 }
 
 
@@ -1052,11 +1052,11 @@ void idConsoleLocal::DrawSolidConsole( float frac ) {
 	if ( y < 1.0f ) {
 		y = 0.0f;
 	} else {
-		renderSystem->DrawStretchPic( 0, 0, SCREEN_WIDTH, y, 0, 1.0f - displayFrac, 1, 1, consoleShader );
+		renderSystem->DrawStretchPic( 0, 0, WIDESCREEN_WIDTH, y, 0, 1.0f - displayFrac, 1, 1, consoleShader );
 	}
 
 	renderSystem->SetColor( colorCyan );
-	renderSystem->DrawStretchPic( 0, y, SCREEN_WIDTH, 2, 0, 0, 0, 0, whiteShader );
+	renderSystem->DrawStretchPic( 0, y, WIDESCREEN_WIDTH, 2, 0, 0, 0, 0, whiteShader );
 	renderSystem->SetColor( colorWhite );
 
 	// draw the version number
@@ -1067,7 +1067,7 @@ void idConsoleLocal::DrawSolidConsole( float frac ) {
 	i = version.Length();
 
 	for ( x = 0; x < i; x++ ) {
-		renderSystem->DrawSmallChar( SCREEN_WIDTH - ( i - x ) * SMALLCHAR_WIDTH, 
+		renderSystem->DrawSmallChar( WIDESCREEN_WIDTH - ( i - x ) * SMALLCHAR_WIDTH,
 			(lines-(SMALLCHAR_HEIGHT+SMALLCHAR_HEIGHT/2)), version[x], localConsole.charSetShader );
 
 	}
@@ -1144,6 +1144,10 @@ void	idConsoleLocal::Draw( bool forceFullScreen ) {
 		return;
 	}
 
+	// The console intentionally fills the complete 16:9 display instead of
+	// sharing the centered 4:3 canvas used by menus and the HUD.
+	renderSystem->SetGuiPillarbox( false );
+
 	if ( forceFullScreen ) {
 		// if we are forced full screen because of a disconnect, 
 		// we want the console closed when we go back to a session state
@@ -1183,4 +1187,6 @@ void	idConsoleLocal::Draw( bool forceFullScreen ) {
 	if ( com_showSoundDecoders.GetBool() ) {
 		y = SCR_DrawSoundDecoders( y );
 	}
+
+	renderSystem->SetGuiPillarbox( true );
 }

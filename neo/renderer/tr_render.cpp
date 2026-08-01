@@ -261,6 +261,20 @@ void RB_EnterWeaponDepthHack() {
 
 	memcpy( matrix, backEnd.viewDef->projectionMatrix, sizeof( matrix ) );
 
+	// Keep the first-person weapon slightly wider than the world view.
+	// Scaling both projection axes preserves the weapon's 16:9 proportions.
+	const float worldFov = backEnd.viewDef->renderView.fov_x;
+	const float weaponFov = idMath::ClampFloat( 1.0f, 179.0f, worldFov + r_weaponFovOffset.GetFloat() );
+	if ( weaponFov > worldFov ) {
+		const float worldTan = tan( DEG2RAD( worldFov * 0.5f ) );
+		const float weaponTan = tan( DEG2RAD( weaponFov * 0.5f ) );
+		if ( weaponTan > 0.0f ) {
+			const float fovScale = worldTan / weaponTan;
+			matrix[0] *= fovScale;
+			matrix[5] *= fovScale;
+		}
+	}
+
 	matrix[14] *= 0.25;
 
 	qglMatrixMode(GL_PROJECTION);

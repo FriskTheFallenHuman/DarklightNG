@@ -217,6 +217,7 @@ Creates a view that covers the screen and emit the surfaces
 */
 void idGuiModel::EmitFullScreen( void ) {
 	viewDef_t	*viewDef;
+	const float virtualWidth = tr.guiPillarbox ? static_cast<float>( SCREEN_WIDTH ) : WIDESCREEN_WIDTH;
 
 	if ( surfaces[0].numVerts == 0 ) {
 		return;
@@ -232,6 +233,18 @@ void idGuiModel::EmitFullScreen( void ) {
 		viewDef->renderView.height = SCREEN_HEIGHT;
 
 		tr.RenderViewToViewport( &viewDef->renderView, &viewDef->viewport );
+
+		// Preserve the authored 640x480 GUI aspect ratio while the 3D view uses
+		// the complete 16:9 display. Only the primary render crop is adjusted;
+		// in-world GUIs and render-to-texture crops retain their existing sizing.
+		if ( tr.guiPillarbox && tr.currentRenderCrop == 0 ) {
+			const renderCrop_t &crop = tr.renderCrops[tr.currentRenderCrop];
+			const int guiWidth = crop.height * SCREEN_WIDTH / SCREEN_HEIGHT;
+			if ( guiWidth < crop.width ) {
+				viewDef->viewport.x1 = crop.x + ( crop.width - guiWidth ) / 2;
+				viewDef->viewport.x2 = viewDef->viewport.x1 + guiWidth - 1;
+			}
+		}
 
 		viewDef->scissor.x1 = 0;
 		viewDef->scissor.y1 = 0;
@@ -257,7 +270,7 @@ void idGuiModel::EmitFullScreen( void ) {
 	viewDef->floatTime = tr.frameShaderTime;
 
 	// qglOrtho( 0, 640, 480, 0, 0, 1 );		// always assume 640x480 virtual coordinates
-	viewDef->projectionMatrix[0] = 2.0f / 640.0f;
+	viewDef->projectionMatrix[0] = 2.0f / virtualWidth;
 	viewDef->projectionMatrix[5] = -2.0f / 480.0f;
 	viewDef->projectionMatrix[10] = -2.0f / 1.0f;
 	viewDef->projectionMatrix[12] = -1.0f;
@@ -445,12 +458,13 @@ void idGuiModel::DrawStretchPic( const idDrawVert *dverts, const glIndex_t *dind
 =============
 DrawStretchPic
 
-x/y/w/h are in the 0,0 to 640,480 range
+x/y/w/h use the active fullscreen GUI virtual canvas.
 =============
 */
 void idGuiModel::DrawStretchPic( float x, float y, float w, float h, float s1, float t1, float s2, float t2, const idMaterial *hShader ) {
 	idDrawVert verts[4];
 	glIndex_t indexes[6];
+	const float virtualWidth = tr.guiPillarbox ? static_cast<float>( SCREEN_WIDTH ) : WIDESCREEN_WIDTH;
 
 	if ( !glConfig.isInitialized ) {
 		return;
@@ -471,9 +485,9 @@ void idGuiModel::DrawStretchPic( float x, float y, float w, float h, float s1, f
 		h += y;
 		y = 0;
 	}
-	if ( x + w > 640 ) {
-		s2 -= ( s2 - s1 ) * ( x + w - 640 ) / w;
-		w = 640 - x;
+	if ( x + w > virtualWidth ) {
+		s2 -= ( s2 - s1 ) * ( x + w - virtualWidth ) / w;
+		w = virtualWidth - x;
 	}
 	if ( y + h > 480 ) {
 		t2 -= ( t2 - t1 ) * ( y + h - 480 ) / h;
@@ -547,7 +561,7 @@ void idGuiModel::DrawStretchPic( float x, float y, float w, float h, float s1, f
 	verts[3].tangents[1][1] = 1;
 	verts[3].tangents[1][2] = 0;
 
-	DrawStretchPic( &verts[0], &indexes[0], 4, 6, hShader, false, 0.0f, 0.0f, 640.0f, 480.0f );
+	DrawStretchPic( &verts[0], &indexes[0], 4, 6, hShader, false, 0.0f, 0.0f, virtualWidth, 480.0f );
 }
 
 /*

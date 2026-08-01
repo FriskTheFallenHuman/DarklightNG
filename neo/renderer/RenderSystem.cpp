@@ -322,6 +322,26 @@ void idRenderSystemLocal::SetColor4( float r, float g, float b, float a ) {
 
 /*
 =============
+SetGuiPillarbox
+
+Flushes the current GUI batch before changing how fullscreen GUI coordinates
+are mapped. The menu and HUD use the centered 4:3 canvas; the console opts out.
+=============
+*/
+void idRenderSystemLocal::SetGuiPillarbox( bool pillarbox ) {
+	if ( guiPillarbox == pillarbox ) {
+		return;
+	}
+
+	if ( guiModel ) {
+		guiModel->EmitFullScreen();
+		guiModel->Clear();
+	}
+	guiPillarbox = pillarbox;
+}
+
+/*
+=============
 DrawStretchPic
 =============
 */
@@ -562,6 +582,7 @@ void idRenderSystemLocal::BeginFrame( int windowWidth, int windowHeight ) {
 	SetBackEndRenderer();
 
 	guiModel->Clear();
+	guiPillarbox = true;
 
 	// for the larger-than-window tiled rendering screenshots
 	if ( tiledViewport[0] ) {
