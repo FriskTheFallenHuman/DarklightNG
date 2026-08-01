@@ -56,6 +56,9 @@ public:
 	virtual void	UpdateChangeableSpawnArgs( const idDict *source );
 	virtual void	Think( void );
 	virtual void	FreeLightDef( void );
+	virtual void	SnapshotRenderTransform( void );
+	virtual void	PresentRenderInterpolation( float interpolation );
+	virtual void	ResetRenderInterpolation( void );
 	virtual bool	GetPhysicsToSoundTransform( idVec3 &origin, idMat3 &axis );
 	void			Present( void );
 
@@ -98,6 +101,10 @@ private:
 	idVec3			localLightOrigin;			// light origin relative to the physics origin
 	idMat3			localLightAxis;				// light axis relative to physics axis
 	qhandle_t		lightDefHandle;				// handle to renderer light def
+	idVec3			previousLightOrigin;
+	idMat3			previousLightAxis;
+	bool			lightInterpolationValid;
+	bool			lightInterpolationApplied;
 	idStr			brokenModel;
 	int				levels;
 	int				currentLevel;

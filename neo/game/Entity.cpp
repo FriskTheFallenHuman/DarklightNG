@@ -429,6 +429,10 @@ idEntity::idEntity() {
 
 	memset( &renderEntity, 0, sizeof( renderEntity ) );
 	modelDefHandle	= -1;
+	previousRenderOrigin.Zero();
+	previousRenderAxis.Identity();
+	renderInterpolationValid = false;
+	renderInterpolationApplied = false;
 	memset( &refSound, 0, sizeof( refSound ) );
 
 	mpGUIState = -1;
@@ -1183,6 +1187,7 @@ void idEntity::FreeModelDef( void ) {
 		gameRenderWorld->FreeEntityDef( modelDefHandle );
 		modelDefHandle = -1;
 	}
+	renderInterpolationApplied = false;
 }
 
 /*
@@ -1476,6 +1481,54 @@ void idEntity::Present( void ) {
 	} else {
 		gameRenderWorld->UpdateEntityDef( modelDefHandle, &renderEntity );
 	}
+	renderInterpolationApplied = false;
+}
+
+/*
+================
+idEntity::SnapshotRenderTransform
+================
+*/
+void idEntity::SnapshotRenderTransform( void ) {
+	previousRenderOrigin = renderEntity.origin;
+	previousRenderAxis = renderEntity.axis;
+	renderInterpolationValid = true;
+}
+
+/*
+================
+idEntity::PresentRenderInterpolation
+================
+*/
+void idEntity::PresentRenderInterpolation( float interpolation ) {
+	if ( !renderInterpolationValid || modelDefHandle == -1 || IsHidden() || !renderEntity.hModel ) {
+		return;
+	}
+
+	renderEntity_t interpolatedEntity = renderEntity;
+	const idVec3 delta = renderEntity.origin - previousRenderOrigin;
+	const bool transformChanged = delta.LengthSqr() > 0.0f || renderEntity.axis != previousRenderAxis;
+	if ( transformChanged && delta.LengthSqr() < Square( 512.0f ) ) {
+		interpolatedEntity.origin = previousRenderOrigin + interpolation * delta;
+		idQuat interpolatedAxis;
+		interpolatedAxis.Slerp( previousRenderAxis.ToQuat(), renderEntity.axis.ToQuat(), interpolation );
+		interpolatedEntity.axis = interpolatedAxis.ToMat3();
+	} else if ( !transformChanged && !renderInterpolationApplied ) {
+		return;
+	}
+
+	gameRenderWorld->UpdateEntityDef( modelDefHandle, &interpolatedEntity );
+	renderInterpolationApplied = interpolation < 1.0f && transformChanged;
+}
+
+/*
+================
+idEntity::ResetRenderInterpolation
+================
+*/
+void idEntity::ResetRenderInterpolation( void ) {
+	renderInterpolationValid = false;
+	renderInterpolationApplied = false;
 }
 
 /*
@@ -1510,7 +1563,7 @@ bool idEntity::UpdateRenderEntity( renderEntity_s *renderEntity, const renderVie
 	if ( animator ) {
 		SetTimeState ts( timeGroup );
 
-		return animator->CreateFrame( gameLocal.time, false );
+		return animator->CreateFrame( renderView ? renderView->time : gameLocal.time, false );
 	}
 
 	return false;
@@ -3658,6 +3711,7 @@ void idEntity::Teleport( const idVec3 &origin, const idAngles &angles, idEntity 
 	GetPhysics()->SetAxis( angles.ToMat3() );
 
 	UpdateVisuals();
+	ResetRenderInterpolation();
 }
 
 /*

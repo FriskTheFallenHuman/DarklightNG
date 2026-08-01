@@ -387,7 +387,7 @@ public:
 	virtual void			CacheDictionaryMedia( const idDict *dict );
 	virtual void			SpawnPlayer( int clientNum );
 	virtual gameReturn_t	RunFrame( const usercmd_t *clientCmds );
-	virtual bool			Draw( int clientNum );
+	virtual bool			Draw( int clientNum, float interpolation );
 	virtual escReply_t		HandleESC( idUserInterface **gui );
 	virtual idUserInterface	*StartMenu( void );
 	virtual const char *	HandleGuiCommands( const char *menuCommand );
@@ -492,6 +492,7 @@ public:
 	void					CallObjectFrameCommand( idEntity *ent, const char *frameCommand );
 
 	const idVec3 &			GetGravity( void ) const;
+	const renderView_t *	GetInterpolatedRenderView( idPlayer *player, float interpolation, renderView_t &view ) const;
 
 	// added the following to assist licensees with merge issues
 	int						GetFrameNum() const { return framenum; };
@@ -553,6 +554,8 @@ private:
 	gameState_t				gamestate;				// keeps track of whether we're spawning, shutting down, or normal gameplay
 	bool					influenceActive;		// true when a phantasm is happening
 	int						nextGibTime;
+	renderView_t			previousRenderViews[MAX_CLIENTS];
+	bool					previousRenderViewValid[MAX_CLIENTS];
 
 	idList<int>				clientDeclRemap[MAX_CLIENTS][DECL_MAX_TYPES];
 
@@ -594,6 +597,8 @@ private:
 	void					SetupPlayerPVS( void );
 	void					FreePlayerPVS( void );
 	void					UpdateGravity( void );
+	void					SnapshotRenderState( void );
+	void					PresentRenderInterpolation( float interpolation );
 	void					SortActiveEntityList( void );
 	void					ShowTargets( void );
 	void					RunDebugInfo( void );

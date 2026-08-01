@@ -194,6 +194,9 @@ public:
 
 	// visuals
 	virtual void			Present( void );
+	virtual void			SnapshotRenderTransform( void );
+	virtual void			PresentRenderInterpolation( float interpolation );
+	virtual void			ResetRenderInterpolation( void );
 	virtual renderEntity_t *GetRenderEntity( void );
 	virtual int				GetModelDefHandle( void );
 	virtual void			SetModel( const char *modelname );
@@ -368,6 +371,10 @@ public:
 protected:
 	renderEntity_t			renderEntity;						// used to present a model to the renderer
 	int						modelDefHandle;						// handle to static renderer model
+	idVec3					previousRenderOrigin;
+	idMat3					previousRenderAxis;
+	bool					renderInterpolationValid;
+	bool					renderInterpolationApplied;
 	refSound_t				refSound;							// used to present sound to the audio engine
 
 private:

@@ -75,6 +75,7 @@ idCVar com_showAsyncStats( "com_showAsyncStats", "0", CVAR_BOOL|CVAR_SYSTEM|CVAR
 idCVar com_showSoundDecoders( "com_showSoundDecoders", "0", CVAR_BOOL|CVAR_SYSTEM|CVAR_NOCHEAT, "show sound decoders" );
 idCVar com_timestampPrints( "com_timestampPrints", "0", CVAR_SYSTEM, "print time with each console print, 1 = msec, 2 = sec", 0, 2, idCmdSystem::ArgCompletion_Integer<0,2> );
 idCVar com_timescale( "timescale", "1", CVAR_SYSTEM | CVAR_FLOAT, "scales the time", 0.1f, 10.0f );
+idCVar com_maxFPS( "com_maxFPS", "240", CVAR_SYSTEM | CVAR_INTEGER | CVAR_ARCHIVE, "maximum presentation frame rate, 0 is uncapped", 0, 1000 );
 idCVar com_logFile( "logFile", "0", CVAR_SYSTEM | CVAR_NOCHEAT, "1 = buffer log, 2 = flush after each print", 0, 2, idCmdSystem::ArgCompletion_Integer<0,2> );
 idCVar com_logFileName( "logFileName", "qconsole.log", CVAR_SYSTEM | CVAR_NOCHEAT, "name of log file, if empty, qconsole.log will be used" );
 idCVar com_makingBuild( "com_makingBuild", "0", CVAR_BOOL | CVAR_SYSTEM, "1 when making a build" );
@@ -120,6 +121,7 @@ public:
 	virtual void				Frame( void );
 	virtual void				GUIFrame( bool execCmd, bool network );
 	virtual void				UpdateGameTime( void );
+	virtual float				GetGameFrameInterpolation( void ) const;
 	virtual void				SoundAsync( void );
 	virtual void				StartupVariable( const char *match, bool once );
 	virtual void				InitTool( const toolFlag_t tool, const idDict *dict );
@@ -169,6 +171,7 @@ private:
 	void						CloseLogFile( void );
 	void						WriteConfiguration( void );
 	void						DumpWarnings( void );
+	void						WaitForNextFrame( void );
 	void						LoadGameDLL( void );
 	void						UnloadGameDLL( void );
 	void						PrintLoadingMessage( const char *msg );
@@ -178,6 +181,9 @@ private:
 	bool						com_refreshOnPrint;		// update the screen every print for dmap
 	int							com_errorEntered;		// 0, ERP_DROP, etc
 	bool						com_shuttingDown;
+	int						lastGameTimeMsec;
+	double					gameTimeResidualMsec;
+	double					nextFrameTimeMsec;
 
 	idFile *					logFile;
 
@@ -214,6 +220,9 @@ idCommonLocal::idCommonLocal( void ) {
 	com_refreshOnPrint = false;
 	com_errorEntered = 0;
 	com_shuttingDown = false;
+	lastGameTimeMsec = 0;
+	gameTimeResidualMsec = 0.0;
+	nextFrameTimeMsec = 0.0;
 
 	logFile = NULL;
 
@@ -2423,6 +2432,7 @@ idCommonLocal::Frame
 */
 void idCommonLocal::Frame( void ) {
 	try {
+		WaitForNextFrame();
 		UpdateGameTime();
 
 		// pump all the events
@@ -2438,7 +2448,7 @@ void idCommonLocal::Frame( void ) {
 
 		eventLoop->RunEventLoop();
 
-		com_frameTime = com_ticNumber * USERCMD_MSEC;
+		com_frameTime = com_ticNumber * USERCMD_MSEC + idMath::Ftoi( GetGameFrameInterpolation() * USERCMD_MSEC );
 
 		idAsyncNetwork::RunFrame();
 
@@ -2488,10 +2498,11 @@ idCommonLocal::GUIFrame
 =================
 */
 void idCommonLocal::GUIFrame( bool execCmd, bool network ) {
+	WaitForNextFrame();
 	UpdateGameTime();
 	Sys_GenerateEvents();
 	eventLoop->RunEventLoop( execCmd );	// and execute any commands
-	com_frameTime = com_ticNumber * USERCMD_MSEC;
+	com_frameTime = com_ticNumber * USERCMD_MSEC + idMath::Ftoi( GetGameFrameInterpolation() * USERCMD_MSEC );
 	if ( network ) {
 		idAsyncNetwork::RunFrame();
 	}
@@ -2509,36 +2520,71 @@ wall-clock duration of each tic.
 =================
 */
 void idCommonLocal::UpdateGameTime( void ) {
-	static int lastTimeMsec;
-	static double residualMsec;
-
 	const int now = Sys_Milliseconds();
-	if ( !lastTimeMsec ) {
-		lastTimeMsec = now - USERCMD_MSEC;
+	const double ticMsec = 1000.0 / USERCMD_HZ;
+	if ( !lastGameTimeMsec ) {
+		lastGameTimeMsec = now;
+		gameTimeResidualMsec = ticMsec;
 	}
 
-	int elapsedMsec = now - lastTimeMsec;
-	lastTimeMsec = now;
+	int elapsedMsec = now - lastGameTimeMsec;
+	lastGameTimeMsec = now;
 	if ( elapsedMsec < 0 ) {
-		residualMsec = 0.0;
+		gameTimeResidualMsec = 0.0;
 		return;
 	}
 
 	// Discard excessive scaled time after a hitch so simulation catch-up cannot
 	// monopolize the main thread. Slow timescales still retain their wall time.
-	const double maxScaledMsec = 10 * USERCMD_MSEC;
+	const double maxScaledMsec = 10.0 * ticMsec;
 	double scaledMsec = elapsedMsec * com_timescale.GetFloat();
 	if ( scaledMsec > maxScaledMsec ) {
 		scaledMsec = maxScaledMsec;
-		residualMsec = 0.0;
+		gameTimeResidualMsec = 0.0;
 	}
 
-	residualMsec += scaledMsec;
-	const int tics = (int)( residualMsec / USERCMD_MSEC );
+	gameTimeResidualMsec += scaledMsec;
+	const int tics = (int)( gameTimeResidualMsec / ticMsec );
 	if ( tics > 0 ) {
 		com_ticNumber += tics;
-		residualMsec -= tics * USERCMD_MSEC;
+		gameTimeResidualMsec -= tics * ticMsec;
 	}
+}
+
+/*
+=================
+idCommonLocal::GetGameFrameInterpolation
+=================
+*/
+float idCommonLocal::GetGameFrameInterpolation( void ) const {
+	const double ticMsec = 1000.0 / USERCMD_HZ;
+	return idMath::ClampFloat( 0.0f, 1.0f, (float)( gameTimeResidualMsec / ticMsec ) );
+}
+
+/*
+=================
+idCommonLocal::WaitForNextFrame
+
+Cap presentation independently from the fixed simulation rate.
+=================
+*/
+void idCommonLocal::WaitForNextFrame( void ) {
+	const int maxFPS = com_maxFPS.GetInteger();
+	const double now = Sys_Milliseconds();
+	if ( maxFPS <= 0 ) {
+		nextFrameTimeMsec = now;
+		return;
+	}
+
+	const double frameMsec = 1000.0 / maxFPS;
+	if ( nextFrameTimeMsec <= 0.0 || now > nextFrameTimeMsec + frameMsec ) {
+		nextFrameTimeMsec = now;
+	}
+
+	while ( Sys_Milliseconds() < nextFrameTimeMsec ) {
+		Sys_Sleep( 1 );
+	}
+	nextFrameTimeMsec += frameMsec;
 }
 
 /*

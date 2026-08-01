@@ -365,7 +365,7 @@ public:
 
 	// this may involve rendering to a texture and displaying
 	// that with a warp model or in double vision mode
-	void				RenderPlayerView( idUserInterface *hud );
+	void				RenderPlayerView( idUserInterface *hud, const renderView_t *renderView = NULL );
 
 	void				Fade( idVec4 color, int time );
 

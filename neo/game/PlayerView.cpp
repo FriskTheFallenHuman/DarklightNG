@@ -665,8 +665,8 @@ void idPlayerView::ScreenFade() {
 idPlayerView::RenderPlayerView
 ===================
 */
-void idPlayerView::RenderPlayerView( idUserInterface *hud ) {
-	const renderView_t *view = player->GetRenderView();
+void idPlayerView::RenderPlayerView( idUserInterface *hud, const renderView_t *renderView ) {
+	const renderView_t *view = renderView ? renderView : player->GetRenderView();
 
 	SingleView( hud, view );
 	ScreenFade();
@@ -1830,6 +1830,5 @@ void FullscreenFXManager::Process( const renderView_t *view ) {
 		renderSystem->DrawStretchPic( 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1, 1, 0.f, blendBackMaterial );
 	}
 }
-
 
 

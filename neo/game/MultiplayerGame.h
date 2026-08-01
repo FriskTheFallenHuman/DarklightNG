@@ -148,7 +148,7 @@ public:
 	void			Run( void );
 
 	// draws mp hud, scoredboard, etc.. 
-	bool			Draw( int clientNum );
+	bool			Draw( int clientNum, float interpolation );
 
 	// updates a player vote
 	void			PlayerVote( int clientNum, playerVote_t vote );
@@ -478,4 +478,3 @@ ID_INLINE bool idMultiplayerGame::IsInGame( int clientNum ) {
 }
 
 #endif	/* !__MULTIPLAYERGAME_H__ */
-

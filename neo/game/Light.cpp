@@ -206,6 +206,10 @@ idLight::idLight() {
 	localLightOrigin	= vec3_zero;
 	localLightAxis		= mat3_identity;
 	lightDefHandle		= -1;
+	previousLightOrigin.Zero();
+	previousLightAxis.Identity();
+	lightInterpolationValid = false;
+	lightInterpolationApplied = false;
 	levels				= 0;
 	currentLevel		= 0;
 	baseColor			= vec3_zero;
@@ -229,6 +233,56 @@ idLight::~idLight() {
 	if ( lightDefHandle != -1 ) {
 		gameRenderWorld->FreeLightDef( lightDefHandle );
 	}
+}
+
+/*
+================
+idLight::SnapshotRenderTransform
+================
+*/
+void idLight::SnapshotRenderTransform( void ) {
+	idEntity::SnapshotRenderTransform();
+	previousLightOrigin = renderLight.origin;
+	previousLightAxis = renderLight.axis;
+	lightInterpolationValid = true;
+}
+
+/*
+================
+idLight::PresentRenderInterpolation
+================
+*/
+void idLight::PresentRenderInterpolation( float interpolation ) {
+	idEntity::PresentRenderInterpolation( interpolation );
+	if ( !lightInterpolationValid || lightDefHandle == -1 || IsHidden() ) {
+		return;
+	}
+
+	renderLight_t interpolatedLight = renderLight;
+	const idVec3 delta = renderLight.origin - previousLightOrigin;
+	const bool transformChanged = delta.LengthSqr() > 0.0f || renderLight.axis != previousLightAxis;
+	if ( transformChanged && delta.LengthSqr() < Square( 512.0f ) ) {
+		interpolatedLight.origin = previousLightOrigin + interpolation * delta;
+		idQuat interpolatedAxis;
+		interpolatedAxis.Slerp( previousLightAxis.ToQuat(), renderLight.axis.ToQuat(), interpolation );
+		interpolatedLight.axis = interpolatedAxis.ToMat3();
+	} else if ( !transformChanged && !lightInterpolationApplied ) {
+		return;
+	}
+
+	gameRenderWorld->UpdateLightDef( lightDefHandle, &interpolatedLight );
+	lightInterpolationApplied = interpolation < 1.0f && transformChanged;
+}
+
+/*
+================
+idLight::ResetRenderInterpolation
+================
+*/
+void idLight::ResetRenderInterpolation( void ) {
+	idEntity::ResetRenderInterpolation();
+	lightInterpolationValid = false;
+	lightInterpolationApplied = false;
 }
 
 /*
@@ -720,6 +774,7 @@ void idLight::PresentLightDefChange( void ) {
 	} else {
 		lightDefHandle = gameRenderWorld->AddLightDef( &renderLight );
 	}
+	lightInterpolationApplied = false;
 }
 
 /*
@@ -820,6 +875,7 @@ void idLight::FreeLightDef( void ) {
 		gameRenderWorld->FreeLightDef( lightDefHandle );
 		lightDefHandle = -1;
 	}
+	lightInterpolationApplied = false;
 }
 
 /*

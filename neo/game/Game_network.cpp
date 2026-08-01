@@ -1507,6 +1507,9 @@ gameReturn_t idGameLocal::ClientPrediction( int clientNum, const usercmd_t *clie
 	if ( !player ) {
 		return ret;
 	}
+	if ( lastPredictFrame ) {
+		SnapshotRenderState();
+	}
 
 	// check for local client lag
 	if ( networkSystem->ClientGetTimeSinceLastPacket() >= net_clientMaxPrediction.GetInteger() ) {

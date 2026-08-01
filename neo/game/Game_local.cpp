@@ -205,6 +205,7 @@ void idGameLocal::Clear( void ) {
 	memset( usercmds, 0, sizeof( usercmds ) );
 	memset( entities, 0, sizeof( entities ) );
 	memset( spawnIds, -1, sizeof( spawnIds ) );
+	memset( previousRenderViewValid, 0, sizeof( previousRenderViewValid ) );
 	firstFreeIndex = 0;
 	num_entities = 0;
 	spawnedEntities.Clear();
@@ -2377,6 +2378,7 @@ gameReturn_t idGameLocal::RunFrame( const usercmd_t *clientCmds ) {
 #endif
 
 	player = GetLocalPlayer();
+	SnapshotRenderState();
 
 	ComputeSlowMsec();
 
@@ -2665,9 +2667,11 @@ idGameLocal::Draw
 makes rendering and sound system calls
 ================
 */
-bool idGameLocal::Draw( int clientNum ) {
+bool idGameLocal::Draw( int clientNum, float interpolation ) {
+	PresentRenderInterpolation( interpolation );
+
 	if ( isMultiplayer ) {
-		return mpGame.Draw( clientNum );
+		return mpGame.Draw( clientNum, interpolation );
 	}
 
 	idPlayer *player = static_cast<idPlayer *>(entities[ clientNum ]);
@@ -2677,9 +2681,78 @@ bool idGameLocal::Draw( int clientNum ) {
 	}
 
 	// render the scene
-	player->playerView.RenderPlayerView( player->hud );
+	renderView_t interpolatedView;
+	player->playerView.RenderPlayerView( player->hud, GetInterpolatedRenderView( player, interpolation, interpolatedView ) );
 
 	return true;
+}
+
+/*
+================
+idGameLocal::SnapshotRenderState
+================
+*/
+void idGameLocal::SnapshotRenderState( void ) {
+	for ( idEntity *ent = spawnedEntities.Next(); ent != NULL; ent = ent->spawnNode.Next() ) {
+		ent->SnapshotRenderTransform();
+	}
+
+	for ( int i = 0; i < MAX_CLIENTS; i++ ) {
+		idPlayer *player = entities[ i ] && entities[ i ]->IsType( idPlayer::Type ) ? static_cast<idPlayer *>( entities[ i ] ) : NULL;
+		const renderView_t *view = player ? player->GetRenderView() : NULL;
+		if ( view ) {
+			previousRenderViews[ i ] = *view;
+			previousRenderViewValid[ i ] = true;
+		} else {
+			previousRenderViewValid[ i ] = false;
+		}
+	}
+}
+
+/*
+================
+idGameLocal::PresentRenderInterpolation
+================
+*/
+void idGameLocal::PresentRenderInterpolation( float interpolation ) {
+	interpolation = idMath::ClampFloat( 0.0f, 1.0f, interpolation );
+	for ( idEntity *ent = spawnedEntities.Next(); ent != NULL; ent = ent->spawnNode.Next() ) {
+		ent->PresentRenderInterpolation( interpolation );
+	}
+}
+
+/*
+================
+idGameLocal::GetInterpolatedRenderView
+================
+*/
+const renderView_t *idGameLocal::GetInterpolatedRenderView( idPlayer *player, float interpolation, renderView_t &view ) const {
+	const renderView_t *current = player ? player->GetRenderView() : NULL;
+	if ( !current ) {
+		return NULL;
+	}
+
+	view = *current;
+	const int clientNum = player->entityNumber;
+	if ( clientNum < 0 || clientNum >= MAX_CLIENTS || !previousRenderViewValid[ clientNum ] ) {
+		return &view;
+	}
+
+	const renderView_t &previous = previousRenderViews[ clientNum ];
+	interpolation = idMath::ClampFloat( 0.0f, 1.0f, interpolation );
+	if ( ( current->vieworg - previous.vieworg ).LengthSqr() < Square( 512.0f ) ) {
+		view.vieworg = previous.vieworg + interpolation * ( current->vieworg - previous.vieworg );
+		idQuat interpolatedAxis;
+		interpolatedAxis.Slerp( previous.viewaxis.ToQuat(), current->viewaxis.ToQuat(), interpolation );
+		view.viewaxis = interpolatedAxis.ToMat3();
+	}
+	view.fov_x = previous.fov_x + interpolation * ( current->fov_x - previous.fov_x );
+	view.fov_y = previous.fov_y + interpolation * ( current->fov_y - previous.fov_y );
+	view.time = previous.time + idMath::Ftoi( interpolation * ( current->time - previous.time ) );
+	for ( int i = 0; i < MAX_GLOBAL_SHADER_PARMS; i++ ) {
+		view.shaderParms[ i ] = previous.shaderParms[ i ] + interpolation * ( current->shaderParms[ i ] - previous.shaderParms[ i ] );
+	}
+	return &view;
 }
 
 /*
@@ -4935,4 +5008,3 @@ idGameLocal::GetMapLoadingGUI
 ===============
 */
 void idGameLocal::GetMapLoadingGUI( char gui[ MAX_STRING_CHARS ] ) { }
-

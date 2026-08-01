@@ -124,7 +124,7 @@ public:
 	virtual gameReturn_t		RunFrame( const usercmd_t *clientCmds ) = 0;
 
 	// Makes rendering and sound system calls to display for a given clientNum.
-	virtual bool				Draw( int clientNum ) = 0;
+	virtual bool				Draw( int clientNum, float interpolation ) = 0;
 
 	// Let the game do it's own UI when ESCAPE is used
 	virtual escReply_t			HandleESC( idUserInterface **gui ) = 0;
@@ -318,7 +318,7 @@ extern idGameEdit *				gameEdit;
 ===============================================================================
 */
 
-const int GAME_API_VERSION		= 8;
+const int GAME_API_VERSION		= 9;
 
 typedef struct {
 

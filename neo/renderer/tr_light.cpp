@@ -1187,11 +1187,11 @@ static void R_AddTransientLightSurfaces( viewEntity_t *vEntity, const idRenderMo
 				shader->Spectrum() != vLight->lightShader->Spectrum() ) {
 				continue;
 			}
-			if ( R_CullLocalBox( tri->bounds, vEntity->modelMatrix, 6, lightDef->frustum ) ) {
+			if (useBakedSurfaceLighting && tri->lightmapAtlas >= 0 && tri->lightmapTexCoords &&
+				tri->bakedLightmap && tri->bakedDeluxemap) {
 				continue;
 			}
-			if ( useBakedSurfaceLighting && tri->lightmapAtlas >= 0 && tri->lightmapTexCoords &&
-				tri->bakedLightmap && tri->bakedDeluxemap ) {
+			if ( R_CullLocalBox( tri->bounds, vEntity->modelMatrix, 6, lightDef->frustum ) ) {
 				continue;
 			}
 

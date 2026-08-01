@@ -1973,7 +1973,7 @@ bool idSessionLocal::SaveGame( const char *saveName, bool autosave ) {
 	// Write screenshot
 	if ( !autosave ) {
 		renderSystem->CropRenderSize( 320, 240, false );
-		game->Draw( 0 );
+		game->Draw( 0, 1.0f );
 		renderSystem->CaptureRenderToFile( previewFile, true );
 		renderSystem->UnCrop();
 	}
@@ -2387,7 +2387,7 @@ void idSessionLocal::Draw() {
 		
 		// draw the menus full screen
 		if ( guiActive == guiTakeNotes && !com_skipGameDraw.GetBool() ) {
-			game->Draw( GetLocalClientNum() );
+			game->Draw( GetLocalClientNum(), common->GetGameFrameInterpolation() );
 		}
 
 		guiActive->Redraw( com_frameTime );
@@ -2400,7 +2400,7 @@ void idSessionLocal::Draw() {
 		if ( !com_skipGameDraw.GetBool() && GetLocalClientNum() >= 0 ) {
 			// draw the game view
 			int	start = Sys_Milliseconds();
-			gameDraw = game->Draw( GetLocalClientNum() );
+			gameDraw = game->Draw( GetLocalClientNum(), common->GetGameFrameInterpolation() );
 			int end = Sys_Milliseconds();
 			time_gameDraw += ( end - start );	// note time used for com_speeds
 		}
@@ -2549,7 +2549,7 @@ void idSessionLocal::Frame() {
 	}
 
 	// se how many tics we should have before continuing
-	int	minTic = latchedTicNumber + 1;
+	int	minTic = latchedTicNumber;
 	if ( com_minTics.GetInteger() > 1 ) {
 		minTic = lastGameTic + com_minTics.GetInteger();
 	}

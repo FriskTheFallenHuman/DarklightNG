@@ -134,6 +134,7 @@ public:
 
 								// Advances the fixed-step game clock from the main thread.
 	virtual void				UpdateGameTime( void ) = 0;
+	virtual float				GetGameFrameInterpolation( void ) const = 0;
 
 								// Called from the dedicated sound thread. Not called until
 								// idCommon::Init() has completed.

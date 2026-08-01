@@ -2368,7 +2368,7 @@ const char* idMultiplayerGame::HandleGuiCommands( const char *_menuCommand ) {
 idMultiplayerGame::Draw
 ================
 */
-bool idMultiplayerGame::Draw( int clientNum ) {
+bool idMultiplayerGame::Draw( int clientNum, float interpolation ) {
 	idPlayer *player, *viewPlayer;
 
 	// clear the render entities for any players that don't need
@@ -2397,7 +2397,8 @@ bool idMultiplayerGame::Draw( int clientNum ) {
 	UpdatePlayerRanks();
 	UpdateHud( viewPlayer, player->hud );
 	// use the hud of the local player
-	viewPlayer->playerView.RenderPlayerView( player->hud );
+	renderView_t interpolatedView;
+	viewPlayer->playerView.RenderPlayerView( player->hud, gameLocal.GetInterpolatedRenderView( viewPlayer, interpolation, interpolatedView ) );
 
 	if ( currentMenu ) {
 #if 0
