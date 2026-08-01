@@ -37,6 +37,114 @@ If you have questions concerning this license or the applicable additional terms
 
 */
 
+static const srfTriangles_t *RB_GetBufferOwner( const srfTriangles_t *tri ) {
+	return tri && tri->ambientSurface ? tri->ambientSurface : tri;
+}
+
+const idDrawVert *RB_BindDrawVertBuffer( const srfTriangles_t *tri ) {
+	const srfTriangles_t *owner = RB_GetBufferOwner( tri );
+	if ( owner && owner->isParticle ) {
+		int vertexOffset = 0;
+		int indexOffset = 0;
+		if ( RB_VFX_BindSurface( tri, vertexOffset, indexOffset ) ) {
+			return reinterpret_cast<const idDrawVert *>( vertexOffset );
+		}
+	}
+	if ( owner && owner->vertexBuffer ) {
+		owner->vertexBuffer->Bind();
+		return reinterpret_cast<const idDrawVert *>( 0 );
+	}
+	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, 0 );
+	return tri ? tri->verts : NULL;
+}
+
+const idVec2 *RB_BindLightmapBuffer( const srfTriangles_t *tri ) {
+	const srfTriangles_t *owner = RB_GetBufferOwner( tri );
+	if ( owner && owner->lightmapBuffer ) {
+		owner->lightmapBuffer->Bind();
+		return reinterpret_cast<const idVec2 *>( 0 );
+	}
+	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, 0 );
+	return owner ? owner->lightmapTexCoords : NULL;
+}
+
+const shadowCache_t *RB_BindShadowBuffer( const srfTriangles_t *tri ) {
+	const srfTriangles_t *owner = RB_GetBufferOwner( tri );
+	if ( owner && owner->shadowBuffer ) {
+		owner->shadowBuffer->Bind();
+		return reinterpret_cast<const shadowCache_t *>( 0 );
+	}
+	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, 0 );
+	return tri ? tri->shadowVertexes : NULL;
+}
+
+static const void *RB_BindIndexBuffer( const srfTriangles_t *tri, bool &usingIndexBuffer ) {
+	usingIndexBuffer = false;
+	const srfTriangles_t *owner = RB_GetBufferOwner( tri );
+	if ( owner && owner->isParticle ) {
+		int vertexOffset = 0;
+		int indexOffset = 0;
+		if ( RB_VFX_BindSurface( tri, vertexOffset, indexOffset ) ) {
+			usingIndexBuffer = true;
+			return reinterpret_cast<const void *>( indexOffset );
+		}
+	}
+	if ( tri->indexBuffer ) {
+		tri->indexBuffer->Bind();
+		usingIndexBuffer = true;
+		return reinterpret_cast<const void *>( 0 );
+	}
+	if ( owner && owner != tri && tri->indexes == owner->indexes && owner->indexBuffer ) {
+		owner->indexBuffer->Bind();
+		usingIndexBuffer = true;
+		return reinterpret_cast<const void *>( 0 );
+	}
+	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
+	return tri->indexes;
+}
+
+static bool RB_EnableGPUSkinning( const srfTriangles_t *tri ) {
+	const srfTriangles_t *owner = RB_GetBufferOwner( tri );
+	if ( !owner || !owner->gpuSkinned ) {
+		return false;
+	}
+	if ( !owner->skinningBuffer || !owner->jointBuffer ) {
+		common->Error( "RB_EnableGPUSkinning: incomplete GPU skeletal surface" );
+	}
+	if ( !R_IsGLSLProgramBound() && !R_BindGLSLVertexProgram( GLSLPROG_GPU_SKINNING ) ) {
+		common->Error( "RB_EnableGPUSkinning: could not bind GPU skinning program" );
+	}
+	R_SetGLSLGPUSkinning( true );
+	owner->jointBuffer->Bind( 0 );
+	owner->skinningBuffer->Bind();
+	qglEnableVertexAttribArray( 13 );
+	qglEnableVertexAttribArray( 14 );
+	qglVertexAttribPointer( 13, 4, GL_UNSIGNED_BYTE, true, sizeof( gpuSkinVertex_t ),
+		reinterpret_cast<const void *>( offsetof( gpuSkinVertex_t, joints ) ) );
+	qglVertexAttribPointer( 14, 4, GL_UNSIGNED_BYTE, true, sizeof( gpuSkinVertex_t ),
+		reinterpret_cast<const void *>( offsetof( gpuSkinVertex_t, weights ) ) );
+	return true;
+}
+
+static void RB_DisableGPUSkinning( const srfTriangles_t *tri, bool enabled, bool unbindProgram ) {
+	if ( !enabled ) {
+		return;
+	}
+	qglDisableVertexAttribArray( 14 );
+	qglDisableVertexAttribArray( 13 );
+	R_SetGLSLGPUSkinning( false );
+	if ( unbindProgram ) {
+		R_UnbindGLSLProgram();
+	}
+	// Attribute pointers retain their VBO binding, but later material stages
+	// define color/normal/texcoord pointers again using offsets into idDrawVert.
+	// Leave the ambient vertex stream bound, never the packed skin stream.
+	const srfTriangles_t *owner = RB_GetBufferOwner( tri );
+	if ( owner && owner->vertexBuffer ) {
+		owner->vertexBuffer->Bind();
+	}
+}
+
 
 /*
 =================
@@ -90,21 +198,24 @@ void RB_DrawElementsWithCounters( const srfTriangles_t *tri ) {
 		}
 	}
 
-	if ( tri->indexCache && r_useIndexBuffers.GetBool() ) {
-		qglDrawElements( GL_TRIANGLES, 
-						r_singleTriangle.GetBool() ? 3 : tri->numIndexes,
-						GL_INDEX_TYPE,
-						(int *)vertexCache.Position( tri->indexCache ) );
+	const bool hadProgram = R_IsGLSLProgramBound();
+	const bool gpuSkinned = RB_EnableGPUSkinning( tri );
+
+	// Resident surfaces own their IBO and may release the CPU index array after
+	// upload, so using that array based on the legacy cvar is both unsafe and
+	// contrary to per-mesh ownership.  Frame-local GUI/deform geometry still
+	// reaches the client-index path because it deliberately has no IBO.
+	bool usingIndexBuffer = false;
+	const void *indexes = RB_BindIndexBuffer( tri, usingIndexBuffer );
+	qglDrawElements( GL_TRIANGLES,
+					r_singleTriangle.GetBool() ? 3 : tri->numIndexes,
+					GL_INDEX_TYPE,
+					indexes );
+	if ( usingIndexBuffer ) {
 		backEnd.pc.c_vboIndexes += tri->numIndexes;
-	} else {
-		if ( r_useIndexBuffers.GetBool() ) {
-			vertexCache.UnbindIndex();
-		}
-		qglDrawElements( GL_TRIANGLES, 
-						r_singleTriangle.GetBool() ? 3 : tri->numIndexes,
-						GL_INDEX_TYPE,
-						tri->indexes );
 	}
+
+	RB_DisableGPUSkinning( tri, gpuSkinned, gpuSkinned && !hadProgram );
 }
 
 /*
@@ -115,13 +226,13 @@ Sets texcoord and vertex pointers
 ===============
 */
 void RB_RenderTriangleSurface( const srfTriangles_t *tri ) {
-	if ( !tri->ambientCache ) {
+	if ( !tri->vertexBuffer && !tri->isParticle && !tri->verts &&
+		( !tri->ambientSurface || !tri->ambientSurface->vertexBuffer ) ) {
 		RB_DrawElementsImmediate( tri );
 		return;
 	}
 
-
-	idDrawVert *ac = (idDrawVert *)vertexCache.Position( tri->ambientCache );
+	const idDrawVert *ac = RB_BindDrawVertBuffer( tri );
 	qglVertexPointer( 3, GL_FLOAT, sizeof( idDrawVert ), ac->xyz.ToFloatPtr() );
 	qglTexCoordPointer( 2, GL_FLOAT, sizeof( idDrawVert ), ac->st.ToFloatPtr() );
 
@@ -383,10 +494,12 @@ void RB_BindStageTexture( const float *shaderRegisters, const textureStage_t *te
 
 	// texgens
 	if ( texture->texgen == TG_DIFFUSE_CUBE ) {
-		qglTexCoordPointer( 3, GL_FLOAT, sizeof( idDrawVert ), ((idDrawVert *)vertexCache.Position( surf->geo->ambientCache ))->normal.ToFloatPtr() );
+		const idDrawVert *verts = RB_BindDrawVertBuffer( surf->geo );
+		qglTexCoordPointer( 3, GL_FLOAT, sizeof( idDrawVert ), verts->normal.ToFloatPtr() );
 	}
 	if ( texture->texgen == TG_SKYBOX_CUBE || texture->texgen == TG_WOBBLESKY_CUBE ) {
-		qglTexCoordPointer( 3, GL_FLOAT, 0, vertexCache.Position( surf->dynamicTexCoords ) );
+		qglBindBufferARB( GL_ARRAY_BUFFER_ARB, 0 );
+		qglTexCoordPointer( 3, GL_FLOAT, 0, surf->dynamicTexCoords );
 	}
 	if ( texture->texgen == TG_REFLECT_CUBE ) {
 		qglEnable( GL_TEXTURE_GEN_S );
@@ -396,7 +509,8 @@ void RB_BindStageTexture( const float *shaderRegisters, const textureStage_t *te
 		qglTexGenf( GL_T, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP_EXT );
 		qglTexGenf( GL_R, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP_EXT );
 		qglEnableClientState( GL_NORMAL_ARRAY );
-		qglNormalPointer( GL_FLOAT, sizeof( idDrawVert ), ((idDrawVert *)vertexCache.Position( surf->geo->ambientCache ))->normal.ToFloatPtr() );
+		const idDrawVert *verts = RB_BindDrawVertBuffer( surf->geo );
+		qglNormalPointer( GL_FLOAT, sizeof( idDrawVert ), verts->normal.ToFloatPtr() );
 
 		qglMatrixMode( GL_TEXTURE );
 		float	mat[16];
@@ -421,8 +535,9 @@ RB_FinishStageTexture
 void RB_FinishStageTexture( const textureStage_t *texture, const drawSurf_t *surf ) {
 	if ( texture->texgen == TG_DIFFUSE_CUBE || texture->texgen == TG_SKYBOX_CUBE 
 		|| texture->texgen == TG_WOBBLESKY_CUBE ) {
+		const idDrawVert *verts = RB_BindDrawVertBuffer( surf->geo );
 		qglTexCoordPointer( 2, GL_FLOAT, sizeof( idDrawVert ), 
-			(void *)&(((idDrawVert *)vertexCache.Position( surf->geo->ambientCache ))->st) );
+			(const void *)&verts->st );
 	}
 
 	if ( texture->texgen == TG_REFLECT_CUBE ) {
@@ -661,7 +776,9 @@ void RB_CreateSingleDrawInteractions( const drawSurf_t *surf, void (*DrawInterac
 	const float			*lightRegs = vLight->shaderRegisters;
 	drawInteraction_t	inter;
 
-	if ( r_skipInteractions.GetBool() || !surf->geo || !surf->geo->ambientCache ) {
+	if ( r_skipInteractions.GetBool() || !surf->geo ||
+		( !surf->geo->vertexBuffer && !surf->geo->isParticle && !surf->geo->verts &&
+		  ( !surf->geo->ambientSurface || !surf->geo->ambientSurface->vertexBuffer ) ) ) {
 		return;
 	}
 

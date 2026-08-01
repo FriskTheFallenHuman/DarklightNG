@@ -116,7 +116,7 @@ typedef struct drawSurf_s {
 	const float				*shaderRegisters;	// evaluated and adjusted for referenceShaders
 	const struct drawSurf_s	*nextOnLight;	// viewLight chains
 	idScreenRect			scissorRect;	// for scissor clipping, local inside renderView viewport
-	struct vertCache_s		*dynamicTexCoords;	// float * in vertex cache memory
+	void					*dynamicTexCoords;	// frame-memory generated texture coordinates
 	// specular directions for non vertex program cards, skybox texcoords, etc
 } drawSurf_t;
 
@@ -791,7 +791,7 @@ extern idCVar r_usePortals;				// 1 = use portals to perform area culling, other
 extern idCVar r_useStateCaching;		// avoid redundant state changes in GL_*() calls
 extern idCVar r_useCombinerDisplayLists;// if 1, put all nvidia register combiner programming in display lists
 extern idCVar r_useVertexBuffers;		// if 0, don't use ARB_vertex_buffer_object for vertexes
-extern idCVar r_useIndexBuffers;		// if 0, don't use ARB_vertex_buffer_object for indexes
+extern idCVar r_useIndexBuffers;		// deprecated compatibility cvar; resident IBOs are unconditional
 extern idCVar r_useEntityCallbacks;		// if 0, issue the callback immediately at update time, rather than defering
 extern idCVar r_lightAllBackFaces;		// light all the back faces, even when they would be shadowed
 
@@ -1177,6 +1177,9 @@ DRAW_STANDARD
 */
 
 void RB_DrawElementsWithCounters( const srfTriangles_t *tri );
+const idDrawVert *RB_BindDrawVertBuffer( const srfTriangles_t *tri );
+const idVec2 *RB_BindLightmapBuffer( const srfTriangles_t *tri );
+const shadowCache_t *RB_BindShadowBuffer( const srfTriangles_t *tri );
 void RB_STD_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs );
 void RB_BindVariableStageImage( const textureStage_t *texture, const float *shaderRegisters );
 void RB_BindStageTexture( const float *shaderRegisters, const textureStage_t *texture, const drawSurf_t *surf );
@@ -1463,6 +1466,7 @@ void RB_ShowTrace( drawSurf_t **drawSurfs, int numDrawSurfs );
 
 #include "RenderWorld_local.h"
 #include "GuiModel.h"
-#include "VertexCache.h"
+#include "BufferObject.h"
+#include "draw_vfx.h"
 
 #endif /* !__TR_LOCAL_H__ */

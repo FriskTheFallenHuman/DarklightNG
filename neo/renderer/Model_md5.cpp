@@ -45,6 +45,36 @@ static int c_numVerts = 0;
 static int c_numWeights = 0;
 static int c_numWeightJoints = 0;
 
+static const int MAX_GPU_JOINTS = 136;
+static const int MAX_GPU_VERTEX_WEIGHTS = 4;
+
+static void R_InvertJointMatrix( idJointMat &matrix ) {
+	float *m = matrix.ToFloatPtr();
+	float temp[3];
+	temp[0] = m[0] * m[3] + m[4] * m[7] + m[8] * m[11];
+	temp[1] = m[1] * m[3] + m[5] * m[7] + m[9] * m[11];
+	temp[2] = m[2] * m[3] + m[6] * m[7] + m[10] * m[11];
+	m[3] = -temp[0];
+	m[7] = -temp[1];
+	m[11] = -temp[2];
+	temp[0] = m[1]; m[1] = m[4]; m[4] = temp[0];
+	temp[1] = m[2]; m[2] = m[8]; m[8] = temp[1];
+	temp[2] = m[6]; m[6] = m[9]; m[9] = temp[2];
+}
+
+static void R_MultiplyJointMatrices( idJointMat &result, const idJointMat &left, const idJointMat &right ) {
+	const float *a = left.ToFloatPtr();
+	const float *b = right.ToFloatPtr();
+	float *r = result.ToFloatPtr();
+	for ( int row = 0; row < 3; row++ ) {
+		const int o = row * 4;
+		r[o + 0] = a[o + 0] * b[0] + a[o + 1] * b[4] + a[o + 2] * b[8];
+		r[o + 1] = a[o + 0] * b[1] + a[o + 1] * b[5] + a[o + 2] * b[9];
+		r[o + 2] = a[o + 0] * b[2] + a[o + 1] * b[6] + a[o + 2] * b[10];
+		r[o + 3] = a[o + 0] * b[3] + a[o + 1] * b[7] + a[o + 2] * b[11] + a[o + 3];
+	}
+}
+
 typedef struct vertexWeight_s {
 	int							vert;
 	int							joint;
@@ -60,6 +90,8 @@ idMD5Mesh::idMD5Mesh
 idMD5Mesh::idMD5Mesh() {
 	scaledWeights	= NULL;
 	weightIndex		= NULL;
+	basePose		= NULL;
+	skinVertices	= NULL;
 	shader			= NULL;
 	numTris			= 0;
 	deformInfo		= NULL;
@@ -74,6 +106,8 @@ idMD5Mesh::~idMD5Mesh
 idMD5Mesh::~idMD5Mesh() {
 	Mem_Free16( scaledWeights );
 	Mem_Free16( weightIndex );
+	Mem_Free16( basePose );
+	Mem_Free16( skinVertices );
 	if ( deformInfo ) {
 		R_FreeDeformInfo( deformInfo );
 		deformInfo = NULL;
@@ -218,10 +252,6 @@ void idMD5Mesh::ParseMesh( idLexer &parser, int numJoints, const idJointMat *joi
 		weightIndex[count * 2 - 1] = 1;
 	}
 
-	tempWeights.Clear();
-	numWeightsForVertex.Clear();
-	firstWeightForVertex.Clear();
-
 	parser.ExpectTokenString( "}" );
 
 	// update counters
@@ -243,6 +273,81 @@ void idMD5Mesh::ParseMesh( idLexer &parser, int numJoints, const idJointMat *joi
 	}
 	TransformVerts( verts, joints );
 	deformInfo = R_BuildDeformInfo( texCoords.Num(), verts, tris.Num(), tris.Ptr(), shader->UseUnsmoothedTangents() );
+
+	// Keep a complete bind-pose stream. The vertex shader applies matrices that
+	// are relative to this pose, so positions and tangent vectors can share the
+	// same compact four-weight skinning stream.
+	basePose = (idDrawVert *)Mem_Alloc16( deformInfo->numOutputVerts * sizeof( basePose[0] ) );
+	memcpy( basePose, verts, deformInfo->numSourceVerts * sizeof( basePose[0] ) );
+	const int mirrorBase = deformInfo->numOutputVerts - deformInfo->numMirroredVerts;
+	for ( i = 0; i < deformInfo->numMirroredVerts; i++ ) {
+		basePose[mirrorBase + i] = basePose[deformInfo->mirroredVerts[i]];
+	}
+
+	srfTriangles_t tangentTri;
+	memset( &tangentTri, 0, sizeof( tangentTri ) );
+	tangentTri.numVerts = deformInfo->numOutputVerts;
+	tangentTri.verts = basePose;
+	tangentTri.numIndexes = deformInfo->numIndexes;
+	tangentTri.indexes = deformInfo->indexes;
+	tangentTri.dominantTris = deformInfo->dominantTris;
+	R_DeriveTangents( &tangentTri, false );
+
+	// Pack the strongest four influences exactly once. Models requiring more
+	// than the UBO-backed joint budget are rejected instead of falling back to
+	// CPU deformation.
+	if ( numJoints > MAX_GPU_JOINTS ) {
+		parser.Error( "Model has %d joints; GPU skinning supports at most %d.", numJoints, MAX_GPU_JOINTS );
+	}
+	skinVertices = (gpuSkinVertex_t *)Mem_Alloc16( deformInfo->numOutputVerts * sizeof( skinVertices[0] ) );
+	memset( skinVertices, 0, deformInfo->numOutputVerts * sizeof( skinVertices[0] ) );
+
+	for ( i = 0; i < texCoords.Num(); i++ ) {
+		idList<int> sortedWeights;
+		sortedWeights.SetNum( numWeightsForVertex[i] );
+		for ( j = 0; j < sortedWeights.Num(); j++ ) {
+			sortedWeights[j] = firstWeightForVertex[i] + j;
+		}
+		for ( j = 0; j < sortedWeights.Num(); j++ ) {
+			for ( int k = j + 1; k < sortedWeights.Num(); k++ ) {
+				if ( tempWeights[sortedWeights[k]].jointWeight > tempWeights[sortedWeights[j]].jointWeight ) {
+					const int temp = sortedWeights[j];
+					sortedWeights[j] = sortedWeights[k];
+					sortedWeights[k] = temp;
+				}
+			}
+		}
+
+		const int usedWeights = Min( MAX_GPU_VERTEX_WEIGHTS, sortedWeights.Num() );
+		float usedWeight = 0.0f;
+		for ( j = 0; j < usedWeights; j++ ) {
+			usedWeight += tempWeights[sortedWeights[j]].jointWeight;
+		}
+		if ( usedWeight <= 0.0f ) {
+			parser.Error( "Vertex %d has no positive joint weights.", i );
+		}
+
+		int packedTotal = 0;
+		for ( j = 0; j < usedWeights; j++ ) {
+			const vertexWeight_t &weight = tempWeights[sortedWeights[j]];
+			const int packedWeight = idMath::ClampInt( 0, 255,
+				idMath::FtoiFast( weight.jointWeight * ( 255.0f / usedWeight ) ) );
+			skinVertices[i].joints[j] = (byte)weight.joint;
+			skinVertices[i].weights[j] = (byte)packedWeight;
+			packedTotal += packedWeight;
+		}
+		const int residual = 255 - packedTotal;
+		skinVertices[i].weights[0] = (byte)idMath::ClampInt( 0, 255,
+			(int)skinVertices[i].weights[0] + residual );
+	}
+
+	for ( i = 0; i < deformInfo->numMirroredVerts; i++ ) {
+		skinVertices[mirrorBase + i] = skinVertices[deformInfo->mirroredVerts[i]];
+	}
+
+	tempWeights.Clear();
+	numWeightsForVertex.Clear();
+	firstWeightForVertex.Clear();
 }
 
 /*
@@ -256,38 +361,25 @@ void idMD5Mesh::TransformVerts( idDrawVert *verts, const idJointMat *entJoints )
 
 /*
 ====================
-idMD5Mesh::TransformScaledVerts
-
-Special transform to make the mesh seem fat or skinny.  May be used for zombie deaths
-====================
-*/
-void idMD5Mesh::TransformScaledVerts( idDrawVert *verts, const idJointMat *entJoints, float scale ) {
-	idVec4 *scaledWeights = (idVec4 *) _alloca16( numWeights * sizeof( scaledWeights[0] ) );
-	SIMDProcessor->Mul( scaledWeights[0].ToFloatPtr(), scale, scaledWeights[0].ToFloatPtr(), numWeights * 4 );
-	SIMDProcessor->TransformVerts( verts, texCoords.Num(), entJoints, scaledWeights, weightIndex, numWeights );
-}
-
-/*
-====================
 idMD5Mesh::UpdateSurface
 ====================
 */
-void idMD5Mesh::UpdateSurface( const struct renderEntity_s *ent, const idJointMat *entJoints, modelSurface_t *surf ) {
-	int i, base;
+void idMD5Mesh::UpdateSurface( const struct renderEntity_s *ent, const idJointMat *entJoints,
+		const idJointMat *relativeJoints, int numJoints, modelSurface_t *surf ) {
 	srfTriangles_t *tri;
 
 	tr.pc.c_deformedSurfaces++;
 	tr.pc.c_deformedVerts += deformInfo->numOutputVerts;
 	tr.pc.c_deformedIndexes += deformInfo->numIndexes;
 
+	// Keep the authored mesh material on the cached snapshot. The render world
+	// applies entity skins and custom shaders when the surface is submitted;
+	// caching that remap here would run the skin table a second time.
 	surf->shader = shader;
 
 	if ( surf->geometry ) {
-		// if the number of verts and indexes are the same we can re-use the triangle surface
-		// the number of indexes must be the same to assure the correct amount of memory is allocated for the facePlanes
-		if ( surf->geometry->numVerts == deformInfo->numOutputVerts && surf->geometry->numIndexes == deformInfo->numIndexes ) {
-			R_FreeStaticTriSurfVertexCaches( surf->geometry );
-		} else {
+		if ( surf->geometry->numVerts != deformInfo->numOutputVerts ||
+			surf->geometry->numIndexes != deformInfo->numIndexes ) {
 			R_FreeStaticTriSurf( surf->geometry );
 			surf->geometry = R_AllocStaticTriSurf();
 		}
@@ -299,8 +391,9 @@ void idMD5Mesh::UpdateSurface( const struct renderEntity_s *ent, const idJointMa
 
 	// note that some of the data is references, and should not be freed
 	tri->deformedSurface = true;
-	tri->tangentsCalculated = false;
+	tri->tangentsCalculated = true;
 	tri->facePlanesCalculated = false;
+	tri->gpuSkinned = true;
 
 	tri->numIndexes = deformInfo->numIndexes;
 	tri->indexes = deformInfo->indexes;
@@ -316,34 +409,56 @@ void idMD5Mesh::UpdateSurface( const struct renderEntity_s *ent, const idJointMa
 
 	if ( tri->verts == NULL ) {
 		R_AllocStaticTriSurfVerts( tri, tri->numVerts );
-		for ( i = 0; i < deformInfo->numSourceVerts; i++ ) {
-			tri->verts[i].Clear();
-			tri->verts[i].st = texCoords[i];
+		memcpy( tri->verts, basePose, tri->numVerts * sizeof( tri->verts[0] ) );
+	}
+
+	if ( tri->numJoints != numJoints ) {
+		Mem_Free16( tri->jointMatrices );
+		tri->jointMatrices = NULL;
+		delete tri->jointBuffer;
+		tri->jointBuffer = NULL;
+		tri->numJoints = numJoints;
+	}
+	if ( tri->skinningVerts == NULL ) {
+		tri->skinningVerts = (gpuSkinVertex_t *)Mem_Alloc16( tri->numVerts * sizeof( tri->skinningVerts[0] ) );
+		memcpy( tri->skinningVerts, skinVertices, tri->numVerts * sizeof( tri->skinningVerts[0] ) );
+	}
+	if ( tri->jointMatrices == NULL ) {
+		tri->jointMatrices = (idJointMat *)Mem_Alloc16( numJoints * sizeof( tri->jointMatrices[0] ) );
+	}
+	memcpy( tri->jointMatrices, relativeJoints, numJoints * sizeof( tri->jointMatrices[0] ) );
+
+	if ( !tri->vertexBuffer ) {
+		tri->vertexBuffer = new idVertexBuffer;
+		if ( !tri->vertexBuffer->AllocBufferObject( tri->verts, tri->numVerts * sizeof( tri->verts[0] ) ) ) {
+			common->Error( "idMD5Mesh::UpdateSurface: failed to allocate bind-pose vertex buffer" );
 		}
 	}
-
-	if ( ent->shaderParms[ SHADERPARM_MD5_SKINSCALE ] != 0.0f ) {
-		TransformScaledVerts( tri->verts, entJoints, ent->shaderParms[ SHADERPARM_MD5_SKINSCALE ] );
+	if ( !tri->indexBuffer ) {
+		tri->indexBuffer = new idIndexBuffer;
+		if ( !tri->indexBuffer->AllocBufferObject( tri->indexes, tri->numIndexes * sizeof( tri->indexes[0] ) ) ) {
+			common->Error( "idMD5Mesh::UpdateSurface: failed to allocate index buffer" );
+		}
+	}
+	if ( !tri->skinningBuffer ) {
+		tri->skinningBuffer = new idVertexBuffer;
+		if ( !tri->skinningBuffer->AllocBufferObject( tri->skinningVerts,
+			tri->numVerts * sizeof( tri->skinningVerts[0] ) ) ) {
+			common->Error( "idMD5Mesh::UpdateSurface: failed to allocate skinning vertex buffer" );
+		}
+	}
+	if ( !tri->jointBuffer ) {
+		tri->jointBuffer = new idJointBuffer;
+		if ( !tri->jointBuffer->AllocBufferObject( tri->jointMatrices[0].ToFloatPtr(), numJoints ) ) {
+			common->Error( "idMD5Mesh::UpdateSurface: failed to allocate joint uniform buffer" );
+		}
 	} else {
-		TransformVerts( tri->verts, entJoints );
+		tri->jointBuffer->Update( tri->jointMatrices[0].ToFloatPtr(), numJoints );
 	}
 
-	// replicate the mirror seam vertexes
-	base = deformInfo->numOutputVerts - deformInfo->numMirroredVerts;
-	for ( i = 0; i < deformInfo->numMirroredVerts; i++ ) {
-		tri->verts[base + i] = tri->verts[deformInfo->mirroredVerts[i]];
-	}
-
-	R_BoundTriSurf( tri );
-
-	// If a surface is going to be have a lighting interaction generated, it will also have to call
-	// R_DeriveTangents() to get normals, tangents, and face planes.  If it only
-	// needs shadows generated, it will only have to generate face planes.  If it only
-	// has ambient drawing, or is culled, no additional work will be necessary
-	if ( !r_useDeferredTangents.GetBool() ) {
-		// set face planes, vertex normals, tangents
-		R_DeriveTangents( tri );
-	}
+	// Vertex deformation is GPU-only. CPU skinning remains confined to bounds
+	// and other front-end visibility work.
+	tri->bounds = CalcBounds( entJoints );
 }
 
 /*
@@ -558,6 +673,12 @@ void idRenderModelMD5::LoadModel() {
 		}
 	}
 	parser.ExpectTokenString( "}" );
+	referenceJoints.SetGranularity( 1 );
+	referenceJoints.SetNum( joints.Num() );
+	memcpy( referenceJoints.Ptr(), poseMat3, joints.Num() * sizeof( poseMat3[0] ) );
+	for ( i = 0; i < referenceJoints.Num(); i++ ) {
+		R_InvertJointMatrix( referenceJoints[i] );
+	}
 
 	for( i = 0; i < meshes.Num(); i++ ) {
 		parser.ExpectTokenString( "mesh" );
@@ -743,6 +864,18 @@ idRenderModel *idRenderModelMD5::InstantiateDynamicModel( const struct renderEnt
 		delete cachedModel;
 		return NULL;
 	}
+	if ( !glConfig.gpuSkinningAvailable ) {
+		common->Error( "idRenderModelMD5::InstantiateDynamicModel: '%s' requires GPU uniform-buffer skinning", Name() );
+	}
+	if ( joints.Num() > MAX_GPU_JOINTS ) {
+		common->Error( "idRenderModelMD5::InstantiateDynamicModel: '%s' has %d joints, maximum is %d",
+			Name(), joints.Num(), MAX_GPU_JOINTS );
+	}
+
+	idJointMat *relativeJoints = (idJointMat *)_alloca16( joints.Num() * sizeof( relativeJoints[0] ) );
+	for ( i = 0; i < joints.Num(); i++ ) {
+		R_MultiplyJointMatrices( relativeJoints[i], ent->joints[i], referenceJoints[i] );
+	}
 
 	tr.pc.c_generateMd5++;
 
@@ -801,7 +934,7 @@ idRenderModel *idRenderModelMD5::InstantiateDynamicModel( const struct renderEnt
 			surf->id = i;
 		}
 
-		mesh->UpdateSurface( ent, ent->joints, surf );
+		mesh->UpdateSurface( ent, ent->joints, relativeJoints, joints.Num(), surf );
 
 		staticModel->bounds.AddPoint( surf->geometry->bounds[0] );
 		staticModel->bounds.AddPoint( surf->geometry->bounds[1] );
@@ -929,6 +1062,7 @@ void idRenderModelMD5::PurgeModel() {
 	purged = true;
 	joints.Clear();
 	defaultPose.Clear();
+	referenceJoints.Clear();
 	meshes.Clear();
 }
 
@@ -941,7 +1075,7 @@ int	idRenderModelMD5::Memory() const {
 	int		total, i;
 
 	total = sizeof( *this );
-	total += joints.MemoryUsed() + defaultPose.MemoryUsed() + meshes.MemoryUsed();
+	total += joints.MemoryUsed() + defaultPose.MemoryUsed() + referenceJoints.MemoryUsed() + meshes.MemoryUsed();
 
 	// count up strings
 	for ( i = 0; i < joints.Num(); i++ ) {
@@ -953,6 +1087,7 @@ int	idRenderModelMD5::Memory() const {
 		const idMD5Mesh *mesh = &meshes[i];
 
 		total += mesh->texCoords.MemoryUsed() + mesh->numWeights * ( sizeof( mesh->scaledWeights[0] ) + sizeof( mesh->weightIndex[0] ) * 2 );
+		total += mesh->deformInfo->numOutputVerts * ( sizeof( mesh->basePose[0] ) + sizeof( mesh->skinVertices[0] ) );
 
 		// sum up deform info
 		total += sizeof( mesh->deformInfo );

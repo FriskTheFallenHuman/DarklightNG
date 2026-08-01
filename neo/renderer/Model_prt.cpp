@@ -157,6 +157,7 @@ idRenderModel *idRenderModelPrt::InstantiateDynamicModel( const struct renderEnt
 			R_AllocStaticTriSurfPlanes( surf->geometry, 6 * count );
 		}
 
+		surf->geometry->isParticle = true;
 		int numVerts = 0;
 		idDrawVert *verts = surf->geometry->verts;
 

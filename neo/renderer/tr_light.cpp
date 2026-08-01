@@ -50,7 +50,11 @@ Create it if needed
 ==================
 */
 bool R_CreateAmbientCache( srfTriangles_t *tri, bool needsLighting ) {
-	if ( tri->ambientCache && ( !tri->lightmapTexCoords || tri->lightmapCache ) ) {
+	if ( tri->isParticle ) {
+		return true;
+	}
+	const bool skinningReady = !tri->gpuSkinned || ( tri->skinningBuffer && tri->jointBuffer );
+	if ( tri->vertexBuffer && tri->indexBuffer && ( !tri->lightmapTexCoords || tri->lightmapBuffer ) && skinningReady ) {
 		return true;
 	}
 	// we are going to use it for drawing, so make sure we have the tangents and normals
@@ -58,16 +62,49 @@ bool R_CreateAmbientCache( srfTriangles_t *tri, bool needsLighting ) {
 		R_DeriveTangents( tri );
 	}
 
-	if ( !tri->ambientCache ) {
-		vertexCache.Alloc( tri->verts, tri->numVerts * sizeof( tri->verts[0] ), &tri->ambientCache );
+	if ( !tri->vertexBuffer && tri->verts && tri->numVerts > 0 ) {
+		tri->vertexBuffer = new idVertexBuffer;
+		if ( !tri->vertexBuffer->AllocBufferObject( tri->verts, tri->numVerts * sizeof( tri->verts[0] ) ) ) {
+			delete tri->vertexBuffer;
+			tri->vertexBuffer = NULL;
+			return false;
+		}
 	}
-	if ( !tri->ambientCache ) {
+	if ( !tri->vertexBuffer ) {
 		return false;
 	}
-	if ( tri->lightmapTexCoords && !tri->lightmapCache ) {
-		vertexCache.Alloc( tri->lightmapTexCoords, tri->numVerts * sizeof( tri->lightmapTexCoords[0] ), &tri->lightmapCache );
-		if ( !tri->lightmapCache ) {
+	if ( !tri->indexBuffer && tri->indexes && tri->numIndexes > 0 ) {
+		tri->indexBuffer = new idIndexBuffer;
+		if ( !tri->indexBuffer->AllocBufferObject( tri->indexes, tri->numIndexes * sizeof( tri->indexes[0] ) ) ) {
+			delete tri->indexBuffer;
+			tri->indexBuffer = NULL;
 			return false;
+		}
+	}
+	if ( tri->lightmapTexCoords && !tri->lightmapBuffer ) {
+		tri->lightmapBuffer = new idVertexBuffer;
+		if ( !tri->lightmapBuffer->AllocBufferObject( tri->lightmapTexCoords, tri->numVerts * sizeof( tri->lightmapTexCoords[0] ) ) ) {
+			delete tri->lightmapBuffer;
+			tri->lightmapBuffer = NULL;
+			return false;
+		}
+	}
+	if ( tri->gpuSkinned ) {
+		if ( !glConfig.gpuSkinningAvailable || !tri->skinningVerts || !tri->jointMatrices || tri->numJoints <= 0 ) {
+			common->Error( "R_CreateAmbientCache: GPU skeletal surface has no valid skinning data" );
+		}
+		if ( !tri->skinningBuffer ) {
+			tri->skinningBuffer = new idVertexBuffer;
+			if ( !tri->skinningBuffer->AllocBufferObject( tri->skinningVerts,
+				tri->numVerts * sizeof( tri->skinningVerts[0] ) ) ) {
+				common->Error( "R_CreateAmbientCache: failed to recreate skinning vertex buffer" );
+			}
+		}
+		if ( !tri->jointBuffer ) {
+			tri->jointBuffer = new idJointBuffer;
+			if ( !tri->jointBuffer->AllocBufferObject( tri->jointMatrices[0].ToFloatPtr(), tri->numJoints ) ) {
+				common->Error( "R_CreateAmbientCache: failed to recreate joint uniform buffer" );
+			}
 		}
 	}
 	return true;
@@ -86,7 +123,7 @@ void R_SkyboxTexGen( drawSurf_t *surf, const idVec3 &viewOrg ) {
 
 	int numVerts = surf->geo->numVerts;
 	int size = numVerts * sizeof( idVec3 );
-	idVec3 *texCoords = (idVec3 *) _alloca16( size );
+	idVec3 *texCoords = (idVec3 *)R_FrameAlloc( size );
 
 	const idDrawVert *verts = surf->geo->verts;
 	for ( i = 0; i < numVerts; i++ ) {
@@ -95,7 +132,7 @@ void R_SkyboxTexGen( drawSurf_t *surf, const idVec3 &viewOrg ) {
 		texCoords[i][2] = verts[i].xyz[2] - localViewOrigin[2];
 	}
 
-	surf->dynamicTexCoords = vertexCache.AllocFrameTemp( texCoords, size );
+	surf->dynamicTexCoords = texCoords;
 }
 
 /*
@@ -164,7 +201,7 @@ void R_WobbleskyTexGen( drawSurf_t *surf, const idVec3 &viewOrg ) {
 
 	int numVerts = surf->geo->numVerts;
 	int size = numVerts * sizeof( idVec3 );
-	idVec3 *texCoords = (idVec3 *) _alloca16( size );
+	idVec3 *texCoords = (idVec3 *)R_FrameAlloc( size );
 
 	const idDrawVert *verts = surf->geo->verts;
 	for ( i = 0; i < numVerts; i++ ) {
@@ -177,7 +214,7 @@ void R_WobbleskyTexGen( drawSurf_t *surf, const idVec3 &viewOrg ) {
 		R_LocalPointToGlobal( transform, v, texCoords[i] );
 	}
 
-	surf->dynamicTexCoords = vertexCache.AllocFrameTemp( texCoords, size );
+	surf->dynamicTexCoords = texCoords;
 }
 
 /*
@@ -199,7 +236,7 @@ static void R_SpecularTexGen( drawSurf_t *surf, const idVec3 &globalLightOrigin,
 
 	// FIXME: change to 3 component?
 	int	size = tri->numVerts * sizeof( idVec4 );
-	idVec4 *texCoords = (idVec4 *) _alloca16( size );
+	idVec4 *texCoords = (idVec4 *)R_FrameAlloc( size );
 
 #if 1
 
@@ -247,7 +284,7 @@ static void R_SpecularTexGen( drawSurf_t *surf, const idVec3 &globalLightOrigin,
 
 #endif
 
-	surf->dynamicTexCoords = vertexCache.AllocFrameTemp( texCoords, size );
+	surf->dynamicTexCoords = texCoords;
 }
 
 
@@ -652,14 +689,13 @@ void R_AddLightSurfaces( void ) {
 		// fog lights will need to draw the light frustum triangles, so make sure they
 		// are in the vertex cache
 		if ( lightShader->IsFogLight() ) {
-			if ( !light->frustumTris->ambientCache ) {
+			if ( !light->frustumTris->vertexBuffer ) {
 				if ( !R_CreateAmbientCache( light->frustumTris, false ) ) {
 					// skip if we are out of vertex memory
 					continue;
 				}
 			}
 			// touch the surface so it won't get purged
-			vertexCache.Touch( light->frustumTris->ambientCache );
 		}
 
 	}
@@ -1021,16 +1057,6 @@ static void R_AddAmbientDrawsurfs( viewEntity_t *vEntity ) {
 				// don't add anything if the vertex cache was too full to give us an ambient cache
 				return;
 			}
-			// touch it so it won't get purged
-			vertexCache.Touch( tri->ambientCache );
-
-			if ( r_useIndexBuffers.GetBool() && !tri->indexCache ) {
-				vertexCache.Alloc( tri->indexes, tri->numIndexes * sizeof( tri->indexes[0] ), &tri->indexCache, true );
-			}
-			if ( tri->indexCache ) {
-				vertexCache.Touch( tri->indexCache );
-			}
-
 			// add the surface for drawing
 			R_AddDrawSurf( tri, vEntity, &vEntity->entityDef->parms, shader, vEntity->scissorRect );
 
@@ -1067,8 +1093,11 @@ static srfTriangles_t *R_CreateTransientLightTris( const idRenderEntityLocal *en
 		}
 	}
 
-	const bool allInside = frontBits == ( ( 1 << 6 ) - 1 );
-	const bool includeBackFaces = r_lightAllBackFaces.GetBool() ||
+	// Bind-pose vertices deliberately are not CPU-deformed. Animated bounds are
+	// still exact, but per-vertex and per-face light clipping must stay on the
+	// conservative path for GPU-skinned surfaces.
+	const bool allInside = tri->gpuSkinned || frontBits == ( ( 1 << 6 ) - 1 );
+	const bool includeBackFaces = tri->gpuSkinned || r_lightAllBackFaces.GetBool() ||
 		lightDef->lightShader->LightEffectsBackSides() || shader->ReceivesLightingOnBackSides() ||
 		entityDef->parms.noSelfShadow || entityDef->parms.noShadow;
 
@@ -1095,8 +1124,12 @@ static srfTriangles_t *R_CreateTransientLightTris( const idRenderEntityLocal *en
 		lightTris->indexes = tri->indexes;
 		lightTris->numIndexes = tri->numIndexes;
 		lightTris->bounds = tri->bounds;
-		lightTris->ambientCache = tri->ambientCache;
-		lightTris->indexCache = tri->indexCache;
+		lightTris->vertexBuffer = tri->vertexBuffer;
+		lightTris->indexBuffer = tri->indexBuffer;
+		lightTris->gpuSkinned = tri->gpuSkinned;
+		lightTris->skinningBuffer = tri->skinningBuffer;
+		lightTris->jointBuffer = tri->jointBuffer;
+		lightTris->isParticle = tri->isParticle;
 		tr.pc.c_createLightTris++;
 		return lightTris;
 	}
@@ -1146,7 +1179,11 @@ static srfTriangles_t *R_CreateTransientLightTris( const idRenderEntityLocal *en
 	lightTris->numVerts = tri->numVerts;
 	lightTris->indexes = indexes;
 	lightTris->numIndexes = numIndexes;
-	lightTris->ambientCache = tri->ambientCache;
+	lightTris->vertexBuffer = tri->vertexBuffer;
+	lightTris->gpuSkinned = tri->gpuSkinned;
+	lightTris->skinningBuffer = tri->skinningBuffer;
+	lightTris->jointBuffer = tri->jointBuffer;
+	lightTris->isParticle = tri->isParticle;
 	SIMDProcessor->MinMax( lightTris->bounds[0], lightTris->bounds[1], tri->verts, indexes, numIndexes );
 	tr.pc.c_createLightTris++;
 	return lightTris;

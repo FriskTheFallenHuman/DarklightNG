@@ -505,11 +505,11 @@ void RB_ShowLightCount( void ) {
 	for ( vLight = backEnd.viewDef->viewLights ; vLight ; vLight = vLight->next ) {
 		for ( surf = vLight->interactions; surf; surf = (drawSurf_t *)surf->nextOnLight ) {
 			RB_SimpleSurfaceSetup( surf );
-			if ( !surf->geo->ambientCache ) {
+			if ( !surf->geo->vertexBuffer && !surf->geo->verts ) {
 				continue;
 			}
 
-			const idDrawVert	*ac = (idDrawVert *)vertexCache.Position( surf->geo->ambientCache );
+			const idDrawVert *ac = RB_BindDrawVertBuffer( surf->geo );
 			qglVertexPointer( 3, GL_FLOAT, sizeof( idDrawVert ), &ac->xyz );
 			RB_DrawElementsWithCounters( surf->geo );
 		}

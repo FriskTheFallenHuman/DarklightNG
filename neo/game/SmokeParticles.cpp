@@ -333,6 +333,7 @@ bool idSmokeParticles::UpdateRenderEntity( renderEntity_s *renderEntity, const r
 		}
 		int	quads = count * stage->NumQuadsPerParticle();
 		srfTriangles_t *tri = renderEntity->hModel->AllocSurfaceTriangles( quads * 4, quads * 6 );
+		tri->isParticle = true;
 		tri->numIndexes = quads * 6;
 		tri->numVerts = quads * 4;
 

@@ -339,31 +339,26 @@ R_FreeStaticTriSurfVertexCaches
 ==============
 */
 void R_FreeStaticTriSurfVertexCaches( srfTriangles_t *tri ) {
-	if ( tri->lightmapCache ) {
-		vertexCache.Free( tri->lightmapCache );
-		tri->lightmapCache = NULL;
+	if ( tri->lightmapBuffer ) {
+		delete tri->lightmapBuffer;
+		tri->lightmapBuffer = NULL;
 	}
 	if ( tri->ambientSurface == NULL ) {
-		// this is a real model surface
-		vertexCache.Free( tri->ambientCache );
-		tri->ambientCache = NULL;
-	} else {
-		// this is a light interaction surface that references
-		// a different ambient model surface
-		vertexCache.Free( tri->lightingCache );
-		tri->lightingCache = NULL;
+		delete tri->vertexBuffer;
+		tri->vertexBuffer = NULL;
 	}
-	if ( tri->indexCache ) {
-		vertexCache.Free( tri->indexCache );
-		tri->indexCache = NULL;
+	if ( tri->indexBuffer ) {
+		delete tri->indexBuffer;
+		tri->indexBuffer = NULL;
 	}
-	if ( tri->shadowCache && ( tri->shadowVertexes != NULL || tri->verts != NULL ) ) {
-		// if we don't have tri->shadowVertexes, these are a reference to a
-		// shadowCache on the original surface, which a vertex program
-		// will take care of making unique for each light
-		vertexCache.Free( tri->shadowCache );
-		tri->shadowCache = NULL;
+	if ( tri->shadowBuffer && ( tri->shadowVertexes != NULL || tri->verts != NULL ) ) {
+		delete tri->shadowBuffer;
+		tri->shadowBuffer = NULL;
 	}
+	delete tri->skinningBuffer;
+	tri->skinningBuffer = NULL;
+	delete tri->jointBuffer;
+	tri->jointBuffer = NULL;
 }
 
 /*
@@ -421,6 +416,14 @@ void R_ReallyFreeStaticTriSurf( srfTriangles_t *tri ) {
 
 	if ( tri->shadowVertexes != NULL ) {
 		triShadowVertexAllocator.Free( tri->shadowVertexes );
+	}
+	if ( tri->skinningVerts != NULL ) {
+		Mem_Free16( tri->skinningVerts );
+		tri->skinningVerts = NULL;
+	}
+	if ( tri->jointMatrices != NULL ) {
+		Mem_Free16( tri->jointMatrices );
+		tri->jointMatrices = NULL;
 	}
 
 #ifdef _DEBUG

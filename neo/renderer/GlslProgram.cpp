@@ -56,12 +56,16 @@ static void R_InitGLSLShaderDefs() {
 	R_SetBuiltinGLSLShader( GLSLPROG_HEAT_HAZE_WITH_MASK_AND_VERTEX, "heatHazeWithMaskAndVertex" );
 	R_SetBuiltinGLSLShader( GLSLPROG_BAKED_SHADOW, "bakedShadow" );
 	R_SetBuiltinGLSLShader( GLSLPROG_INTERACTION_SHADOW, "interactionShadow" );
+	idStr::Copynz( glslShaders[GLSLPROG_GPU_SKINNING].vertexName, "gpuSkinning", sizeof( glslShaders[GLSLPROG_GPU_SKINNING].vertexName ) );
+	idStr::Copynz( glslShaders[GLSLPROG_FOG_TEXGEN].vertexName, "fogTexgen", sizeof( glslShaders[GLSLPROG_FOG_TEXGEN].vertexName ) );
+	idStr::Copynz( glslShaders[GLSLPROG_BLEND_LIGHT_TEXGEN].vertexName, "blendLightTexgen", sizeof( glslShaders[GLSLPROG_BLEND_LIGHT_TEXGEN].vertexName ) );
 }
 
 idGLSLProgram::idGLSLProgram() {
 	vertexShaderIndex = GLSLPROG_INVALID;
 	fragmentShaderIndex = GLSLPROG_INVALID;
 	program = 0;
+	gpuSkinningLocation = -1;
 	memset( vertexEnvLocations, -1, sizeof( vertexEnvLocations ) );
 	memset( fragmentEnvLocations, -1, sizeof( fragmentEnvLocations ) );
 	memset( vertexLocalLocations, -1, sizeof( vertexLocalLocations ) );
@@ -95,6 +99,7 @@ void idGLSLProgram::Purge() {
 	memset( fragmentEnvLocations, -1, sizeof( fragmentEnvLocations ) );
 	memset( vertexLocalLocations, -1, sizeof( vertexLocalLocations ) );
 	memset( fragmentLocalLocations, -1, sizeof( fragmentLocalLocations ) );
+	gpuSkinningLocation = -1;
 }
 
 GLuint idGLSLProgram::CompileShader( GLenum type, const char *shaderName, const char *extension ) {
@@ -110,11 +115,54 @@ GLuint idGLSLProgram::CompileShader( GLenum type, const char *shaderName, const 
 		return 0;
 	}
 
+	idStr sourceText = source;
+	fileSystem->FreeFile( source );
+
+	// Every GLSL vertex program receives the BFG four-weight skinning path.
+	// Static surfaces leave u_gpuSkinning disabled, while MD5 surfaces bind
+	// their per-mesh joint UBO and packed joint stream immediately before draw.
+	if ( type == GL_VERTEX_SHADER && glConfig.gpuSkinningAvailable ) {
+		sourceText.Replace( "attribute vec3 attr_Tangent;\r\n", "" );
+		sourceText.Replace( "attribute vec3 attr_Tangent;\n", "" );
+		sourceText.Replace( "attribute vec3 attr_Bitangent;\r\n", "" );
+		sourceText.Replace( "attribute vec3 attr_Bitangent;\n", "" );
+		sourceText.Replace( "attribute vec3 attr_Normal;\r\n", "" );
+		sourceText.Replace( "attribute vec3 attr_Normal;\n", "" );
+		// Keep the original ftransform assignment byte-for-byte in the static path.
+		// The baked and realtime light passes use GL_EQUAL against a fixed-function
+		// depth prepass, so even wrapping ftransform in a helper can lose the GLSL
+		// invariance guarantee on some drivers.  Skinned draws override the result.
+		sourceText.Replace( "gl_Position = ftransform();",
+			"gl_Position = ftransform();\n\tif ( u_gpuSkinning ) {\n\t\tgl_Position = gl_ModelViewProjectionMatrix * gpuSkinnedPosition();\n\t}" );
+		sourceText.Replace( "gl_Vertex", "gpuSkinnedPosition()" );
+		sourceText.Replace( "gl_Normal", "gpuSkinnedNormal()" );
+		sourceText.Replace( "attr_Tangent", "gpuSkinnedTangent()" );
+		sourceText.Replace( "attr_Bitangent", "gpuSkinnedBitangent()" );
+		sourceText.Replace( "attr_Normal", "gpuSkinnedNormal()" );
+
+		char *skinningSource = NULL;
+		fileSystem->ReadFile( "glprogs/skinning.inc", (void **)&skinningSource, NULL );
+		if ( skinningSource == NULL ) {
+			common->Printf( ": glprogs/skinning.inc not found\n" );
+			return 0;
+		}
+		const int versionEnd = sourceText.Find( '\n' );
+		if ( versionEnd < 0 ) {
+			fileSystem->FreeFile( skinningSource );
+			common->Printf( ": missing #version line\n" );
+			return 0;
+		}
+		idStr injected = "\n";
+		injected += skinningSource;
+		injected += "\n";
+		sourceText.Insert( injected.c_str(), versionEnd + 1 );
+		fileSystem->FreeFile( skinningSource );
+	}
+
 	GLuint shader = qglCreateShader( type );
-	const char *sources[1] = { source };
+	const char *sources[1] = { sourceText.c_str() };
 	qglShaderSource( shader, 1, sources, NULL );
 	qglCompileShader( shader );
-	fileSystem->FreeFile( source );
 
 	GLint compiled = 0;
 	qglGetShaderiv( shader, GL_COMPILE_STATUS, &compiled );
@@ -142,15 +190,20 @@ bool idGLSLProgram::Reload() {
 	if ( !vertexShader ) {
 		return false;
 	}
-	GLuint fragmentShader = CompileShader( GL_FRAGMENT_SHADER, fragmentShaderName.c_str(), ".frag" );
-	if ( !fragmentShader ) {
-		qglDeleteShader( vertexShader );
-		return false;
+	GLuint fragmentShader = 0;
+	if ( !fragmentShaderName.IsEmpty() ) {
+		fragmentShader = CompileShader( GL_FRAGMENT_SHADER, fragmentShaderName.c_str(), ".frag" );
+		if ( !fragmentShader ) {
+			qglDeleteShader( vertexShader );
+			return false;
+		}
 	}
 
 	program = qglCreateProgram();
 	qglAttachShader( program, vertexShader );
-	qglAttachShader( program, fragmentShader );
+	if ( fragmentShader != 0 ) {
+		qglAttachShader( program, fragmentShader );
+	}
 
 	// Match the generic attribute slots used by idDrawVert throughout the renderer.
 	qglBindAttribLocation( program, 8, "attr_TexCoord" );
@@ -158,10 +211,14 @@ bool idGLSLProgram::Reload() {
 	qglBindAttribLocation( program, 10, "attr_Bitangent" );
 	qglBindAttribLocation( program, 11, "attr_Normal" );
 	qglBindAttribLocation( program, 12, "attr_LightCoord" );
+	qglBindAttribLocation( program, 13, "attr_JointIndices" );
+	qglBindAttribLocation( program, 14, "attr_JointWeights" );
 
 	qglLinkProgram( program );
 	qglDeleteShader( vertexShader );
-	qglDeleteShader( fragmentShader );
+	if ( fragmentShader != 0 ) {
+		qglDeleteShader( fragmentShader );
+	}
 
 	GLint linked = 0;
 	qglGetProgramiv( program, GL_LINK_STATUS, &linked );
@@ -177,6 +234,12 @@ bool idGLSLProgram::Reload() {
 	}
 
 	FindUniformLocations();
+	if ( glConfig.gpuSkinningAvailable ) {
+		const GLuint blockIndex = qglGetUniformBlockIndex( program, "matrices_ubo" );
+		if ( blockIndex != GL_INVALID_INDEX ) {
+			qglUniformBlockBinding( program, blockIndex, 0 );
+		}
+	}
 	SetSamplerUniforms();
 	return true;
 }
@@ -188,6 +251,7 @@ void idGLSLProgram::FindUniformLocations() {
 		vertexLocalLocations[i] = qglGetUniformLocation( program, va( "u_vertexLocalParm[%i]", i ) );
 		fragmentLocalLocations[i] = qglGetUniformLocation( program, va( "u_fragmentLocalParm[%i]", i ) );
 	}
+	gpuSkinningLocation = qglGetUniformLocation( program, "u_gpuSkinning" );
 }
 
 void idGLSLProgram::SetSamplerUniforms() {
@@ -203,8 +267,16 @@ void idGLSLProgram::SetSamplerUniforms() {
 
 void idGLSLProgram::Bind() {
 	qglUseProgram( program );
+	const int fragmentParameterIndex = fragmentShaderIndex == GLSLPROG_INVALID ? GLSLPROG_INVALID : fragmentShaderIndex;
 	UploadParameters( vertexEnvParameters, fragmentEnvParameters,
-		vertexLocalParameters[vertexShaderIndex], fragmentLocalParameters[fragmentShaderIndex] );
+		vertexLocalParameters[vertexShaderIndex], fragmentLocalParameters[fragmentParameterIndex] );
+	SetGPUSkinning( false );
+}
+
+void idGLSLProgram::SetGPUSkinning( bool enabled ) const {
+	if ( gpuSkinningLocation >= 0 ) {
+		qglUniform1i( gpuSkinningLocation, enabled ? 1 : 0 );
+	}
 }
 
 void idGLSLProgram::SetVertexEnvParameter( int index, const float *value ) const {
@@ -250,14 +322,17 @@ static idGLSLProgram *R_FindLinkedGLSLProgram( int vertexShader, int fragmentSha
 	}
 
 	if ( !create || vertexShader <= GLSLPROG_INVALID || vertexShader >= MAX_GLSL_SHADERS ||
-		 fragmentShader <= GLSLPROG_INVALID || fragmentShader >= MAX_GLSL_SHADERS ||
-		 !glslShaders[vertexShader].vertexName[0] || !glslShaders[fragmentShader].fragmentName[0] ) {
+		 !glslShaders[vertexShader].vertexName[0] ) {
+		return NULL;
+	}
+	if ( fragmentShader != GLSLPROG_INVALID &&
+		( fragmentShader <= GLSLPROG_INVALID || fragmentShader >= MAX_GLSL_SHADERS || !glslShaders[fragmentShader].fragmentName[0] ) ) {
 		return NULL;
 	}
 
 	idGLSLProgram *program = new idGLSLProgram;
-	program->Init( vertexShader, glslShaders[vertexShader].vertexName,
-		fragmentShader, glslShaders[fragmentShader].fragmentName );
+	program->Init( vertexShader, glslShaders[vertexShader].vertexName, fragmentShader,
+		fragmentShader == GLSLPROG_INVALID ? "" : glslShaders[fragmentShader].fragmentName );
 	glslPrograms.Append( program );
 	return program;
 }
@@ -337,10 +412,24 @@ bool R_BindGLSLProgram( int program ) {
 	return R_BindGLSLProgram( program, program );
 }
 
+bool R_BindGLSLVertexProgram( int vertexShader ) {
+	return R_BindGLSLProgram( vertexShader, GLSLPROG_INVALID );
+}
+
 void R_UnbindGLSLProgram( void ) {
 	activeGLSLProgram = NULL;
 	if ( glConfig.isInitialized && qglUseProgram ) {
 		qglUseProgram( 0 );
+	}
+}
+
+bool R_IsGLSLProgramBound( void ) {
+	return activeGLSLProgram != NULL;
+}
+
+void R_SetGLSLGPUSkinning( bool enabled ) {
+	if ( activeGLSLProgram != NULL ) {
+		activeGLSLProgram->SetGPUSkinning( enabled );
 	}
 }
 
@@ -381,7 +470,9 @@ void R_ReloadGLSLPrograms_f( const idCmdArgs &args ) {
 	R_UnbindGLSLProgram();
 
 	for ( int i = GLSLPROG_INTERACTION; i < GLSLPROG_USER; i++ ) {
-		R_FindLinkedGLSLProgram( i, i, true );
+		const bool vertexOnly = i == GLSLPROG_GPU_SKINNING || i == GLSLPROG_FOG_TEXGEN ||
+			i == GLSLPROG_BLEND_LIGHT_TEXGEN;
+		R_FindLinkedGLSLProgram( i, vertexOnly ? GLSLPROG_INVALID : i, true );
 	}
 
 	bool builtinsLoaded = glConfig.glslAvailable;

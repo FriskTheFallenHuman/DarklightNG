@@ -62,7 +62,7 @@ idCVar r_useDeferredTangents( "r_useDeferredTangents", "1", CVAR_RENDERER | CVAR
 idCVar r_useCachedDynamicModels( "r_useCachedDynamicModels", "1", CVAR_RENDERER | CVAR_BOOL, "cache snapshots of dynamic models" );
 
 idCVar r_useVertexBuffers( "r_useVertexBuffers", "1", CVAR_RENDERER | CVAR_INTEGER, "use ARB_vertex_buffer_object for vertexes", 0, 1, idCmdSystem::ArgCompletion_Integer<0,1>  );
-idCVar r_useIndexBuffers( "r_useIndexBuffers", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "use ARB_vertex_buffer_object for indexes", 0, 1, idCmdSystem::ArgCompletion_Integer<0,1>  );
+idCVar r_useIndexBuffers( "r_useIndexBuffers", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "deprecated compatibility cvar; resident meshes always own index buffers", 0, 1, idCmdSystem::ArgCompletion_Integer<0,1>  );
 
 idCVar r_useStateCaching( "r_useStateCaching", "1", CVAR_RENDERER | CVAR_BOOL, "avoid redundant state changes in GL_*() calls" );
 idCVar r_useInfiniteFarZ( "r_useInfiniteFarZ", "1", CVAR_RENDERER | CVAR_BOOL, "use the no-far-clip-plane trick" );
@@ -286,6 +286,9 @@ void ( APIENTRY *qglUniform4fv )( GLint location, GLsizei count, const GLfloat *
 void ( APIENTRY *qglVertexAttribPointer )( GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer );
 void ( APIENTRY *qglEnableVertexAttribArray )( GLuint index );
 void ( APIENTRY *qglDisableVertexAttribArray )( GLuint index );
+void ( APIENTRY *qglBindBufferBase )( GLenum target, GLuint index, GLuint buffer );
+GLuint ( APIENTRY *qglGetUniformBlockIndex )( GLuint program, const char *uniformBlockName );
+void ( APIENTRY *qglUniformBlockBinding )( GLuint program, GLuint uniformBlockIndex, GLuint uniformBlockBinding );
 
 // Legacy macOS ATI_fragment_shader compatibility shim.
 PFNGLPROGRAMSTRINGARBPROC				qglProgramStringARB;
@@ -499,6 +502,28 @@ static void R_CheckPortableExtensions( void ) {
 		}
 	}
 
+	// BFG-style joint matrices are supplied through a uniform buffer.  MD5
+	// rendering deliberately has no CPU deformation fallback.
+	glConfig.gpuSkinningAvailable = false;
+	glConfig.maxUniformBlockSize = 0;
+	glConfig.uniformBufferOffsetAlignment = 0;
+	const bool hasUniformBuffers = glConfig.glVersion >= 3.1f ||
+		strstr( glConfig.extensions_string, "GL_ARB_uniform_buffer_object" ) != NULL;
+	if ( glConfig.glslAvailable && glConfig.ARBVertexBufferObjectAvailable && hasUniformBuffers ) {
+		qglBindBufferBase = (void (APIENTRY *)(GLenum, GLuint, GLuint))GLimp_ExtensionPointer( "glBindBufferBase" );
+		qglGetUniformBlockIndex = (GLuint (APIENTRY *)(GLuint, const char *))GLimp_ExtensionPointer( "glGetUniformBlockIndex" );
+		qglUniformBlockBinding = (void (APIENTRY *)(GLuint, GLuint, GLuint))GLimp_ExtensionPointer( "glUniformBlockBinding" );
+		if ( qglBindBufferBase && qglGetUniformBlockIndex && qglUniformBlockBinding ) {
+			GLint maxVertexBlocks = 0;
+			qglGetIntegerv( GL_MAX_VERTEX_UNIFORM_BLOCKS, &maxVertexBlocks );
+			qglGetIntegerv( GL_MAX_UNIFORM_BLOCK_SIZE, &glConfig.maxUniformBlockSize );
+			qglGetIntegerv( GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &glConfig.uniformBufferOffsetAlignment );
+			glConfig.gpuSkinningAvailable = maxVertexBlocks > 0 && glConfig.maxUniformBlockSize >= 408 * sizeof( idVec4 );
+		}
+	}
+	common->Printf( "%s GPU skeletal animation (uniform blocks: %i bytes)\n",
+		glConfig.gpuSkinningAvailable ? "...using" : "X..disabled", glConfig.maxUniformBlockSize );
+
 	// check for minimum set
 	if ( !glConfig.multitextureAvailable || !glConfig.textureEnvCombineAvailable || !glConfig.cubeMapAvailable
 		|| !glConfig.envDot3Available ) {
@@ -661,8 +686,7 @@ void R_InitOpenGL( void ) {
 	cmdSystem->AddCommand( "reloadGLSLprograms", R_ReloadGLSLPrograms_f, CMD_FL_RENDERER, "reloads GLSL programs" );
 	R_ReloadGLSLPrograms_f( idCmdArgs() );
 
-	// allocate the vertex array range or vertex objects
-	vertexCache.Init();
+	RB_VFX_Init();
 
 	// select which renderSystem we are going to use
 	r_renderer.SetModified();
@@ -1795,11 +1819,7 @@ extern	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT;
 	}
 #endif
 	
-	if ( vertexCache.IsFast() ) {
-		common->Printf( "Vertex cache is fast\n" );
-	} else {
-		common->Printf( "Vertex cache is SLOW\n" );
-	}
+	common->Printf( "Geometry uses per-surface vertex/index buffers\n" );
 }
 
 /*
@@ -1841,8 +1861,8 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 	R_ToggleSmpFrame();
 	R_ToggleSmpFrame();
 
-	// free the vertex caches so they will be regenerated again
-	vertexCache.PurgeAll();
+	RB_VFX_Shutdown();
+	RB_VFX_Init();
 
 	// sound and input are tied to the window we are about to destroy
 
@@ -2128,8 +2148,7 @@ void idRenderSystemLocal::Shutdown( void ) {
 	// free frame memory
 	R_ShutdownFrameData();
 
-	// free the vertex cache, which should have nothing allocated now
-	vertexCache.Shutdown();
+	RB_VFX_Shutdown();
 
 	R_ShutdownTriSurfData();
 

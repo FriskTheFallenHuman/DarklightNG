@@ -143,7 +143,8 @@ public:
 								~idMD5Mesh();
 
  	void						ParseMesh( idLexer &parser, int numJoints, const idJointMat *joints );
-	void						UpdateSurface( const struct renderEntity_s *ent, const idJointMat *joints, modelSurface_t *surf );
+	void						UpdateSurface( const struct renderEntity_s *ent, const idJointMat *joints,
+								const idJointMat *relativeJoints, int numJoints, modelSurface_t *surf );
 	idBounds					CalcBounds( const idJointMat *joints );
 	int							NearestJoint( int a, int b, int c ) const;
 	int							NumVerts( void ) const;
@@ -155,13 +156,14 @@ private:
 	int							numWeights;			// number of weights
 	idVec4 *					scaledWeights;		// joint weights
 	int *						weightIndex;		// pairs of: joint offset + bool true if next weight is for next vertex
+	idDrawVert *				basePose;			// bind-pose position and tangent frame
+	gpuSkinVertex_t *			skinVertices;		// packed four-joint stream, including mirror verts
 	const idMaterial *			shader;				// material applied to mesh
 	int							numTris;			// number of triangles
 	struct deformInfo_s *		deformInfo;			// used to create srfTriangles_t from base frames and new vertexes
 	int							surfaceNum;			// number of the static surface created for this mesh
 
 	void						TransformVerts( idDrawVert *verts, const idJointMat *joints );
-	void						TransformScaledVerts( idDrawVert *verts, const idJointMat *joints, float scale );
 };
 
 class idRenderModelMD5 : public idRenderModelStatic {
@@ -186,6 +188,7 @@ public:
 private:
 	idList<idMD5Joint>			joints;
 	idList<idJointQuat>			defaultPose;
+	idList<idJointMat>			referenceJoints;	// inverse global bind-pose matrices for GPU joints
 	idList<idMD5Mesh>			meshes;
 
 	void						CalculateBounds( const idJointMat *joints );

@@ -77,7 +77,7 @@ void RB_BakeTextureMatrixIntoTexgen( idPlane lightProject[3], const float *textu
 RB_PrepareStageTexturing
 ================
 */
-void RB_PrepareStageTexturing( const shaderStage_t *pStage,  const drawSurf_t *surf, idDrawVert *ac ) {
+void RB_PrepareStageTexturing( const shaderStage_t *pStage,  const drawSurf_t *surf, const idDrawVert *ac ) {
 	// set privatePolygonOffset if necessary
 	if ( pStage->privatePolygonOffset ) {
 		qglEnable( GL_POLYGON_OFFSET_FILL );
@@ -94,7 +94,8 @@ void RB_PrepareStageTexturing( const shaderStage_t *pStage,  const drawSurf_t *s
 		qglTexCoordPointer( 3, GL_FLOAT, sizeof( idDrawVert ), ac->normal.ToFloatPtr() );
 	}
 	if ( pStage->texture.texgen == TG_SKYBOX_CUBE || pStage->texture.texgen == TG_WOBBLESKY_CUBE ) {
-		qglTexCoordPointer( 3, GL_FLOAT, 0, vertexCache.Position( surf->dynamicTexCoords ) );
+		qglBindBufferARB( GL_ARRAY_BUFFER_ARB, 0 );
+		qglTexCoordPointer( 3, GL_FLOAT, 0, surf->dynamicTexCoords );
 	}
 	if ( pStage->texture.texgen == TG_SCREEN ) {
 		qglEnable( GL_TEXTURE_GEN_S );
@@ -221,7 +222,7 @@ void RB_PrepareStageTexturing( const shaderStage_t *pStage,  const drawSurf_t *s
 RB_FinishStageTexturing
 ================
 */
-void RB_FinishStageTexturing( const shaderStage_t *pStage, const drawSurf_t *surf, idDrawVert *ac ) {
+void RB_FinishStageTexturing( const shaderStage_t *pStage, const drawSurf_t *surf, const idDrawVert *ac ) {
 	// unset privatePolygonOffset if necessary
 	if ( pStage->privatePolygonOffset && !surf->material->TestMaterialFlag(MF_POLYGONOFFSET) ) {
 		qglDisable( GL_POLYGON_OFFSET_FILL );
@@ -229,6 +230,7 @@ void RB_FinishStageTexturing( const shaderStage_t *pStage, const drawSurf_t *sur
 
 	if ( pStage->texture.texgen == TG_DIFFUSE_CUBE || pStage->texture.texgen == TG_SKYBOX_CUBE
 		|| pStage->texture.texgen == TG_WOBBLESKY_CUBE ) {
+		ac = RB_BindDrawVertBuffer( surf->geo );
 		qglTexCoordPointer( 2, GL_FLOAT, sizeof( idDrawVert ), (void *)&ac->st );
 	}
 
@@ -337,8 +339,9 @@ void RB_T_FillDepthBuffer( const drawSurf_t *surf ) {
 		return;
 	}
 
-	if ( !tri->ambientCache ) {
-		common->Printf( "RB_T_FillDepthBuffer: !tri->ambientCache\n" );
+	if ( !tri->vertexBuffer && !tri->isParticle && !tri->verts &&
+		( !tri->ambientSurface || !tri->ambientSurface->vertexBuffer ) ) {
+		common->Printf( "RB_T_FillDepthBuffer: surface has no vertex data\n" );
 		return;
 	}
 
@@ -378,9 +381,9 @@ void RB_T_FillDepthBuffer( const drawSurf_t *surf ) {
 		color[3] = 1;
 	}
 
-	idDrawVert *ac = (idDrawVert *)vertexCache.Position( tri->ambientCache );
+	const idDrawVert *ac = RB_BindDrawVertBuffer( tri );
 	qglVertexPointer( 3, GL_FLOAT, sizeof( idDrawVert ), ac->xyz.ToFloatPtr() );
-	qglTexCoordPointer( 2, GL_FLOAT, sizeof( idDrawVert ), reinterpret_cast<void *>(&ac->st) );
+	qglTexCoordPointer( 2, GL_FLOAT, sizeof( idDrawVert ), ac->st.ToFloatPtr() );
 
 	bool drawSolid = false;
 
@@ -675,8 +678,9 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 		return;
 	}
 
-	if ( !tri->ambientCache ) {
-		common->Printf( "RB_T_RenderShaderPasses: !tri->ambientCache\n" );
+	if ( !tri->vertexBuffer && !tri->isParticle && !tri->verts &&
+		( !tri->ambientSurface || !tri->ambientSurface->vertexBuffer ) ) {
+		common->Printf( "RB_T_RenderShaderPasses: surface has no vertex data\n" );
 		return;
 	}
 
@@ -700,9 +704,9 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 		RB_EnterModelDepthHack( surf->space->modelDepthHack );
 	}
 
-	idDrawVert *ac = (idDrawVert *)vertexCache.Position( tri->ambientCache );
+	const idDrawVert *ac = RB_BindDrawVertBuffer( tri );
 	qglVertexPointer( 3, GL_FLOAT, sizeof( idDrawVert ), ac->xyz.ToFloatPtr() );
-	qglTexCoordPointer( 2, GL_FLOAT, sizeof( idDrawVert ), reinterpret_cast<void *>(&ac->st) );
+	qglTexCoordPointer( 2, GL_FLOAT, sizeof( idDrawVert ), ac->st.ToFloatPtr() );
 
 	for ( stage = 0; stage < shader->GetNumStages() ; stage++ ) {		
 		pStage = shader->GetStage(stage);
@@ -1013,11 +1017,12 @@ static void RB_T_BlendLight( const drawSurf_t *surf ) {
 	}
 
 	// this gets used for both blend lights and shadow draws
-	if ( tri->ambientCache ) {
-		idDrawVert	*ac = (idDrawVert *)vertexCache.Position( tri->ambientCache );
+	if ( tri->vertexBuffer || tri->verts || tri->isParticle ||
+		( tri->ambientSurface && tri->ambientSurface->vertexBuffer ) ) {
+		const idDrawVert *ac = RB_BindDrawVertBuffer( tri );
 		qglVertexPointer( 3, GL_FLOAT, sizeof( idDrawVert ), ac->xyz.ToFloatPtr() );
-	} else if ( tri->shadowCache ) {
-		shadowCache_t	*sc = (shadowCache_t *)vertexCache.Position( tri->shadowCache );
+	} else if ( tri->shadowBuffer || tri->shadowVertexes ) {
+		const shadowCache_t *sc = RB_BindShadowBuffer( tri );
 		qglVertexPointer( 3, GL_FLOAT, sizeof( shadowCache_t ), sc->xyz.ToFloatPtr() );
 	}
 
@@ -1064,6 +1069,17 @@ static void RB_BlendLight( const drawSurf_t *drawSurfs,  const drawSurf_t *drawS
 	qglEnable( GL_TEXTURE_GEN_T );
 	qglEnable( GL_TEXTURE_GEN_Q );
 
+	// A vertex shader replaces fixed-function texture generation. Use an
+	// equivalent GLSL texgen program so GPU-skinned positions project through
+	// the blend-light planes instead of sampling with the mesh's base UVs.
+	const bool texgenProgram = glConfig.gpuSkinningAvailable;
+	if ( texgenProgram ) {
+		if ( !R_BindGLSLVertexProgram( GLSLPROG_BLEND_LIGHT_TEXGEN ) ) {
+			common->Error( "RB_BlendLight: failed to bind skinning-aware texgen program" );
+		}
+		R_SetGLSLGPUSkinning( false );
+	}
+
 	for ( i = 0 ; i < lightShader->GetNumStages() ; i++ ) {
 		stage = lightShader->GetStage(i);
 
@@ -1106,6 +1122,9 @@ static void RB_BlendLight( const drawSurf_t *drawSurfs,  const drawSurf_t *drawS
 	qglDisable( GL_TEXTURE_GEN_S );
 	qglDisable( GL_TEXTURE_GEN_T );
 	qglDisable( GL_TEXTURE_GEN_Q );
+	if ( texgenProgram ) {
+		R_UnbindGLSLProgram();
+	}
 }
 
 
@@ -1168,7 +1187,7 @@ static void RB_FogPass( const drawSurf_t *drawSurfs,  const drawSurf_t *drawSurf
 	frustumTris = backEnd.vLight->frustumTris;
 
 	// if we ran out of vertex cache memory, skip it
-	if ( !frustumTris->ambientCache ) {
+	if ( !frustumTris->vertexBuffer && !frustumTris->verts ) {
 		return;
 	}
 	memset( &ds, 0, sizeof( ds ) );
@@ -1245,6 +1264,18 @@ static void RB_FogPass( const drawSurf_t *drawSurfs,  const drawSurf_t *drawSurf
 
 	qglTexCoord2f( FOG_ENTER + s, FOG_ENTER );
 
+	// Fixed-function fog texgen is bypassed whenever the GPU skinning vertex
+	// program is active. Recreate it in GLSL from the same object planes so fog
+	// opacity follows the animated position and remains consistent with static
+	// geometry.
+	const bool texgenProgram = glConfig.gpuSkinningAvailable;
+	if ( texgenProgram ) {
+		if ( !R_BindGLSLVertexProgram( GLSLPROG_FOG_TEXGEN ) ) {
+			common->Error( "RB_FogPass: failed to bind skinning-aware texgen program" );
+		}
+		R_SetGLSLGPUSkinning( false );
+	}
+
 
 	// draw it
 	RB_RenderDrawSurfChainWithFunction( drawSurfs, RB_T_BasicFog );
@@ -1265,6 +1296,9 @@ static void RB_FogPass( const drawSurf_t *drawSurfs,  const drawSurf_t *drawSurf
 	GL_SelectTexture( 0 );
 	qglDisable( GL_TEXTURE_GEN_S );
 	qglDisable( GL_TEXTURE_GEN_T );
+	if ( texgenProgram ) {
+		R_UnbindGLSLProgram();
+	}
 }
 
 
@@ -1383,6 +1417,7 @@ RB_STD_DrawView
 =============
 */
 void	RB_STD_DrawView( void ) {
+	RB_VFX_BeginFrame();
 	drawSurf_t	 **drawSurfs;
 	int			numDrawSurfs;
 

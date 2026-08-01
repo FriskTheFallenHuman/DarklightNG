@@ -172,6 +172,21 @@ extern void ( APIENTRY *qglVertexAttribPointer )( GLuint index, GLint size, GLen
 extern void ( APIENTRY *qglEnableVertexAttribArray )( GLuint index );
 extern void ( APIENTRY *qglDisableVertexAttribArray )( GLuint index );
 
+// OpenGL 3.1 / GL_ARB_uniform_buffer_object.  The platform GL headers used by
+// the original Doom 3 renderer predate these declarations.
+#ifndef GL_UNIFORM_BUFFER
+#define GL_UNIFORM_BUFFER					0x8A11
+#define GL_UNIFORM_BUFFER_BINDING			0x8A28
+#define GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT	0x8A34
+#define GL_MAX_VERTEX_UNIFORM_BLOCKS			0x8A2B
+#define GL_MAX_UNIFORM_BLOCK_SIZE			0x8A30
+#define GL_INVALID_INDEX					0xFFFFFFFFu
+#endif
+
+extern void ( APIENTRY *qglBindBufferBase )( GLenum target, GLuint index, GLuint buffer );
+extern GLuint ( APIENTRY *qglGetUniformBlockIndex )( GLuint program, const char *uniformBlockName );
+extern void ( APIENTRY *qglUniformBlockBinding )( GLuint program, GLuint uniformBlockIndex, GLuint uniformBlockBinding );
+
 // Retained only for the legacy macOS ATI_fragment_shader compatibility shim.
 extern PFNGLPROGRAMSTRINGARBPROC			qglProgramStringARB;
 extern PFNGLBINDPROGRAMARBPROC				qglBindProgramARB;

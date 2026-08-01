@@ -28,6 +28,9 @@ typedef enum {
 	GLSLPROG_HEAT_HAZE_WITH_MASK_AND_VERTEX,
 	GLSLPROG_BAKED_SHADOW,
 	GLSLPROG_INTERACTION_SHADOW,
+	GLSLPROG_GPU_SKINNING,
+	GLSLPROG_FOG_TEXGEN,
+	GLSLPROG_BLEND_LIGHT_TEXGEN,
 	GLSLPROG_USER
 } glslProgram_t;
 
@@ -51,6 +54,7 @@ public:
 	void			SetFragmentEnvParameter( int index, const float *value ) const;
 	void			SetVertexLocalParameter( int index, const float *value ) const;
 	void			SetFragmentLocalParameter( int index, const float *value ) const;
+	void			SetGPUSkinning( bool enabled ) const;
 	void			UploadParameters( const float vertexEnv[][4], const float fragmentEnv[][4],
 						const float vertexLocal[][4], const float fragmentLocal[][4] ) const;
 
@@ -69,6 +73,7 @@ private:
 	GLint			fragmentEnvLocations[GLSL_MAX_PROGRAM_PARMS];
 	GLint			vertexLocalLocations[GLSL_MAX_PROGRAM_PARMS];
 	GLint			fragmentLocalLocations[GLSL_MAX_PROGRAM_PARMS];
+	GLint			gpuSkinningLocation;
 };
 
 void	R_GLSL_Init( void );
@@ -77,7 +82,10 @@ void	R_ReloadGLSLPrograms_f( const idCmdArgs &args );
 int		R_FindGLSLShader( GLenum target, const char *shaderName );
 bool	R_BindGLSLProgram( int vertexShader, int fragmentShader );
 bool	R_BindGLSLProgram( int program );
+bool	R_BindGLSLVertexProgram( int vertexShader );
 void	R_UnbindGLSLProgram( void );
+bool	R_IsGLSLProgramBound( void );
+void	R_SetGLSLGPUSkinning( bool enabled );
 void	R_SetGLSLProgramEnvParameter( GLenum target, int index, const float *value );
 void	R_SetGLSLProgramLocalParameter( GLenum target, int index, const float *value );
 

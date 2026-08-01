@@ -511,8 +511,17 @@ void idRenderModelDecal::AddDecalDrawSurf( viewEntity_t *space ) {
 	srfTriangles_t *newTri = (srfTriangles_t *)R_FrameAlloc( sizeof( *newTri ) );
 	*newTri = tri;
 
-	// copy the current vertexes to temp vertex cache
-	newTri->ambientCache = vertexCache.AllocFrameTemp( tri.verts, tri.numVerts * sizeof( idDrawVert ) );
+	// The frame-local faded colors no longer alias the resident mesh VBO.
+	newTri->vertexBuffer = NULL;
+	newTri->indexBuffer = NULL;
+	newTri->lightmapBuffer = NULL;
+	newTri->shadowBuffer = NULL;
+	newTri->skinningBuffer = NULL;
+	newTri->jointBuffer = NULL;
+	newTri->skinningVerts = NULL;
+	newTri->jointMatrices = NULL;
+	newTri->numJoints = 0;
+	newTri->gpuSkinned = false;
 
 	// create the drawsurf
 	R_AddDrawSurf( newTri, space, &space->entityDef->parms, material, space->scissorRect );

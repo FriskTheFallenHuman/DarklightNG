@@ -671,9 +671,6 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	// may still be rendering into the current buffers
 	R_ToggleSmpFrame();
 
-	// we can now release the vertexes used this frame
-	vertexCache.EndFrame();
-
 	if ( session->writeDemo ) {
 		session->writeDemo->WriteInt( DS_RENDER );
 		session->writeDemo->WriteInt( DC_END_FRAME );

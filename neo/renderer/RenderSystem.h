@@ -72,6 +72,9 @@ typedef struct glconfig_s {
 	bool				sharedTexturePaletteAvailable;
 	bool				ARBVertexBufferObjectAvailable;
 	bool				glslAvailable;
+	bool				gpuSkinningAvailable;
+	int				maxUniformBlockSize;
+	int				uniformBufferOffsetAlignment;
 	bool				textureNonPowerOfTwoAvailable;
 
 	// ati r200 extensions

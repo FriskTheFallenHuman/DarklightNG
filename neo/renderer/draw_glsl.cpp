@@ -172,7 +172,7 @@ void RB_GLSL_CreateDrawInteractions( const drawSurf_t *surf ) {
 		// perform setup here that will not change over multiple interaction passes
 
 		// set the vertex pointers
-		idDrawVert	*ac = (idDrawVert *)vertexCache.Position( surf->geo->ambientCache );
+		const idDrawVert *ac = RB_BindDrawVertBuffer( surf->geo );
 		qglColorPointer( 4, GL_UNSIGNED_BYTE, sizeof( idDrawVert ), ac->color );
 		qglVertexAttribPointer( 11, 3, GL_FLOAT, false, sizeof( idDrawVert ), ac->normal.ToFloatPtr() );
 		qglVertexAttribPointer( 10, 3, GL_FLOAT, false, sizeof( idDrawVert ), ac->tangents[1].ToFloatPtr() );
@@ -341,7 +341,7 @@ static void RB_GLSL_DrawBakedSurface( const drawSurf_t *surf ) {
 	idImage *bumpImage = globalImages->flatNormalMap;
 	idVec4 bumpMatrix[2];
 
-	if ( !tri || !tri->ambientCache || !tri->lightmapCache || !tri->bakedLightmap || !tri->bakedDeluxemap ) {
+	if ( !tri || !tri->vertexBuffer || !tri->lightmapBuffer || !tri->bakedLightmap || !tri->bakedDeluxemap ) {
 		return;
 	}
 	if ( shader->Coverage() != MC_OPAQUE || !shader->ReceivesLighting() || !tri->numIndexes ) {
@@ -349,19 +349,19 @@ static void RB_GLSL_DrawBakedSurface( const drawSurf_t *surf ) {
 	}
 
 	GL_Cull( shader->GetCullType() );
-	// vertexCache.Position() binds the VBO that owns the returned offset.  Set
+	// Bind the VBO that owns each stream. Set
 	// every idDrawVert pointer while the ambient VBO is bound, then switch to
 	// the separate lightmap VBO and set only attribute 12.  Binding both caches
 	// before defining the pointers made OpenGL interpret positions, normals and
 	// base UVs as offsets into the two-float lightmap stream.
-	idDrawVert *ambient = (idDrawVert *)vertexCache.Position( tri->ambientCache );
+	const idDrawVert *ambient = RB_BindDrawVertBuffer( tri );
 	qglColorPointer( 4, GL_UNSIGNED_BYTE, sizeof( idDrawVert ), ambient->color );
 	qglVertexAttribPointer( 11, 3, GL_FLOAT, false, sizeof( idDrawVert ), ambient->normal.ToFloatPtr() );
 	qglVertexAttribPointer( 10, 3, GL_FLOAT, false, sizeof( idDrawVert ), ambient->tangents[1].ToFloatPtr() );
 	qglVertexAttribPointer( 9, 3, GL_FLOAT, false, sizeof( idDrawVert ), ambient->tangents[0].ToFloatPtr() );
 	qglVertexAttribPointer( 8, 2, GL_FLOAT, false, sizeof( idDrawVert ), ambient->st.ToFloatPtr() );
 	qglVertexPointer( 3, GL_FLOAT, sizeof( idDrawVert ), ambient->xyz.ToFloatPtr() );
-	idVec2 *lightmap = (idVec2 *)vertexCache.Position( tri->lightmapCache );
+	const idVec2 *lightmap = RB_BindLightmapBuffer( tri );
 	qglVertexAttribPointer( 12, 2, GL_FLOAT, false, sizeof( idVec2 ), lightmap->ToFloatPtr() );
 	idVec3 localViewOrigin;
 	R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewDef->renderView.vieworg, localViewOrigin );
@@ -416,7 +416,7 @@ void RB_GLSL_DrawBakedLightmaps( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 		int visibleBakedSurfaces = 0;
 		for ( int i = 0; i < numDrawSurfs; i++ ) {
 			const srfTriangles_t *tri = drawSurfs[i]->geo;
-			if ( tri && tri->bakedLightmap && tri->bakedDeluxemap && tri->lightmapCache ) {
+			if ( tri && tri->bakedLightmap && tri->bakedDeluxemap && tri->lightmapBuffer ) {
 				visibleBakedSurfaces++;
 			}
 		}

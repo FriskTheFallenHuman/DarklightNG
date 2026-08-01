@@ -82,6 +82,17 @@ typedef struct shadowCache_s {
 	idVec4						xyz;					// we use homogenous coordinate tricks
 } shadowCache_t;
 
+class idVertexBuffer;
+class idIndexBuffer;
+class idJointBuffer;
+
+// Four packed joint indices and four normalized weights, matching the BFG
+// skeletal vertex stream without changing the classic idDrawVert layout.
+typedef struct gpuSkinVertex_s {
+	byte						joints[4];
+	byte						weights[4];
+} gpuSkinVertex_t;
+
 const int SHADOW_CAP_INFINITE	= 64;
 
 // our only drawing geometry type
@@ -130,20 +141,33 @@ typedef struct srfTriangles_s {
 														// plane, we need to draw the rear caps of the shadow volume
 														// turboShadows will have SHADOW_CAP_INFINITE
 
-	shadowCache_t *				shadowVertexes;			// these will be copied to shadowCache when it is going to be drawn.
+	shadowCache_t *				shadowVertexes;			// source data uploaded to shadowBuffer when it is drawn
 														// these are NULL when vertex programs are available
 
-	struct srfTriangles_s *		ambientSurface;			// for light interactions, point back at the original surface that generated
-														// the interaction, which we will get the ambientCache from
+	struct srfTriangles_s *		ambientSurface;			// light interactions point back at the original surface that owns
+													// the resident vertex, skinning, and joint buffers
 
 	struct srfTriangles_s *		nextDeferredFree;		// chain of tris to free next frame
 
-	// data in vertex object space, not directly readable by the CPU
-	struct vertCache_s *		indexCache;				// int
-	struct vertCache_s *		ambientCache;			// idDrawVert
-	struct vertCache_s *		lightmapCache;			// idVec2
-	struct vertCache_s *		lightingCache;			// lightingCache_t
-	struct vertCache_s *		shadowCache;			// shadowCache_t
+	// Per-surface GPU objects.  Frame-only particle surfaces are the sole
+	// exception and are uploaded into the shared draw_vfx stream.
+	idVertexBuffer *			vertexBuffer;			// idDrawVert
+	idIndexBuffer *			indexBuffer;			// glIndex_t
+	idVertexBuffer *			lightmapBuffer;			// idVec2
+	idVertexBuffer *			shadowBuffer;			// shadowCache_t
+	idVertexBuffer *			skinningBuffer;			// gpuSkinVertex_t
+	idJointBuffer *			jointBuffer;			// idJointMat uniform buffer
+	gpuSkinVertex_t *			skinningVerts;			// retained packed stream for buffer recreation
+	idJointMat *				jointMatrices;			// retained relative matrices for buffer recreation
+	int							numJoints;
+	bool						gpuSkinned;
+	bool						isParticle;
+
+	// Shared VFX stream placement.  Generation changes whenever the shared
+	// store is orphaned or resized.
+	mutable int				vfxGeneration;
+	mutable int				vfxVertexOffset;
+	mutable int				vfxIndexOffset;
 } srfTriangles_t;
 
 typedef idList<srfTriangles_t *> idTriList;

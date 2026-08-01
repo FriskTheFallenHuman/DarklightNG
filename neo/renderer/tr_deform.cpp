@@ -36,8 +36,7 @@ If you have questions concerning this license or the applicable additional terms
 =================
 R_FinishDeform
 
-The ambientCache is on the stack, so we don't want to leave a reference
-to it that would try to be freed later.  Create the ambientCache immediately.
+The deformed vertices live in frame memory and are submitted as client data.
 =================
 */
 static void R_FinishDeform( drawSurf_t *drawSurf, srfTriangles_t *newTri, idDrawVert *ac ) {
@@ -57,11 +56,16 @@ static void R_FinishDeform( drawSurf_t *drawSurf, srfTriangles_t *newTri, idDraw
 		newTri->verts = NULL;
 	}
 
-	newTri->ambientCache = vertexCache.AllocFrameTemp( ac, newTri->numVerts * sizeof( idDrawVert ) );
-	// if we are out of vertex cache, leave it the way it is
-	if ( newTri->ambientCache ) {
-		drawSurf->geo = newTri;
-	}
+	// Most deformers build their output in _alloca memory.  The old vertex cache
+	// copied that data before the function returned; retaining the stack pointer
+	// here made sky/glass/deform triangles read arbitrary memory in the backend.
+	idDrawVert *frameVerts = (idDrawVert *)R_FrameAlloc( newTri->numVerts * sizeof( frameVerts[0] ) );
+	memcpy( frameVerts, ac, newTri->numVerts * sizeof( frameVerts[0] ) );
+	newTri->verts = frameVerts;
+	newTri->vertexBuffer = NULL;
+	newTri->indexBuffer = NULL;
+	newTri->gpuSkinned = false;
+	drawSurf->geo = newTri;
 }
 
 /*
@@ -1208,11 +1212,8 @@ static void R_ParticleDeform( drawSurf_t *surf, bool useArea ) {
 					indexes += 6;
 				}
 				tri->numIndexes = indexes;
-				tri->ambientCache = vertexCache.AllocFrameTemp( tri->verts, tri->numVerts * sizeof( idDrawVert ) );
-				if ( tri->ambientCache ) {
-					// add the drawsurf
-					R_AddDrawSurf( tri, surf->space, renderEntity, stage->material, surf->scissorRect );
-				}
+				tri->isParticle = true;
+				R_AddDrawSurf( tri, surf->space, renderEntity, stage->material, surf->scissorRect );
 			}
 		}
 	}

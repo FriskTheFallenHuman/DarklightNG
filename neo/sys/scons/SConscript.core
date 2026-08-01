@@ -116,9 +116,10 @@ renderer_string = ' \
 	RenderWorld_demo.cpp \
 	RenderWorld_load.cpp \
 	RenderWorld_portals.cpp \
-	VertexCache.cpp \
+	BufferObject.cpp \
 	draw_glsl.cpp \
 	draw_common.cpp \
+	draw_vfx.cpp \
 	tr_backend.cpp \
 	tr_deform.cpp \
 	tr_font.cpp \
