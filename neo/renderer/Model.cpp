@@ -1384,7 +1384,7 @@ struct aseModel_s *idRenderModelStatic::ConvertLWOToASE( const struct st_lwObjec
 
 		lwLayer *layer = obj->layer;
 
-		aseObject_t *object = (aseObject_t *)Mem_ClearedAlloc( sizeof( *object ) );
+		aseObject_t *object = new aseObject_t();
 		object->materialRef = materialRef++;
 
 		aseMesh_t *mesh = &object->mesh;

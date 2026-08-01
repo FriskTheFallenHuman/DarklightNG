@@ -230,7 +230,9 @@ void idBrittleFracture::Restore( idRestoreGame *savefile ) {
 		savefile->ReadInt( j );
 		shards[i]->edgeHasNeighbour.SetNum( j );
 		for ( j = 0; j < shards[i]->edgeHasNeighbour.Num(); j++ ) {
-			savefile->ReadBool( shards[i]->edgeHasNeighbour[j] );
+			bool hasNeighbour;
+			savefile->ReadBool( hasNeighbour );
+			shards[i]->edgeHasNeighbour[j] = hasNeighbour;
 		}
 
 		savefile->ReadInt( shards[i]->droppedTime );

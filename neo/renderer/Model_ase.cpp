@@ -761,8 +761,7 @@ void ASE_ParseGeomObject( void ) {
 
 	VERBOSE( ("GEOMOBJECT" ) );
 
-	object = (aseObject_t *)Mem_Alloc( sizeof( aseObject_t ) );
-	memset( object, 0, sizeof( aseObject_t ) );
+	object = new aseObject_t();
 	ase.model->objects.Append( object );
 	ase.currentObject = object;
 
@@ -794,8 +793,7 @@ aseModel_t *ASE_Parse( const char *buffer, bool verbose ) {
 	ase.currentObject = NULL;
 
 	// NOTE: using new operator because aseModel_t contains idList class objects
-	ase.model = new aseModel_t;
-	memset( ase.model, 0, sizeof( aseModel_t ) );
+	ase.model = new aseModel_t();
 	ase.model->objects.Resize( 32, 32 );
 	ase.model->materials.Resize( 32, 32 );
 
@@ -898,7 +896,7 @@ void ASE_Free( aseModel_t *ase ) {
 		if ( mesh->faces ) {
 			Mem_Free( mesh->faces );
 		}
-		Mem_Free( obj );
+		delete obj;
 	}
 	ase->objects.Clear();
 
