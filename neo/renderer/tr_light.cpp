@@ -1074,6 +1074,48 @@ static void R_AddAmbientDrawsurfs( viewEntity_t *vEntity ) {
 
 /*
 ====================
+R_CullLocalLightBounds
+
+Tests local-space bounds against inward-facing local light frustum planes.
+Transforming the six planes once per entity/light pair avoids transforming
+every bounds corner for the model and each of its surfaces.
+====================
+*/
+static bool R_CullLocalLightBounds( const idBounds &bounds, const idPlane localClipPlanes[6] ) {
+	const int cullMode = r_useCulling.GetInteger();
+	if ( cullMode == 0 ) {
+		return false;
+	}
+
+	if ( cullMode == 1 ) {
+		const idVec3 center = bounds.GetCenter();
+		const float radius = ( bounds[0] - center ).Length();
+		for ( int i = 0; i < 6; i++ ) {
+			if ( localClipPlanes[i].Distance( center ) < -radius ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	for ( int i = 0; i < 6; i++ ) {
+		const idPlane &plane = localClipPlanes[i];
+		const idVec3 nearestInsideCorner(
+			plane[0] >= 0.0f ? bounds[1][0] : bounds[0][0],
+			plane[1] >= 0.0f ? bounds[1][1] : bounds[0][1],
+			plane[2] >= 0.0f ? bounds[1][2] : bounds[0][2] );
+		if ( plane.Distance( nearestInsideCorner ) <= 0.0f ) {
+			tr.pc.c_box_cull_out++;
+			return true;
+		}
+	}
+
+	tr.pc.c_box_cull_in++;
+	return false;
+}
+
+/*
+====================
 R_CreateTransientLightTris
 
 Builds a frame-local subset of a visible surface for one realtime light.
@@ -1081,13 +1123,12 @@ Nothing is retained on the entity or light after the view is submitted.
 ====================
 */
 static srfTriangles_t *R_CreateTransientLightTris( const idRenderEntityLocal *entityDef,
-		const srfTriangles_t *tri, const idRenderLightLocal *lightDef, const idMaterial *shader ) {
+		const srfTriangles_t *tri, const idRenderLightLocal *lightDef, const idMaterial *shader,
+		const idPlane localClipPlanes[6], const idVec3 &localLightOrigin ) {
 	static const float LIGHT_CLIP_EPSILON = 0.1f;
-	idPlane localClipPlanes[6];
 	int frontBits = 0;
 
 	for ( int i = 0; i < 6; i++ ) {
-		R_GlobalPlaneToLocal( entityDef->modelMatrix, -lightDef->frustum[i], localClipPlanes[i] );
 		if ( tri->bounds.PlaneDistance( localClipPlanes[i] ) >= LIGHT_CLIP_EPSILON ) {
 			frontBits |= 1 << i;
 		}
@@ -1108,8 +1149,6 @@ static srfTriangles_t *R_CreateTransientLightTris( const idRenderEntityLocal *en
 			R_DeriveFacePlanes( const_cast<srfTriangles_t *>( tri ) );
 		}
 
-		idVec3 localLightOrigin;
-		R_GlobalPointToLocal( entityDef->modelMatrix, lightDef->globalLightOrigin, localLightOrigin );
 		facing = (byte *)_alloca16( numFaces * sizeof( facing[0] ) );
 		float *planeSide = (float *)_alloca16( numFaces * sizeof( planeSide[0] ) );
 		SIMDProcessor->Dot( planeSide, localLightOrigin, tri->facePlanes, numFaces );
@@ -1199,19 +1238,31 @@ Adds frame-local realtime, fog, and blend-light surfaces for one visible entity.
 static void R_AddTransientLightSurfaces( viewEntity_t *vEntity, const idRenderModel *model ) {
 	idRenderEntityLocal *entityDef = vEntity->entityDef;
 	const idBounds modelBounds = model->Bounds( &entityDef->parms );
+	const int numSurfaces = model->NumSurfaces();
 
 	for ( viewLight_t *vLight = tr.viewDef->viewLights; vLight; vLight = vLight->next ) {
 		idRenderLightLocal *lightDef = vLight->lightDef;
 		idScreenRect lightScissor = vLight->scissorRect;
 		lightScissor.Intersect( vEntity->scissorRect );
-		if ( lightScissor.IsEmpty() || R_CullLocalBox( modelBounds, vEntity->modelMatrix, 6, lightDef->frustum ) ) {
+		if ( lightScissor.IsEmpty() ) {
 			continue;
 		}
+
+		idPlane localClipPlanes[6];
+		for ( int i = 0; i < 6; i++ ) {
+			R_GlobalPlaneToLocal( vEntity->modelMatrix, -lightDef->frustum[i], localClipPlanes[i] );
+		}
+		if ( R_CullLocalLightBounds( modelBounds, localClipPlanes ) ) {
+			continue;
+		}
+
+		idVec3 localLightOrigin;
+		R_GlobalPointToLocal( vEntity->modelMatrix, lightDef->globalLightOrigin, localLightOrigin );
 
 		const bool useBakedSurfaceLighting = lightDef->world && lightDef->world->hasBakedLightmaps &&
 			!r_skipBakedLightmaps.GetBool() && lightDef->parms.bakedLight && !lightDef->lightHasMoved;
 
-		for ( int i = 0; i < model->NumSurfaces(); i++ ) {
+		for ( int i = 0; i < numSurfaces; i++ ) {
 			const modelSurface_t *surface = model->Surface( i );
 			const srfTriangles_t *tri = surface->geometry;
 			if ( !tri || !tri->numIndexes || tri->ambientViewCount != tr.viewCount ) {
@@ -1228,11 +1279,12 @@ static void R_AddTransientLightSurfaces( viewEntity_t *vEntity, const idRenderMo
 				tri->bakedLightmap && tri->bakedDeluxemap) {
 				continue;
 			}
-			if ( R_CullLocalBox( tri->bounds, vEntity->modelMatrix, 6, lightDef->frustum ) ) {
+			if ( R_CullLocalLightBounds( tri->bounds, localClipPlanes ) ) {
 				continue;
 			}
 
-			srfTriangles_t *lightTris = R_CreateTransientLightTris( entityDef, tri, lightDef, shader );
+			srfTriangles_t *lightTris = R_CreateTransientLightTris( entityDef, tri, lightDef, shader,
+				localClipPlanes, localLightOrigin );
 			if ( !lightTris ) {
 				continue;
 			}

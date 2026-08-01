@@ -32,6 +32,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "Image.h"
 #include "MegaTexture.h"
 #include "GlslProgram.h"
+#include "GpuProfiler.h"
 
 class idRenderWorldLocal;
 
@@ -863,6 +864,7 @@ extern idCVar r_showPortals;			// draw portal outlines in color based on passed 
 extern idCVar r_showAlloc;				// report alloc/free counts
 extern idCVar r_showSkel;				// draw the skeleton when model animates
 extern idCVar r_showOverDraw;			// show overdraw
+extern idCVar r_showStats;				// show named GPU timing markers and timeline
 extern idCVar r_jointNameScale;			// size of joint names when r_showskel is set to 1
 extern idCVar r_jointNameOffset;		// offset of joint names when r_showskel is set to 1
 

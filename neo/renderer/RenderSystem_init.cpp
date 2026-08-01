@@ -178,6 +178,7 @@ idCVar r_showDominantTri( "r_showDominantTri", "0", CVAR_RENDERER | CVAR_BOOL, "
 idCVar r_showAlloc( "r_showAlloc", "0", CVAR_RENDERER | CVAR_BOOL, "report alloc/free counts" );
 idCVar r_showTextureVectors( "r_showTextureVectors", "0", CVAR_RENDERER | CVAR_FLOAT, " if > 0 draw each triangles texture (tangent) vectors" );
 idCVar r_showOverDraw( "r_showOverDraw", "0", CVAR_RENDERER | CVAR_INTEGER, "1 = geometry overdraw, 2 = light interaction overdraw, 3 = geometry and light interaction overdraw", 0, 3, idCmdSystem::ArgCompletion_Integer<0,3> );
+idCVar r_showStats( "r_showstats", "0", CVAR_RENDERER | CVAR_BOOL, "show the asynchronous named GPU frame timeline" );
 
 idCVar r_lockSurfaces( "r_lockSurfaces", "0", CVAR_RENDERER | CVAR_BOOL, "allow moving the view point without changing the composition of the scene, including culling" );
 idCVar r_useEntityCallbacks( "r_useEntityCallbacks", "1", CVAR_RENDERER | CVAR_BOOL, "if 0, issue the callback immediately at update time, rather than defering" );
@@ -679,6 +680,7 @@ void R_InitOpenGL( void ) {
 
 	// recheck all the extensions (FIXME: this might be dangerous)
 	R_CheckPortableExtensions();
+	RB_GPUProfilerInit();
 
 	// Compile and link the OpenGL 2.x GLSL programs.
 	R_GLSL_Init();
@@ -1873,6 +1875,7 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 		globalImages->PurgeAllImages();
 		// free the context and close the window
 		R_ShutdownGLSLPrograms();
+		RB_GPUProfilerShutdown();
 		GLimp_Shutdown();
 		glConfig.isInitialized = false;
 
@@ -2215,6 +2218,7 @@ void idRenderSystemLocal::ShutdownOpenGL( void ) {
 	// free the context and close the window
 	R_ShutdownFrameData();
 	R_ShutdownGLSLPrograms();
+	RB_GPUProfilerShutdown();
 	GLimp_Shutdown();
 	glConfig.isInitialized = false;
 }

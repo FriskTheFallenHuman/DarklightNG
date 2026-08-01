@@ -606,42 +606,63 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 	}
 
 	backEndStartTime = Sys_Milliseconds();
+	RB_GPUProfilerBeginFrame();
 
-	// needed for editor rendering
-	RB_SetDefaultGLState();
+	{
+		idScopedGpuMarker marker( "Frame Setup" );
+		// needed for editor rendering
+		RB_SetDefaultGLState();
 
-	// upload any image loads that have completed
-	globalImages->CompleteBackgroundImageLoads();
+		// upload any image loads that have completed
+		globalImages->CompleteBackgroundImageLoads();
+	}
 
+	bool gpuFrameEnded = false;
 	for ( ; cmds ; cmds = (const emptyCommand_t *)cmds->next ) {
 		switch ( cmds->commandId ) {
 		case RC_NOP:
 			break;
-		case RC_DRAW_VIEW:
+		case RC_DRAW_VIEW: {
+			const drawSurfsCommand_t *drawCommand = (const drawSurfsCommand_t *)cmds;
+			idScopedGpuMarker marker( drawCommand->viewDef->viewEntitys ? "3D View" : "2D UI" );
 			RB_DrawView( cmds );
-			if ( ((const drawSurfsCommand_t *)cmds)->viewDef->viewEntitys ) {
+			if ( drawCommand->viewDef->viewEntitys ) {
 				c_draw3d++;
 			}
 			else {
 				c_draw2d++;
 			}
 			break;
-		case RC_SET_BUFFER:
+		}
+		case RC_SET_BUFFER: {
+			idScopedGpuMarker marker( "Set Buffer" );
 			RB_SetBuffer( cmds );
 			c_setBuffers++;
 			break;
-		case RC_SWAP_BUFFERS:
+		}
+		case RC_SWAP_BUFFERS: {
+			if ( !gpuFrameEnded ) {
+				RB_GPUProfilerEndFrame();
+				gpuFrameEnded = true;
+			}
+			RB_GPUProfilerDraw();
 			RB_SwapBuffers( cmds );
 			c_swapBuffers++;
 			break;
-		case RC_COPY_RENDER:
+		}
+		case RC_COPY_RENDER: {
+			idScopedGpuMarker marker( "Copy Render" );
 			RB_CopyRender( cmds );
 			c_copyRenders++;
 			break;
+		}
 		default:
 			common->Error( "RB_ExecuteBackEndCommands: bad commandId" );
 			break;
 		}
+	}
+	if ( !gpuFrameEnded ) {
+		RB_GPUProfilerEndFrame();
 	}
 
 	// go back to the default texture so the editor doesn't mess up a bound image

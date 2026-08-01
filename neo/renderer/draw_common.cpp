@@ -1420,6 +1420,7 @@ void	RB_STD_DrawView( void ) {
 	RB_VFX_BeginFrame();
 	drawSurf_t	 **drawSurfs;
 	int			numDrawSurfs;
+	const bool profile3DView = backEnd.viewDef->viewEntitys != NULL;
 
 	RB_LogComment( "---------- RB_STD_DrawView ----------\n" );
 
@@ -1428,34 +1429,60 @@ void	RB_STD_DrawView( void ) {
 	drawSurfs = (drawSurf_t **)&backEnd.viewDef->drawSurfs[0];
 	numDrawSurfs = backEnd.viewDef->numDrawSurfs;
 
-	// clear the z buffer, set the projection matrix, etc
-	RB_BeginDrawingView();
+	{
+		idScopedGpuMarker marker( "View Setup", profile3DView );
+		// clear the z buffer, set the projection matrix, etc
+		RB_BeginDrawingView();
 
-	// decide how much overbrighting we are going to do
-	RB_DetermineLightScale();
+		// decide how much overbrighting we are going to do
+		RB_DetermineLightScale();
+	}
 
 	// fill the depth buffer and clear color buffer to black except on
 	// subviews
-	RB_STD_FillDepthBuffer( drawSurfs, numDrawSurfs );
+	{
+		idScopedGpuMarker marker( "Depth Prepass", profile3DView );
+		RB_STD_FillDepthBuffer( drawSurfs, numDrawSurfs );
+	}
 
 	// Forward pipeline: z-prepass, baked lightmap/deluxemap, realtime lights.
-	RB_GLSL_DrawBakedLightmaps( drawSurfs, numDrawSurfs );
-	RB_GLSL_DrawInteractions();
+	{
+		idScopedGpuMarker marker( "Baked Lighting", profile3DView );
+		RB_GLSL_DrawBakedLightmaps( drawSurfs, numDrawSurfs );
+	}
+	{
+		idScopedGpuMarker marker( "Realtime Lights", profile3DView );
+		RB_GLSL_DrawInteractions();
+	}
 
 	// uplight the entire screen to crutch up not having better blending range
-	RB_STD_LightScale();
+	{
+		idScopedGpuMarker marker( "Light Scale", profile3DView );
+		RB_STD_LightScale();
+	}
 
 	// now draw any non-light dependent shading passes
-	int	processed = RB_STD_DrawShaderPasses( drawSurfs, numDrawSurfs );
+	int processed;
+	{
+		idScopedGpuMarker marker( "Surface Passes", profile3DView );
+		processed = RB_STD_DrawShaderPasses( drawSurfs, numDrawSurfs );
+	}
 
-	// fob and blend lights
-	RB_STD_FogAllLights();
+	// fog and blend lights
+	{
+		idScopedGpuMarker marker( "Fog / Blend Lights", profile3DView );
+		RB_STD_FogAllLights();
+	}
 
 	// now draw any post-processing effects using _currentRender
 	if ( processed < numDrawSurfs ) {
+		idScopedGpuMarker marker( "Post Process", profile3DView );
 		RB_STD_DrawShaderPasses( drawSurfs+processed, numDrawSurfs-processed );
 	}
 
-	RB_RenderDebugTools( drawSurfs, numDrawSurfs );
+	{
+		idScopedGpuMarker marker( "Debug Tools", profile3DView );
+		RB_RenderDebugTools( drawSurfs, numDrawSurfs );
+	}
 
 }
