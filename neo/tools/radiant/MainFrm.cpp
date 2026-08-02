@@ -61,6 +61,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "../../sys/win32/rc/common_resource.h"
 #include "../comafx/DialogName.h"
 #include "../comafx/DialogColorPicker.h"
+#include "../common/EditorTheme.h"
 
 #ifdef _DEBUG
 	#define new DEBUG_NEW
@@ -98,6 +99,78 @@ CString			g_strProject;						// holds the active project filename
 
 #define MAX_GRID	64.0f
 #define MIN_GRID	0.125f
+
+static bool CreateScaledToolBarImages( CToolBar &toolBar, CImageList &scaledImages, UINT resourceID, int imageSize ) {
+	HINSTANCE toolBarInstance = AfxFindResourceHandle( MAKEINTRESOURCE( resourceID ), RT_TOOLBAR );
+	HINSTANCE bitmapInstance = AfxFindResourceHandle( MAKEINTRESOURCE( resourceID ), RT_BITMAP );
+	HRSRC toolBarResource = FindResource( toolBarInstance, MAKEINTRESOURCE( resourceID ), RT_TOOLBAR );
+	HGLOBAL toolBarDataHandle = toolBarResource ? LoadResource( toolBarInstance, toolBarResource ) : NULL;
+	const WORD *toolBarData = toolBarDataHandle ? reinterpret_cast<const WORD *>( LockResource( toolBarDataHandle ) ) : NULL;
+	if ( !toolBarData || toolBarData[0] != 1 ) {
+		return false;
+	}
+
+	const int sourceWidth = toolBarData[1];
+	const int sourceHeight = toolBarData[2];
+	HBITMAP sourceBitmapHandle = reinterpret_cast<HBITMAP>( LoadImage( bitmapInstance,
+		MAKEINTRESOURCE( resourceID ), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION ) );
+	if ( !sourceBitmapHandle || sourceWidth <= 0 || sourceHeight <= 0 ) {
+		if ( sourceBitmapHandle ) {
+			DeleteObject( sourceBitmapHandle );
+		}
+		return false;
+	}
+	BITMAP sourceBitmapInfo;
+	GetObject( sourceBitmapHandle, sizeof( sourceBitmapInfo ), &sourceBitmapInfo );
+	const int imageCount = sourceBitmapInfo.bmWidth / sourceWidth;
+
+	if ( scaledImages.GetSafeHandle() ) {
+		scaledImages.DeleteImageList();
+	}
+	if ( !scaledImages.Create( imageSize, imageSize, ILC_COLOR32 | ILC_MASK, imageCount, 1 ) ) {
+		return false;
+	}
+	scaledImages.SetBkColor( CLR_NONE );
+	CBitmap sourceBitmap;
+	sourceBitmap.Attach( sourceBitmapHandle );
+	CImageList sourceImages;
+	if ( !sourceImages.Create( sourceWidth, sourceHeight, ILC_COLOR24 | ILC_MASK, imageCount, 1 ) ||
+		sourceImages.Add( &sourceBitmap, RGB( 192, 192, 192 ) ) < 0 ) {
+		return false;
+	}
+
+	for ( int imageIndex = 0; imageIndex < imageCount; imageIndex++ ) {
+		HICON sourceIcon = sourceImages.ExtractIcon( imageIndex );
+		if ( !sourceIcon ) {
+			return false;
+		}
+		HICON scaledIcon = reinterpret_cast<HICON>( CopyImage( sourceIcon, IMAGE_ICON, imageSize, imageSize, 0 ) );
+		const int addedIndex = scaledImages.Add( scaledIcon ? scaledIcon : sourceIcon );
+		if ( scaledIcon ) {
+			DestroyIcon( scaledIcon );
+		}
+		DestroyIcon( sourceIcon );
+		if ( addedIndex < 0 ) {
+			return false;
+		}
+	}
+
+	toolBar.GetToolBarCtrl().SetImageList( &scaledImages );
+	toolBar.GetToolBarCtrl().SetBitmapSize( CSize( imageSize, imageSize ) );
+	toolBar.GetToolBarCtrl().AutoSize();
+	return true;
+}
+
+static void RemoveToolBarDockBorders( CToolBar &toolBar ) {
+	toolBar.SetBarStyle( toolBar.GetBarStyle() & ~( CBRS_BORDER_ANY | CBRS_BORDER_3D | CBRS_GRIPPER ) );
+	CControlBar *dockBar = DYNAMIC_DOWNCAST( CControlBar, toolBar.GetParent() );
+	if ( dockBar && dockBar != &toolBar ) {
+		dockBar->SetBarStyle( dockBar->GetBarStyle() & ~( CBRS_BORDER_ANY | CBRS_BORDER_3D | CBRS_GRIPPER ) );
+		dockBar->SetWindowPos( NULL, 0, 0, 0, 0,
+			SWP_DRAWFRAME | SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOZORDER );
+		dockBar->Invalidate();
+	}
+}
 
 SCommandInfo	g_Commands[] = {
 	{ "Texture_AxialByHeight",   'U', 0,	ID_SELECT_AXIALTEXTURE_BYHEIGHT },
@@ -1097,9 +1170,16 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 	UINT	nID = (g_PrefsDlg.m_bWideToolbar) ? IDR_TOOLBAR_ADVANCED : IDR_TOOLBAR1;
 
 	if (!m_wndToolBar.CreateEx(this, TBSTYLE_FLAT, WS_CHILD | WS_VISIBLE | CBRS_TOP
-		| CBRS_GRIPPER | CBRS_TOOLTIPS | CBRS_FLYBY | CBRS_SIZE_DYNAMIC) || !m_wndToolBar.LoadToolBar(nID)) {
+		| CBRS_TOOLTIPS | CBRS_FLYBY | CBRS_SIZE_DYNAMIC) || !m_wndToolBar.LoadToolBar(nID)) {
 		TRACE0("Failed to create toolbar\n");
 		return -1;	// fail to create
+	}
+	if (Sys_EditorDarkThemeEnabled()) {
+		m_wndToolBar.UseLargeButtons( true );
+		RemoveToolBarDockBorders( m_wndToolBar );
+		CreateScaledToolBarImages( m_wndToolBar, m_wndToolBarImages, nID, 30 );
+		m_wndToolBar.SetSizes(CSize(46, 46), CSize(30, 30));
+		m_wndToolBar.SetHeight(50);
 	}
 
 	if (!m_wndStatusBar.Create(this) || !m_wndStatusBar.SetIndicators(indicators, sizeof(indicators) / sizeof(UINT))) {
@@ -1126,6 +1206,9 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 	m_wndToolBar.EnableDocking(CBRS_ALIGN_ANY);
 	EnableDocking(CBRS_ALIGN_ANY);
 	DockControlBar(&m_wndToolBar);
+	if ( Sys_EditorDarkThemeEnabled() ) {
+		RemoveToolBarDockBorders( m_wndToolBar );
+	}
 
 	g_nScaleHow = 0;
 
@@ -1143,7 +1226,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 	ShowMenuItemKeyBindings(pMenu);
 
 	CFont	*pFont = new CFont();
-	pFont->CreatePointFont(g_PrefsDlg.m_nStatusSize * 10, "Arial");
+	pFont->CreatePointFont(g_PrefsDlg.m_nStatusSize * 10, "MS Sans Serif");
 	m_wndStatusBar.SetFont(pFont);
 
 
@@ -1171,7 +1254,16 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 	SetButtonMenuStates();
 	// Start with a clean toolbar layout after the standalone project-file removal.
 	// The previous profile may have persisted the main toolbar as hidden.
-	LoadBarState("RadiantToolBars3");
+	LoadBarState("RadiantToolBars4");
+	if ( Sys_EditorDarkThemeEnabled() ) {
+		// Keep the larger Win98-style button geometry after restoring the
+		// user's docking state. The scaled image list preserves icon indices.
+		RemoveToolBarDockBorders( m_wndToolBar );
+		m_wndToolBar.SetSizes(CSize(46, 46), CSize(30, 30));
+		m_wndToolBar.SetHeight(50);
+		RecalcLayout();
+		OnColorSetblack();
+	}
 
 	SetActiveXY(m_pXYWnd);
 	m_pXYWnd->SetFocus();

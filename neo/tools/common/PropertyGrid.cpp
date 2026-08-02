@@ -30,6 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 #pragma hdrstop
 
 #include "../../sys/win32/win_local.h"
+#include "EditorTheme.h"
 #include "PropertyGrid.h"
 
 class rvPropertyGridItem
@@ -91,7 +92,7 @@ bool rvPropertyGrid::Create ( HWND parent, int id, int style )
 	dc = GetDC ( mWindow );
 	ZeroMemory ( &lf, sizeof(lf) );
 	lf.lfHeight = -MulDiv(8, GetDeviceCaps(dc, LOGPIXELSY), 72);
-	strcpy ( lf.lfFaceName, "MS Shell Dlg" );	
+	strcpy ( lf.lfFaceName, "MS Sans Serif" );
 	SendMessage ( mWindow, WM_SETFONT, (WPARAM)CreateFontIndirect ( &lf ), 0 );		
 	SendMessage ( mEdit, WM_SETFONT, (WPARAM)CreateFontIndirect ( &lf ), 0 );		
 	ReleaseDC ( mWindow, dc );
@@ -534,7 +535,7 @@ LRESULT CALLBACK rvPropertyGrid::WndProc ( HWND hWnd, UINT msg, WPARAM wParam, L
 		{
 			RECT rClient;
 			GetClientRect ( hWnd, &rClient );
-			FillRect ( (HDC)wParam, &rClient, GetSysColorBrush ( COLOR_3DFACE ) );
+			FillRect ( (HDC)wParam, &rClient, Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeBrush( EDITOR_THEME_CONTROL ) : GetSysColorBrush ( COLOR_3DFACE ) );
 			return TRUE;
 		}
 			
@@ -617,7 +618,7 @@ int rvPropertyGrid::HandleDrawItem ( WPARAM wParam, LPARAM lParam )
 	rTemp = dis->rcItem;
 	if ( mStyle & PGS_HEADERS )
 	{
-		brush = GetSysColorBrush ( COLOR_SCROLLBAR );
+		brush = Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeBrush( EDITOR_THEME_CONTROL ) : GetSysColorBrush ( COLOR_SCROLLBAR );
 		rTemp.right = rTemp.left + 10;
 		FillRect ( dis->hDC, &rTemp, brush );		
 		rTemp.left = rTemp.right;
@@ -626,20 +627,20 @@ int rvPropertyGrid::HandleDrawItem ( WPARAM wParam, LPARAM lParam )
 	
 	if ( item->mType == PGIT_HEADER )
 	{
-		brush = GetSysColorBrush ( COLOR_SCROLLBAR );
+		brush = Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeBrush( EDITOR_THEME_CONTROL ) : GetSysColorBrush ( COLOR_SCROLLBAR );
 	}
 	else if ( dis->itemState & ODS_SELECTED )
 	{
-		brush = GetSysColorBrush ( COLOR_HIGHLIGHT );
+		brush = Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeBrush( EDITOR_THEME_SELECTION ) : GetSysColorBrush ( COLOR_HIGHLIGHT );
 	}
 	else
 	{
-		brush = GetSysColorBrush ( COLOR_WINDOW );		
+		brush = Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeBrush( EDITOR_THEME_FIELD ) : GetSysColorBrush ( COLOR_WINDOW );
 	}
 
 	FillRect ( dis->hDC, &rTemp, brush );
 
-	HPEN pen = CreatePen ( PS_SOLID, 1, GetSysColor ( COLOR_SCROLLBAR ) );
+	HPEN pen = CreatePen ( PS_SOLID, 1, Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeColor( EDITOR_THEME_BORDER ) : GetSysColor ( COLOR_SCROLLBAR ) );
 	HPEN oldpen = (HPEN)SelectObject ( dis->hDC, pen );
 	MoveToEx ( dis->hDC, dis->rcItem.left, dis->rcItem.top, NULL );
 	LineTo ( dis->hDC, dis->rcItem.right, dis->rcItem.top );
@@ -655,9 +656,9 @@ int rvPropertyGrid::HandleDrawItem ( WPARAM wParam, LPARAM lParam )
 	DeleteObject ( pen );			
 
 	int colorIndex = ( (dis->itemState & ODS_SELECTED ) ? COLOR_HIGHLIGHTTEXT : COLOR_WINDOWTEXT );
-	SetTextColor ( dis->hDC, GetSysColor ( colorIndex ) );
+	SetTextColor ( dis->hDC, Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeColor( EDITOR_THEME_TEXT ) : GetSysColor ( colorIndex ) );
 	SetBkMode ( dis->hDC, TRANSPARENT );
-	SetBkColor ( dis->hDC, GetSysColor ( COLOR_3DFACE ) );
+	SetBkColor ( dis->hDC, Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeColor( EDITOR_THEME_CONTROL ) : GetSysColor ( COLOR_3DFACE ) );
 
 	RECT rText;
 	rText = rTemp;

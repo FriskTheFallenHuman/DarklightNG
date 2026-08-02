@@ -32,7 +32,7 @@ static char THIS_FILE[] = __FILE__;
 #define PROPTREEITEM_COLRNG				5			// width of splitter
 
 //static AFX_EXTENSION_MODULE PropTreeDLL = {NULL, NULL};
-static const CString strOfficeFontName	= _T("Tahoma");
+static const CString strOfficeFontName	= _T("MS Sans Serif");
 static const CString strDefaultFontName = _T("MS Sans Serif");
 
 HINSTANCE ghInst;
@@ -225,8 +225,8 @@ void CPropTree::InitGlobalResources()
 	lf.lfWeight = info.lfMenuFont.lfWeight;
 	lf.lfItalic = info.lfMenuFont.lfItalic;
 
-	// check if we should use system font
-	_tcscpy(lf.lfFaceName, info.lfMenuFont.lfFaceName);
+	// Keep property panels consistent with the compact classic editor dialogs.
+	_tcscpy(lf.lfFaceName, strDefaultFontName);
 
 	BOOL fUseSystemFont = (info.lfMenuFont.lfCharSet > SYMBOL_CHARSET);
 	if (!fUseSystemFont)

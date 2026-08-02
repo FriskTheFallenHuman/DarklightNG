@@ -21,6 +21,7 @@
 #pragma hdrstop
 
 #include "PropTree.h"
+#include "../EditorTheme.h"
 #include "../../../sys/win32/rc/proptree_Resource.h"
 #include "PropTreeInfo.h"
 
@@ -64,7 +65,7 @@ void CPropTreeInfo::OnPaint()
 
 	GetClientRect(rc);
 
-	dc.SelectObject(GetSysColorBrush(COLOR_BTNFACE));
+	dc.SelectObject(Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeBrush(EDITOR_THEME_CONTROL) : GetSysColorBrush(COLOR_BTNFACE));
 	dc.PatBlt(rc.left, rc.top, rc.Width(), rc.Height(), PATCOPY);
 
 	dc.DrawEdge(&rc, BDR_SUNKENOUTER, BF_RECT);
@@ -77,7 +78,7 @@ void CPropTreeInfo::OnPaint()
 	if (!m_pProp->IsWindowEnabled())
 		dc.SetTextColor(GetSysColor(COLOR_GRAYTEXT));
 	else
-		dc.SetTextColor(GetSysColor(COLOR_BTNTEXT));
+		dc.SetTextColor(Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeColor(EDITOR_THEME_TEXT) : GetSysColor(COLOR_BTNTEXT));
 
 	dc.SetBkMode(TRANSPARENT);
 	dc.SelectObject(m_pProp->GetBoldFont());

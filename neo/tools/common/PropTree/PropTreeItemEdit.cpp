@@ -21,6 +21,7 @@
 #pragma hdrstop
 
 #include "proptree.h"
+#include "../EditorTheme.h"
 #include "PropTreeItemEdit.h"
 
 #ifdef _DEBUG
@@ -61,7 +62,7 @@ void CPropTreeItemEdit::DrawAttribute(CDC* pDC, const RECT& rc)
 	ASSERT(m_pProp!=NULL);
 
 	pDC->SelectObject(IsReadOnly() ? m_pProp->GetNormalFont() : m_pProp->GetBoldFont());
-	pDC->SetTextColor(RGB(0,0,0));
+	pDC->SetTextColor(Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeColor(EDITOR_THEME_TEXT) : RGB(0,0,0));
 	pDC->SetBkMode(TRANSPARENT);
 
 	CRect r = rc;

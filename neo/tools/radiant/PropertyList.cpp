@@ -34,6 +34,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "PropertyList.h"
 
 #include "../comafx/DialogColorPicker.h"
+#include "../common/EditorTheme.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -122,7 +123,11 @@ void CPropertyList::DrawItem(LPDRAWITEMSTRUCT lpDIS) {
 		//get the CPropertyItem for the current row
 		CPropertyItem* pItem = (CPropertyItem*) GetItemDataPtr(nIndex);
 		//draw two rectangles, one for each row column
-		if (pItem->m_nItemType == PIT_VAR) {
+		if (Sys_EditorDarkThemeEnabled()) {
+			dc.FillSolidRect(rectFull, Sys_GetEditorThemeColor((lpDIS->itemState & ODS_SELECTED) ? EDITOR_THEME_SELECTION : EDITOR_THEME_FIELD));
+			dc.FillSolidRect(rect2, Sys_GetEditorThemeColor((lpDIS->itemState & ODS_SELECTED) ? EDITOR_THEME_SELECTION : EDITOR_THEME_CONTROL));
+			dc.SetTextColor(Sys_GetEditorThemeColor(EDITOR_THEME_TEXT));
+		} else if (pItem->m_nItemType == PIT_VAR) {
 			dc.FillSolidRect(rect2,RGB(220,220,220));
 		} else {
 			dc.FillSolidRect(rect2,RGB(192,192,192));
@@ -537,4 +542,3 @@ void CPropertyList::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar) {
 
 	CListBox::OnVScroll(nSBCode, nPos, pScrollBar); 
 } 
-

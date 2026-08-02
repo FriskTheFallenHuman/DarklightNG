@@ -14,12 +14,18 @@ set(DARKLIGHT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
 get_filename_component(DARKLIGHT_ROOT "${DARKLIGHT_ROOT}" ABSOLUTE)
 set(DARKLIGHT_OUT "${DARKLIGHT_ROOT}/out")
 
-# Keep the playable binaries beside base/, while Visual Studio's link products,
-# PDBs, and other generated output stay under out/<Configuration>.
+# Keep the normal playable Release pair beside base/. Other configurations use
+# their own directories so a Debug gamex86.dll can never silently replace the
+# Release DLL while Visual Studio still considers the Release target current.
 foreach(configuration Debug Release RelWithDebInfo MinSizeRel)
 	string(TOUPPER "${configuration}" configuration_upper)
-	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${configuration_upper} "${DARKLIGHT_ROOT}")
-	set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${configuration_upper} "${DARKLIGHT_ROOT}")
+	if(configuration STREQUAL "Release")
+		set(configuration_runtime_directory "${DARKLIGHT_ROOT}")
+	else()
+		set(configuration_runtime_directory "${DARKLIGHT_OUT}/${configuration}")
+	endif()
+	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${configuration_upper} "${configuration_runtime_directory}")
+	set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${configuration_upper} "${configuration_runtime_directory}")
 	set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${configuration_upper} "${DARKLIGHT_OUT}/${configuration}")
 	set(CMAKE_PDB_OUTPUT_DIRECTORY_${configuration_upper} "${DARKLIGHT_OUT}/${configuration}")
 	set(CMAKE_COMPILE_PDB_OUTPUT_DIRECTORY_${configuration_upper} "${DARKLIGHT_OUT}/${configuration}")
@@ -81,7 +87,17 @@ set_source_files_properties("game/gamesys/TypeInfo.cpp" PROPERTIES
 	SKIP_PRECOMPILE_HEADERS ON
 	COMPILE_DEFINITIONS _ALLOW_KEYWORD_MACROS
 )
-target_compile_definitions(game PRIVATE __DOOM__ GAME_DLL _D3XP CTF ID_ENABLE_CURL=0)
+target_compile_definitions(game PRIVATE
+	__DOOM__
+	GAME_DLL
+	_D3XP
+	CTF
+	ID_ENABLE_CURL=0
+	# VS 2026 enables STL bounds hardening in Release by default. The original
+	# game DLL was authored for unchecked release iterators and otherwise stops
+	# tool startup in the CRT before an editor window can be created.
+	_MSVC_STL_HARDENING=0
+)
 target_link_libraries(game PRIVATE idlib)
 darklight_target_defaults(game)
 set_target_properties(game PROPERTIES

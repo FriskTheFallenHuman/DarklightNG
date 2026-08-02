@@ -21,6 +21,7 @@
 #pragma hdrstop
 
 #include "PropTree.h"
+#include "../EditorTheme.h"
 #include "../../../sys/win32/rc/proptree_Resource.h"
 #include "PropTreeList.h"
 
@@ -168,16 +169,19 @@ void CPropTreeList::OnPaint()
 	GetClientRect(rc);
 
 	// draw control background
-	memdc.SelectObject(GetSysColorBrush(COLOR_BTNFACE));
+	memdc.SelectObject(Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeBrush(EDITOR_THEME_CONTROL) : GetSysColorBrush(COLOR_BTNFACE));
 	memdc.PatBlt(rc.left, rc.top, rc.Width(), rc.Height(), PATCOPY);
 
 	// draw control inside fill color
 	rc.DeflateRect(2,2);
-	memdc.PatBlt(rc.left, rc.top, rc.Width(), rc.Height(), m_pProp->IsWindowEnabled() ? WHITENESS : PATCOPY);
+	if (Sys_EditorDarkThemeEnabled())
+		memdc.FillSolidRect(rc, Sys_GetEditorThemeColor(m_pProp->IsWindowEnabled() ? EDITOR_THEME_FIELD : EDITOR_THEME_CONTROL));
+	else
+		memdc.PatBlt(rc.left, rc.top, rc.Width(), rc.Height(), m_pProp->IsWindowEnabled() ? WHITENESS : PATCOPY);
 	rc.InflateRect(2,2);
 
 	// draw expand column
-	memdc.SelectObject(GetSysColorBrush(COLOR_BTNFACE));
+	memdc.SelectObject(Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeBrush(EDITOR_THEME_CONTROL) : GetSysColorBrush(COLOR_BTNFACE));
 	memdc.PatBlt(0, 0, PROPTREEITEM_EXPANDCOLUMN, rc.Height(), PATCOPY);
 
 	// draw edge

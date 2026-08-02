@@ -53,14 +53,51 @@ struct SCommandInfo
 	unsigned int m_nCommand;
 };
 
+class CRadiantToolBar : public CToolBar {
+public:
+	CRadiantToolBar() : m_largeButtons( false ) {
+	}
+
+	void UseLargeButtons( bool enabled ) {
+		m_largeButtons = enabled;
+	}
+
+	CSize CalcFixedLayout( BOOL stretch, BOOL horizontal ) override {
+		CSize size = CToolBar::CalcFixedLayout( stretch, horizontal );
+		if ( m_largeButtons ) {
+			if ( horizontal ) {
+				size.cy = max( size.cy, 50 );
+			} else {
+				size.cx = max( size.cx, 50 );
+			}
+		}
+		return size;
+	}
+
+	CSize CalcDynamicLayout( int length, DWORD mode ) override {
+		CSize size = CToolBar::CalcDynamicLayout( length, mode );
+		if ( m_largeButtons ) {
+			// Dock bars query horizontal sizing with LM_HORZDOCK, without
+			// necessarily setting LM_HORZ. Treat every non-vertical dock query
+			// as a horizontal row so MFC reserves the full button height.
+			if ( !( mode & LM_VERTDOCK ) ) {
+				size.cy = max( size.cy, 50 );
+			} else {
+				size.cx = max( size.cx, 50 );
+			}
+		}
+		return size;
+	}
+
+private:
+	bool m_largeButtons;
+};
+
 struct SKeyInfo
 {
 	char* m_strName;
 	unsigned int m_nVKKey;
 };
-
-
-
 
 class CMainFrame : public CFrameWnd
 {
@@ -141,7 +178,8 @@ public:
 
 protected:  // control bar embedded members
 	CStatusBar  m_wndStatusBar;
-	CToolBar m_wndToolBar;
+	CRadiantToolBar m_wndToolBar;
+	CImageList m_wndToolBarImages;
 	CTextureBar m_wndTextureBar;
 	CSplitterWnd m_wndSplit;
 	CSplitterWnd m_wndSplit2;

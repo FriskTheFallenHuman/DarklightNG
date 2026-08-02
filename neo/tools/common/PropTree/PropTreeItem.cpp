@@ -21,6 +21,7 @@
 #pragma hdrstop
 
 #include "PropTree.h"
+#include "../EditorTheme.h"
 
 #include "PropTreeItem.h"
 
@@ -425,7 +426,7 @@ LONG CPropTreeItem::DrawItem(CDC* pDC, const RECT& rc, LONG x, LONG y)
 	// root level items are shaded
 	if (IsRootLevel())
 	{
-		HGDIOBJ hOld = pDC->SelectObject(GetSysColorBrush(COLOR_BTNFACE));
+		HGDIOBJ hOld = pDC->SelectObject(Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeBrush(EDITOR_THEME_CONTROL) : GetSysColorBrush(COLOR_BTNFACE));
 		pDC->PatBlt(rc.left, drc.top, rc.right - rc.left + 1, drc.Height(), PATCOPY);
 		pDC->SelectObject(hOld);
 	}
@@ -486,7 +487,7 @@ LONG CPropTreeItem::DrawItem(CDC* pDC, const RECT& rc, LONG x, LONG y)
 		else
 			pDC->SelectObject(CPropTree::GetNormalFont());
 
-		pDC->SetTextColor(GetSysColor(COLOR_BTNTEXT));
+		pDC->SetTextColor(Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeColor(EDITOR_THEME_TEXT) : GetSysColor(COLOR_BTNTEXT));
 		pDC->SetBkMode(TRANSPARENT);
 		pDC->DrawText(m_sLabel, &ir, DT_SINGLELINE|DT_VCENTER|DT_CALCRECT);
 
@@ -494,7 +495,7 @@ LONG CPropTreeItem::DrawItem(CDC* pDC, const RECT& rc, LONG x, LONG y)
 		if (IsSelected())
 		{
 			HGDIOBJ oPen = pDC->SelectObject(GetStockObject(NULL_PEN));
-			HGDIOBJ oBrush = pDC->SelectObject(GetSysColorBrush(COLOR_HIGHLIGHT));
+			HGDIOBJ oBrush = pDC->SelectObject(Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeBrush(EDITOR_THEME_SELECTION) : GetSysColorBrush(COLOR_HIGHLIGHT));
 			
 			CRect dr;
 			dr = drc;
@@ -505,7 +506,7 @@ LONG CPropTreeItem::DrawItem(CDC* pDC, const RECT& rc, LONG x, LONG y)
 			pDC->SelectObject(oPen);
 			pDC->SelectObject(oBrush);
 
-			pDC->SetTextColor(GetSysColor(COLOR_BTNHIGHLIGHT));
+			pDC->SetTextColor(Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeColor(EDITOR_THEME_TEXT) : GetSysColor(COLOR_BTNHIGHLIGHT));
 		}
 
 		// check if we need to draw the text as disabled
@@ -537,14 +538,14 @@ LONG CPropTreeItem::DrawItem(CDC* pDC, const RECT& rc, LONG x, LONG y)
 	if (!IsRootLevel())
 	{
 		// column sep
-		CPen pn1(PS_SOLID, 1, GetSysColor(COLOR_BTNSHADOW));
+		CPen pn1(PS_SOLID, 1, Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeColor(EDITOR_THEME_BORDER) : GetSysColor(COLOR_BTNSHADOW));
 		CPen* pOld;
 
 		pOld = pDC->SelectObject(&pn1);
 		pDC->MoveTo(nCol, drc.top);
 		pDC->LineTo(nCol, drc.bottom);
 
-		CPen pn2(PS_SOLID, 1, GetSysColor(COLOR_BTNHIGHLIGHT));
+		CPen pn2(PS_SOLID, 1, Sys_EditorDarkThemeEnabled() ? Sys_GetEditorThemeColor(EDITOR_THEME_CONTROL) : GetSysColor(COLOR_BTNHIGHLIGHT));
 		pDC->SelectObject(&pn2);
 		pDC->MoveTo(nCol + 1, drc.top);
 		pDC->LineTo(nCol + 1, drc.bottom);
