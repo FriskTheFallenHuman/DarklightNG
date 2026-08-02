@@ -69,6 +69,7 @@ typedef struct playerPState_s {
 	int						movementTime;
 } playerPState_t;
 
+D3_CLASS()
 class idPhysics_Player : public idPhysics_Actor {
 
 public:

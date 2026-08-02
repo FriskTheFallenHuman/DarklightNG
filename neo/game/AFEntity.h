@@ -42,6 +42,7 @@ articulated figure. Only used for debugging!
 */
 const int GIB_DELAY = 200;  // only gib this often to keep performace hits when blowing up several mobs
 
+D3_CLASS()
 class idMultiModelAF : public idEntity {
 public:
 	CLASS_PROTOTYPE( idMultiModelAF );
@@ -73,6 +74,7 @@ Chain hanging down from the ceiling. Only used for debugging!
 ===============================================================================
 */
 
+D3_CLASS()
 class idChain : public idMultiModelAF {
 public:
 	CLASS_PROTOTYPE( idChain );
@@ -92,6 +94,7 @@ idAFAttachment
 ===============================================================================
 */
 
+D3_CLASS()
 class idAFAttachment : public idAnimatedEntity {
 public:
 	CLASS_PROTOTYPE( idAFAttachment );
@@ -143,6 +146,7 @@ idAFEntity_Base
 ===============================================================================
 */
 
+D3_CLASS()
 class idAFEntity_Base : public idAnimatedEntity {
 public:
 	CLASS_PROTOTYPE( idAFEntity_Base );
@@ -196,6 +200,7 @@ protected:
 	idMat3					spawnAxis;		// rotation axis used when spawned
 	int						nextSoundTime;	// next time this can make a sound
 
+	D3_EVENT( EV_SetConstraintPosition, "SetConstraintPosition", void )
 	void					Event_SetConstraintPosition( const char *name, const idVec3 &pos );
 };
 
@@ -210,9 +215,14 @@ idAFEntity_Gibbable
 extern const idEventDef		EV_Gib;
 extern const idEventDef		EV_Gibbed;
 
+D3_EVENT( EV_Gibbed, "<gibbed>", void )
+void D3_EventSignature_Gibbed( void );
+
+D3_CLASS()
 class idAFEntity_Gibbable : public idAFEntity_Base {
 public:
 	CLASS_PROTOTYPE( idAFEntity_Gibbable );
+	D3_EVENT( EV_Gibbed, idAFEntity_Base::Event_Remove )
 
 							idAFEntity_Gibbable( void );
 							~idAFEntity_Gibbable( void );
@@ -238,6 +248,7 @@ protected:
 	virtual void			Gib( const idVec3 &dir, const char *damageDefName );
 	void					InitSkeletonModel( void );
 
+	D3_EVENT( EV_Gib, "gib", void )
 	void					Event_Gib( const char *damageDefName );
 };
 
@@ -249,6 +260,7 @@ protected:
 ===============================================================================
 */
 
+D3_CLASS()
 class idAFEntity_Generic : public idAFEntity_Gibbable {
 public:
 	CLASS_PROTOTYPE( idAFEntity_Generic );
@@ -265,6 +277,7 @@ public:
 	void					KeepRunningPhysics( void ) { keepRunningPhysics = true; }
 
 private:
+	D3_EVENT( EV_Activate, "activate", void )
 	void					Event_Activate( idEntity *activator );
 
 	bool					keepRunningPhysics;
@@ -279,6 +292,7 @@ idAFEntity_WithAttachedHead
 ===============================================================================
 */
 
+D3_CLASS()
 class idAFEntity_WithAttachedHead : public idAFEntity_Gibbable {
 public:
 	CLASS_PROTOTYPE( idAFEntity_WithAttachedHead );
@@ -308,7 +322,9 @@ protected:
 public:
 	idEntityPtr<idAFAttachment>	head;
 
+	D3_EVENT( EV_Gib )
 	void					Event_Gib( const char *damageDefName );
+	D3_EVENT( EV_Activate )
 	void					Event_Activate( idEntity *activator );
 };
 
@@ -321,6 +337,7 @@ idAFEntity_Vehicle
 ===============================================================================
 */
 
+D3_CLASS()
 class idAFEntity_Vehicle : public idAFEntity_Base {
 public:
 	CLASS_PROTOTYPE( idAFEntity_Vehicle );
@@ -351,6 +368,7 @@ idAFEntity_VehicleSimple
 ===============================================================================
 */
 
+D3_CLASS()
 class idAFEntity_VehicleSimple : public idAFEntity_Vehicle {
 public:
 	CLASS_PROTOTYPE( idAFEntity_VehicleSimple );
@@ -377,6 +395,7 @@ idAFEntity_VehicleFourWheels
 ===============================================================================
 */
 
+D3_CLASS()
 class idAFEntity_VehicleFourWheels : public idAFEntity_Vehicle {
 public:
 	CLASS_PROTOTYPE( idAFEntity_VehicleFourWheels );
@@ -402,6 +421,7 @@ idAFEntity_VehicleSixWheels
 ===============================================================================
 */
 
+D3_CLASS()
 class idAFEntity_VehicleSixWheels : public idAFEntity_Vehicle {
 public:
 	CLASS_PROTOTYPE( idAFEntity_VehicleSixWheels );
@@ -430,11 +450,13 @@ idAFEntity_VehicleAutomated
 ===============================================================================
 */
 
+D3_CLASS()
 class idAFEntity_VehicleAutomated : public idAFEntity_VehicleSixWheels {
 public:
 	CLASS_PROTOTYPE( idAFEntity_VehicleAutomated );
 
 	void					Spawn( void );
+	D3_EVENT( EV_PostSpawn, "<postspawn>", void )
 	void					PostSpawn( void );
 	virtual void			Think( void );
 
@@ -446,9 +468,13 @@ private:
 	float		idealSteering;
 	float		originHeight;
 
+	D3_EVENT( EV_Vehicle_setVelocity, "setVelocity", void )
 	void		Event_SetVelocity( float _velocity );
+	D3_EVENT( EV_Vehicle_setTorque, "setTorque", void )
 	void		Event_SetTorque( float _torque );
+	D3_EVENT( EV_Vehicle_setSteeringSpeed, "setSteeringSpeed", void )
 	void		Event_SetSteeringSpeed( float _steeringSpeed );
+	D3_EVENT( EV_Vehicle_setWaypoint, "setWaypoint", void )
 	void		Event_SetWayPoint( idEntity *_waypoint );
 };
 
@@ -460,6 +486,7 @@ idAFEntity_SteamPipe
 ===============================================================================
 */
 
+D3_CLASS()
 class idAFEntity_SteamPipe : public idAFEntity_Base {
 public:
 	CLASS_PROTOTYPE( idAFEntity_SteamPipe );
@@ -493,6 +520,7 @@ idAFEntity_ClawFourFingers
 ===============================================================================
 */
 
+D3_CLASS()
 class idAFEntity_ClawFourFingers : public idAFEntity_Base {
 public:
 	CLASS_PROTOTYPE( idAFEntity_ClawFourFingers );
@@ -506,7 +534,9 @@ public:
 private:
 	idAFConstraint_Hinge *	fingers[4];
 
+	D3_EVENT( EV_SetFingerAngle, "setFingerAngle", void )
 	void					Event_SetFingerAngle( float angle );
+	D3_EVENT( EV_StopFingers, "stopFingers", void )
 	void					Event_StopFingers( void );
 };
 
@@ -516,6 +546,7 @@ private:
 * entity. The entity must create an instance of this class and call the appropriate
 * interface methods at the correct time.
 */
+D3_CLASS()
 class idHarvestable : public idEntity {
 public:
 	CLASS_PROTOTYPE( idHarvestable );
@@ -555,7 +586,9 @@ protected:
 
 	bool					GetFxOrientationAxis(idMat3& mat);
 
+	D3_EVENT( EV_Harvest_SpawnHarvestTrigger, "<spawnHarvestTrigger>", void )
 	void					Event_SpawnHarvestTrigger( void );
+	D3_EVENT( EV_Touch, "<touch>", void )
 	void					Event_Touch( idEntity *other, trace_t *trace );
 } ;
 
@@ -570,6 +603,7 @@ idAFEntity_Harvest
 
 
 
+D3_CLASS()
 class idAFEntity_Harvest : public idAFEntity_WithAttachedHead {
 public:
 	CLASS_PROTOTYPE( idAFEntity_Harvest );
@@ -589,6 +623,7 @@ public:
 protected:
 	idEntityPtr<idHarvestable>	harvestEnt;
 protected:
+	D3_EVENT( EV_Harvest_SpawnHarvestEntity, "<spawnHarvestEntity>", void )
 	void					Event_SpawnHarvestEntity( void );
 
 };

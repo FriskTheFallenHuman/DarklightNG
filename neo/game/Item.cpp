@@ -40,20 +40,8 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
-const idEventDef EV_DropToFloor( "<dropToFloor>" );
-const idEventDef EV_RespawnItem( "respawn" );
-const idEventDef EV_RespawnFx( "<respawnFx>" );
-const idEventDef EV_GetPlayerPos( "<getplayerpos>" );
-const idEventDef EV_HideObjective( "<hideobjective>", "e" );
-const idEventDef EV_CamShot( "<camshot>" );
 
-CLASS_DECLARATION( idEntity, idItem )
-	EVENT( EV_DropToFloor,		idItem::Event_DropToFloor )
-	EVENT( EV_Touch,			idItem::Event_Touch )
-	EVENT( EV_Activate,			idItem::Event_Trigger )
-	EVENT( EV_RespawnItem,		idItem::Event_Respawn )
-	EVENT( EV_RespawnFx,		idItem::Event_RespawnFx )
-END_CLASS
+
 
 
 /*
@@ -588,8 +576,7 @@ idItemPowerup
 ===============
 */
 
-CLASS_DECLARATION( idItem, idItemPowerup )
-END_CLASS
+
 
 /*
 ================
@@ -659,17 +646,8 @@ bool idItemPowerup::GiveToPlayer( idPlayer *player ) {
 
 // temporarely removed these events
 
-const idEventDef EV_FlagReturn( "flagreturn", "e" );
-const idEventDef EV_TakeFlag( "takeflag", "e" );
-const idEventDef EV_DropFlag( "dropflag", "d" );
-const idEventDef EV_FlagCapture( "flagcapture" );
 
-CLASS_DECLARATION( idItem, idItemTeam )
-	EVENT( EV_FlagReturn,  idItemTeam::Event_FlagReturn )
-	EVENT( EV_TakeFlag,    idItemTeam::Event_TakeFlag )
-	EVENT( EV_DropFlag,    idItemTeam::Event_DropFlag )
-	EVENT( EV_FlagCapture, idItemTeam::Event_FlagCapture )
-END_CLASS
+
 
 /*
 ===============
@@ -1355,12 +1333,7 @@ void idItemTeam::Present( void ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idItem, idObjective )
-	EVENT( EV_Activate,			idObjective::Event_Trigger )
-	EVENT( EV_HideObjective,	idObjective::Event_HideObjective )
-	EVENT( EV_GetPlayerPos,		idObjective::Event_GetPlayerPos )
-	EVENT( EV_CamShot,			idObjective::Event_CamShot )
-END_CLASS
+
 
 /*
 ================
@@ -1544,8 +1517,7 @@ void idObjective::Event_HideObjective(idEntity *e) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idItem, idVideoCDItem )
-END_CLASS
+
 
 /*
 ================
@@ -1576,8 +1548,7 @@ bool idVideoCDItem::GiveToPlayer( idPlayer *player ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idItem, idPDAItem )
-END_CLASS
+
 
 /*
 ================
@@ -1600,10 +1571,7 @@ bool idPDAItem::GiveToPlayer(idPlayer *player) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idItem, idMoveableItem )
-	EVENT( EV_DropToFloor,	idMoveableItem::Event_DropToFloor )
-	EVENT( EV_Gib,			idMoveableItem::Event_Gib )
-END_CLASS
+
 
 /*
 ================
@@ -1977,8 +1945,7 @@ void idMoveableItem::Event_Gib( const char *damageDefName ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idMoveableItem, idMoveablePDAItem )
-END_CLASS
+
 
 /*
 ================
@@ -2001,9 +1968,7 @@ bool idMoveablePDAItem::GiveToPlayer(idPlayer *player) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idItemRemover )
-	EVENT( EV_Activate,		idItemRemover::Event_Trigger )
-END_CLASS
+
 
 /*
 ================
@@ -2044,11 +2009,7 @@ void idItemRemover::Event_Trigger( idEntity *activator ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idItemRemover, idObjectiveComplete )
-	EVENT( EV_Activate,			idObjectiveComplete::Event_Trigger )
-	EVENT( EV_HideObjective,	idObjectiveComplete::Event_HideObjective )
-	EVENT( EV_GetPlayerPos,		idObjectiveComplete::Event_GetPlayerPos )
-END_CLASS
+
 
 /*
 ================

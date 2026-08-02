@@ -49,6 +49,7 @@ enum forceFieldApplyType {
 	FORCEFIELD_APPLY_IMPULSE
 };
 
+D3_CLASS()
 class idForce_Field : public idForce {
 
 public:

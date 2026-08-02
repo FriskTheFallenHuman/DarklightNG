@@ -38,6 +38,7 @@ Camera providing an alternative view of the level.
 ===============================================================================
 */
 
+D3_CLASS( Abstract )
 class idCamera : public idEntity {
 public:
 	ABSTRACT_PROTOTYPE( idCamera );
@@ -56,6 +57,7 @@ idCameraView
 ===============================================================================
 */
 
+D3_CLASS()
 class idCameraView : public idCamera {
 public:
 	CLASS_PROTOTYPE( idCameraView );
@@ -70,7 +72,9 @@ public:
 	virtual void			Stop( void );
 
 protected:
+	D3_EVENT( EV_Activate )
 	void					Event_Activate( idEntity *activator );
+	D3_EVENT( EV_Camera_SetAttachments, "<getattachments>", void )
 	void					Event_SetAttachments();
 	void					SetAttachment( idEntity **e, const char *p );
 	float					fov;
@@ -94,6 +98,7 @@ typedef struct {
 	float				fov;
 } cameraFrame_t;
 
+D3_CLASS()
 class idCameraAnim : public idCamera {
 public:
 	CLASS_PROTOTYPE( idCameraAnim );
@@ -123,9 +128,13 @@ private:
 	void					Think( void );
 
 	void					LoadAnim( void );
+	D3_EVENT( EV_Camera_Start, "start", void )
 	void					Event_Start( void );
+	D3_EVENT( EV_Camera_Stop, "stop", void )
 	void					Event_Stop( void );
+	D3_EVENT( EV_Thread_SetCallback, "<script_setcallback>", void )
 	void					Event_SetCallback( void );
+	D3_EVENT( EV_Activate )
 	void					Event_Activate( idEntity *activator );
 };
 

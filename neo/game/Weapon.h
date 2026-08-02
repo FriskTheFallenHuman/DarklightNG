@@ -78,6 +78,7 @@ typedef struct {
 	renderLight_t	light;
 } WeaponLight_t;
 
+D3_CLASS()
 class idWeapon : public idAnimatedEntity {
 public:
 	CLASS_PROTOTYPE( idWeapon );
@@ -342,60 +343,107 @@ private:
 	void					UpdateFlashPosition( void );
 
 	// script events
+	D3_EVENT( EV_Weapon_Clear, "<clear>", void )
 	void					Event_Clear( void );
+	D3_EVENT( EV_Weapon_GetOwner, "getOwner", entity )
 	void					Event_GetOwner( void );
+	D3_EVENT( EV_Weapon_State, "weaponState", void )
 	void					Event_WeaponState( const char *statename, int blendFrames );
 	void					Event_SetWeaponStatus( float newStatus );
+	D3_EVENT( EV_Weapon_WeaponReady, "weaponReady", void )
 	void					Event_WeaponReady( void );
+	D3_EVENT( EV_Weapon_WeaponOutOfAmmo, "weaponOutOfAmmo", void )
 	void					Event_WeaponOutOfAmmo( void );
+	D3_EVENT( EV_Weapon_WeaponReloading, "weaponReloading", void )
 	void					Event_WeaponReloading( void );
+	D3_EVENT( EV_Weapon_WeaponHolstered, "weaponHolstered", void )
 	void					Event_WeaponHolstered( void );
+	D3_EVENT( EV_Weapon_WeaponRising, "weaponRising", void )
 	void					Event_WeaponRising( void );
+	D3_EVENT( EV_Weapon_WeaponLowering, "weaponLowering", void )
 	void					Event_WeaponLowering( void );
+	D3_EVENT( EV_Weapon_UseAmmo, "useAmmo", void )
 	void					Event_UseAmmo( int amount );
+	D3_EVENT( EV_Weapon_AddToClip, "addToClip", void )
 	void					Event_AddToClip( int amount );
+	D3_EVENT( EV_Weapon_AmmoInClip, "ammoInClip", float )
 	void					Event_AmmoInClip( void );
+	D3_EVENT( EV_Weapon_AmmoAvailable, "ammoAvailable", float )
 	void					Event_AmmoAvailable( void );
+	D3_EVENT( EV_Weapon_TotalAmmoCount, "totalAmmoCount", float )
 	void					Event_TotalAmmoCount( void );
+	D3_EVENT( EV_Weapon_ClipSize, "clipSize", float )
 	void					Event_ClipSize( void );
+	D3_EVENT( AI_PlayAnim )
 	void					Event_PlayAnim( int channel, const char *animname );
+	D3_EVENT( AI_PlayCycle )
 	void					Event_PlayCycle( int channel, const char *animname );
+	D3_EVENT( AI_AnimDone )
 	void					Event_AnimDone( int channel, int blendFrames );
+	D3_EVENT( AI_SetBlendFrames )
 	void					Event_SetBlendFrames( int channel, int blendFrames );
+	D3_EVENT( AI_GetBlendFrames )
 	void					Event_GetBlendFrames( int channel );
+	D3_EVENT( EV_Weapon_Next, "nextWeapon", void )
 	void					Event_Next( void );
+	D3_EVENT( EV_SetSkin )
 	void					Event_SetSkin( const char *skinname );
+	D3_EVENT( EV_Weapon_Flashlight, "flashlight", void )
 	void					Event_Flashlight( int enable );
+	D3_EVENT( EV_Light_GetLightParm )
 	void					Event_GetLightParm( int parmnum );
+	D3_EVENT( EV_Light_SetLightParm )
 	void					Event_SetLightParm( int parmnum, float value );
+	D3_EVENT( EV_Light_SetLightParms )
 	void					Event_SetLightParms( float parm0, float parm1, float parm2, float parm3 );
+	D3_EVENT( EV_Weapon_LaunchProjectiles, "launchProjectiles", void )
 	void					Event_LaunchProjectiles( int num_projectiles, float spread, float fuseOffset, float launchPower, float dmgPower );
+	D3_EVENT( EV_Weapon_CreateProjectile, "createProjectile", entity )
 	void					Event_CreateProjectile( void );
+	D3_EVENT( EV_Weapon_EjectBrass, "ejectBrass", void )
 	void					Event_EjectBrass( void );
+	D3_EVENT( EV_Weapon_Melee, "melee", integer )
 	void					Event_Melee( void );
+	D3_EVENT( EV_Weapon_GetWorldModel, "getWorldModel", entity )
 	void					Event_GetWorldModel( void );
+	D3_EVENT( EV_Weapon_AllowDrop, "allowDrop", void )
 	void					Event_AllowDrop( int allow );
+	D3_EVENT( EV_Weapon_AutoReload, "autoReload", float )
 	void					Event_AutoReload( void );
+	D3_EVENT( EV_Weapon_NetReload, "netReload", void )
 	void					Event_NetReload( void );
+	D3_EVENT( EV_Weapon_IsInvisible, "isInvisible", float )
 	void					Event_IsInvisible( void );
+	D3_EVENT( EV_Weapon_NetEndReload, "netEndReload", void )
 	void					Event_NetEndReload( void );
 
 	idGrabber				grabber;
 	int						grabberState;
 
+	D3_EVENT( EV_Weapon_Grabber, "grabber", void )
 	void					Event_Grabber( int enable );
+	D3_EVENT( EV_Weapon_GrabberHasTarget, "grabberHasTarget", integer )
 	void					Event_GrabberHasTarget( void );
+	D3_EVENT( EV_Weapon_Grabber_SetGrabDistance, "grabberGrabDistance", void )
 	void					Event_GrabberSetGrabDistance( float dist );
+	D3_EVENT( EV_Weapon_LaunchProjectilesEllipse, "launchProjectilesEllipse", void )
 	void					Event_LaunchProjectilesEllipse( int num_projectiles, float spreada, float spreadb, float fuseOffset, float power );
+	D3_EVENT( EV_Weapon_LaunchPowerup, "launchPowerup", void )
 	void					Event_LaunchPowerup( const char* powerup, float duration, int useAmmo );
 
+	D3_EVENT( EV_Weapon_StartWeaponSmoke, "startWeaponSmoke", void )
 	void					Event_StartWeaponSmoke();
+	D3_EVENT( EV_Weapon_StopWeaponSmoke, "stopWeaponSmoke", void )
 	void					Event_StopWeaponSmoke();
 
+	D3_EVENT( EV_Weapon_StartWeaponParticle, "startWeaponParticle", void )
 	void					Event_StartWeaponParticle( const char* name);
+	D3_EVENT( EV_Weapon_StopWeaponParticle, "stopWeaponParticle", void )
 	void					Event_StopWeaponParticle( const char* name);
 
+	D3_EVENT( EV_Weapon_StartWeaponLight, "startWeaponLight", void )
 	void					Event_StartWeaponLight( const char* name);
+	D3_EVENT( EV_Weapon_StopWeaponLight, "stopWeaponLight", void )
 	void					Event_StopWeaponLight( const char* name);
 };
 

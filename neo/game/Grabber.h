@@ -37,6 +37,7 @@ If you have questions concerning this license or the applicable additional terms
 
 class idBeam;
 
+D3_CLASS()
 class idGrabber : public idEntity {
 public:
 	CLASS_PROTOTYPE( idGrabber );

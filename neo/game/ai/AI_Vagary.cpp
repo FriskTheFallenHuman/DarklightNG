@@ -37,23 +37,10 @@ Vagary specific AI code
 #pragma hdrstop
 
 #include "../Game_local.h"
+#include "AI_Vagary.h"
 
-class idAI_Vagary : public idAI {
-public:
-	CLASS_PROTOTYPE( idAI_Vagary );
 
-private:
-	void	Event_ChooseObjectToThrow( const idVec3 &mins, const idVec3 &maxs, float speed, float minDist, float offset );
-	void	Event_ThrowObjectAtEnemy( idEntity *ent, float speed );
-};
 
-const idEventDef AI_Vagary_ChooseObjectToThrow( "vagary_ChooseObjectToThrow", "vvfff", 'e' );
-const idEventDef AI_Vagary_ThrowObjectAtEnemy( "vagary_ThrowObjectAtEnemy", "ef" );
-
-CLASS_DECLARATION( idAI, idAI_Vagary )
-	EVENT( AI_Vagary_ChooseObjectToThrow,	idAI_Vagary::Event_ChooseObjectToThrow )
-	EVENT( AI_Vagary_ThrowObjectAtEnemy,	idAI_Vagary::Event_ThrowObjectAtEnemy )
-END_CLASS
 
 /*
 ================

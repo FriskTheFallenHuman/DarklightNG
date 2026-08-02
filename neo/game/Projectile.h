@@ -39,6 +39,7 @@ If you have questions concerning this license or the applicable additional terms
 
 extern const idEventDef EV_Explode;
 
+D3_CLASS()
 class idProjectile : public idEntity {
 public :
 	CLASS_PROTOTYPE( idProjectile );
@@ -58,8 +59,11 @@ public :
 	idEntity *				GetOwner( void ) const;
 	void					CatchProjectile( idEntity* o, const char* reflectName );
 	int						GetProjectileState( void );
+	D3_EVENT( EV_CreateProjectile, "projectileCreateProjectile", void )
 	void					Event_CreateProjectile( idEntity *owner, const idVec3 &start, const idVec3 &dir );
+	D3_EVENT( EV_LaunchProjectile, "projectileLaunchProjectile", void )
 	void					Event_LaunchProjectile( const idVec3 &start, const idVec3 &dir, const idVec3 &pushVelocity );
+	D3_EVENT( EV_SetGravity, "setGravity", void )
 	void					Event_SetGravity( float gravity );
 
 	virtual void			Think( void );
@@ -129,13 +133,19 @@ private:
 
 	void					AddDefaultDamageEffect( const trace_t &collision, const idVec3 &velocity );
 
+	D3_EVENT( EV_Explode )
 	void					Event_Explode( void );
+	D3_EVENT( EV_Fizzle, "<fizzle>", void )
 	void					Event_Fizzle( void );
+	D3_EVENT( EV_RadiusDamage, "<radiusdmg>", void )
 	void					Event_RadiusDamage( idEntity *ignore );
+	D3_EVENT( EV_Touch )
 	void					Event_Touch( idEntity *other, trace_t *trace );
+	D3_EVENT( EV_GetProjectileState, "getProjectileState", integer )
 	void					Event_GetProjectileState( void );
 };
 
+D3_CLASS()
 class idGuidedProjectile : public idProjectile {
 public :
 	CLASS_PROTOTYPE( idGuidedProjectile );
@@ -150,7 +160,8 @@ public :
 	virtual void			Think( void );
 	virtual void			Launch( const idVec3 &start, const idVec3 &dir, const idVec3 &pushVelocity, const float timeSinceFire = 0.0f, const float launchPower = 1.0f, const float dmgPower = 1.0f );
 	void					SetEnemy( idEntity *ent );
-	void					Event_SetEnemy(idEntity *ent);
+	D3_EVENT( EV_SetEnemy, "setEnemy", void )
+	void					Event_SetEnemy(D3_NULLABLE idEntity *ent);
 
 protected:
 	float					speed;
@@ -170,6 +181,7 @@ private:
 	float					burstVelocity;
 };
 
+D3_CLASS()
 class idSoulCubeMissile : public idGuidedProjectile {
 public:
 	CLASS_PROTOTYPE ( idSoulCubeMissile );
@@ -206,6 +218,7 @@ struct beamTarget_t {
 	qhandle_t				modelDefHandle;
 };
 
+D3_CLASS()
 class idBFGProjectile : public idProjectile {
 public :
 	CLASS_PROTOTYPE( idBFGProjectile );
@@ -229,6 +242,7 @@ private:
 	idStr					damageFreq;
 
 	void					FreeBeams();
+	D3_EVENT( EV_RemoveBeams, "<removeBeams>", void )
 	void					Event_RemoveBeams();
 	void					ApplyDamage();
 };
@@ -241,6 +255,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idDebris : public idEntity {
 public :
 	CLASS_PROTOTYPE( idDebris );
@@ -271,7 +286,9 @@ private:
 	const idSoundShader *	sndBounce;
 
 
+	D3_EVENT( EV_Explode )
 	void					Event_Explode( void );
+	D3_EVENT( EV_Fizzle )
 	void					Event_Fizzle( void );
 };
 

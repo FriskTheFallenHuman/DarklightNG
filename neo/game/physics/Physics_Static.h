@@ -44,6 +44,7 @@ typedef struct staticPState_s {
 	idMat3					localAxis;
 } staticPState_t;
 
+D3_CLASS()
 class idPhysics_Static : public idPhysics {
 
 public:

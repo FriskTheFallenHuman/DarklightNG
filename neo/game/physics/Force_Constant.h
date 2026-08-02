@@ -37,6 +37,7 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
+D3_CLASS()
 class idForce_Constant : public idForce {
 
 public:

@@ -31,8 +31,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "../Game_local.h"
 
-CLASS_DECLARATION( idClass, idForce )
-END_CLASS
+
 
 idList<idForce*> idForce::forceList;
 

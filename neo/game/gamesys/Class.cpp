@@ -36,8 +36,16 @@ instancing of objects.
 #pragma hdrstop
 
 #include "../Game_local.h"
+#include "../ai/AI_Vagary.h"
 
 #include "TypeInfo.h"
+
+// This is the single implementation include for generated event objects and
+// runtime class registration tables. Event.h includes the same file normally
+// to expose only the extern event declarations.
+#define D3_TYPEINFO_IMPLEMENTATION
+#include "../generated/DoomTypeInfo.generated.h"
+#undef D3_TYPEINFO_IMPLEMENTATION
 
 
 /***********************************************************************
@@ -226,13 +234,8 @@ void idTypeInfo::Shutdown() {
 
 ***********************************************************************/
 
-const idEventDef EV_Remove( "<immediateremove>", NULL );
-const idEventDef EV_SafeRemove( "remove", NULL );
 
-ABSTRACT_DECLARATION( NULL, idClass )
-	EVENT( EV_Remove,				idClass::Event_Remove )
-	EVENT( EV_SafeRemove,			idClass::Event_SafeRemove )
-END_CLASS
+
 
 // alphabetical order
 idList<idTypeInfo *>	idClass::types;

@@ -41,8 +41,7 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
-ABSTRACT_DECLARATION( idEntity, idCamera )
-END_CLASS
+
 
 /*
 =====================
@@ -68,12 +67,8 @@ renderView_t *idCamera::GetRenderView() {
   idCameraView
 
 ***********************************************************************/
-const idEventDef EV_Camera_SetAttachments( "<getattachments>", NULL );
 
-CLASS_DECLARATION( idCamera, idCameraView )
-	EVENT( EV_Activate,				idCameraView::Event_Activate )
-	EVENT( EV_Camera_SetAttachments, idCameraView::Event_SetAttachments )
-END_CLASS
+
 
 
 /*
@@ -227,15 +222,8 @@ void idCameraView::GetViewParms( renderView_t *view ) {
 ===============================================================================
 */
 
-const idEventDef EV_Camera_Start( "start", NULL );
-const idEventDef EV_Camera_Stop( "stop", NULL );
 
-CLASS_DECLARATION( idCamera, idCameraAnim )
-	EVENT( EV_Thread_SetCallback,	idCameraAnim::Event_SetCallback )
-	EVENT( EV_Camera_Stop,			idCameraAnim::Event_Stop )
-	EVENT( EV_Camera_Start,			idCameraAnim::Event_Start )
-	EVENT( EV_Activate,				idCameraAnim::Event_Activate )
-END_CLASS
+
 
 
 /*

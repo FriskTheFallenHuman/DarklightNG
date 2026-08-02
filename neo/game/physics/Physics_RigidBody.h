@@ -63,6 +63,7 @@ typedef struct rigidBodyPState_s {
 	rigidBodyIState_t		i;							// state used for integration
 } rigidBodyPState_t;
 
+D3_CLASS()
 class idPhysics_RigidBody : public idPhysics_Base {
 
 public:

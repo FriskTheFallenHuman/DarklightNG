@@ -51,6 +51,7 @@ typedef struct {
 	bool					launched;
 } idFXLocalAction;
 
+D3_CLASS()
 class idEntityFx : public idEntity {
 public:
 	CLASS_PROTOTYPE( idEntityFx );
@@ -80,7 +81,9 @@ public:
 	static idEntityFx *		StartFx( const char *fx, const idVec3 *useOrigin, const idMat3 *useAxis, idEntity *ent, bool bind );
 
 protected:
+	D3_EVENT( EV_Activate )
 	void					Event_Trigger( idEntity *activator );
+	D3_EVENT( EV_Fx_KillFx, "_killfx", void )
 	void					Event_ClearFx( void );
 
 	void					CleanUp( void );
@@ -94,12 +97,14 @@ protected:
 	idStr					systemName;
 };
 
+D3_CLASS()
 class idTeleporter : public idEntityFx {
 public:
 	CLASS_PROTOTYPE( idTeleporter );
 
 private:
 	// teleporters to this location
+	D3_EVENT( EV_Fx_Action, "_fxAction", void )
 	void					Event_DoAction( idEntity *activator );
 };
 

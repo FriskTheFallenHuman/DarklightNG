@@ -40,13 +40,8 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
-const idEventDef EV_Enable( "enable", NULL );
-const idEventDef EV_Disable( "disable", NULL );
 
-CLASS_DECLARATION( idEntity, idTrigger )
-	EVENT( EV_Enable,	idTrigger::Event_Enable )
-	EVENT( EV_Disable,	idTrigger::Event_Disable )
-END_CLASS
+
 
 /*
 ================
@@ -243,13 +238,8 @@ void idTrigger::Spawn( void ) {
 ===============================================================================
 */
 
-const idEventDef EV_TriggerAction( "<triggerAction>", "e" );
 
-CLASS_DECLARATION( idTrigger, idTrigger_Multi )
-	EVENT( EV_Touch,			idTrigger_Multi::Event_Touch )
-	EVENT( EV_Activate,			idTrigger_Multi::Event_Trigger )
-	EVENT( EV_TriggerAction,	idTrigger_Multi::Event_TriggerAction )
-END_CLASS
+
 
 
 /*
@@ -515,11 +505,7 @@ void idTrigger_Multi::Event_Touch( idEntity *other, trace_t *trace ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTrigger, idTrigger_EntityName )
-	EVENT( EV_Touch,			idTrigger_EntityName::Event_Touch )
-	EVENT( EV_Activate,			idTrigger_EntityName::Event_Trigger )
-	EVENT( EV_TriggerAction,	idTrigger_EntityName::Event_TriggerAction )
-END_CLASS
+
 
 /*
 ================
@@ -702,12 +688,8 @@ void idTrigger_EntityName::Event_Touch( idEntity *other, trace_t *trace ) {
 ===============================================================================
 */
 
-const idEventDef EV_Timer( "<timer>", NULL );
 
-CLASS_DECLARATION( idTrigger, idTrigger_Timer )
-	EVENT( EV_Timer,		idTrigger_Timer::Event_Timer )
-	EVENT( EV_Activate,		idTrigger_Timer::Event_Use )
-END_CLASS
+
 
 /*
 ================
@@ -846,10 +828,7 @@ void idTrigger_Timer::Event_Use( idEntity *activator ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTrigger, idTrigger_Count )
-	EVENT( EV_Activate,	idTrigger_Count::Event_Trigger )
-	EVENT( EV_TriggerAction,	idTrigger_Count::Event_TriggerAction )
-END_CLASS
+
 
 /*
 ================
@@ -936,10 +915,7 @@ void idTrigger_Count::Event_TriggerAction( idEntity *activator ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTrigger, idTrigger_Hurt )
-	EVENT( EV_Touch,		idTrigger_Hurt::Event_Touch )
-	EVENT( EV_Activate,		idTrigger_Hurt::Event_Toggle )
-END_CLASS
+
 
 
 /*
@@ -1039,9 +1015,7 @@ void idTrigger_Hurt::Event_Toggle( idEntity *activator ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTrigger, idTrigger_Fade )
-	EVENT( EV_Activate,		idTrigger_Fade::Event_Trigger )
-END_CLASS
+
 
 /*
 ================
@@ -1070,9 +1044,7 @@ void idTrigger_Fade::Event_Trigger( idEntity *activator ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTrigger, idTrigger_Touch )
-	EVENT( EV_Activate,		idTrigger_Touch::Event_Trigger )
-END_CLASS
+
 
 
 /*
@@ -1214,9 +1186,7 @@ void idTrigger_Touch::Disable( void ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTrigger_Multi, idTrigger_Flag )
-	EVENT( EV_Touch, idTrigger_Flag::Event_Touch )
-END_CLASS
+
 
 idTrigger_Flag::idTrigger_Flag( void ) {
 	team		= -1;

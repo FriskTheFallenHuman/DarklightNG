@@ -39,13 +39,7 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
-const idEventDef EV_Fx_KillFx( "_killfx" );
-const idEventDef EV_Fx_Action( "_fxAction", "e" );		// implemented by subclasses
 
-CLASS_DECLARATION( idEntity, idEntityFx )
-EVENT( EV_Activate,	   	idEntityFx::Event_Trigger )
-EVENT( EV_Fx_KillFx,	idEntityFx::Event_ClearFx )
-END_CLASS
 
 
 /*
@@ -800,9 +794,7 @@ void idEntityFx::ClientPredictionThink( void ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntityFx, idTeleporter )
-	EVENT( EV_Fx_Action,	idTeleporter::Event_DoAction )
-END_CLASS
+
 
 /*
 ================

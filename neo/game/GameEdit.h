@@ -38,6 +38,7 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
+D3_CLASS()
 class idCursor3D : public idEntity {
 public:
 	CLASS_PROTOTYPE( idCursor3D );

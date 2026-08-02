@@ -57,6 +57,7 @@ typedef struct monsterPState_s {
 	idVec3					pushVelocity;
 } monsterPState_t;
 
+D3_CLASS()
 class idPhysics_Monster : public idPhysics_Actor {
 
 public:

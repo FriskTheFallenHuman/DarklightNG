@@ -73,6 +73,7 @@ typedef struct impactInfo_s {
 } impactInfo_t;
 
 
+D3_CLASS( Abstract )
 class idPhysics : public idClass {
 
 public:

@@ -41,9 +41,7 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 
-CLASS_DECLARATION( idEntity, idTarget_EndLevel )
-	EVENT( EV_Activate,		idTarget_EndLevel::Event_Trigger )
-END_CLASS
+
 
 /*
 ================

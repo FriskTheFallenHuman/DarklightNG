@@ -106,6 +106,7 @@ typedef struct {
 	jointHandle_t			to;
 } copyJoints_t;
 
+D3_CLASS()
 class idActor : public idAFEntity_Gibbable {
 public:
 	CLASS_PROTOTYPE( idActor );
@@ -280,51 +281,98 @@ private:
 	void					SetupHead( void );
 	void					PlayFootStepSound( void );
 
+	D3_EVENT( AI_EnableEyeFocus, "enableEyeFocus", void )
 	void					Event_EnableEyeFocus( void );
+	D3_EVENT( AI_DisableEyeFocus, "disableEyeFocus", void )
 	void					Event_DisableEyeFocus( void );
+	D3_EVENT( EV_Footstep, "footstep", void )
+	D3_EVENT( EV_FootstepLeft, "leftFoot", void )
+	D3_EVENT( EV_FootstepRight, "rightFoot", void )
 	void					Event_Footstep( void );
+	D3_EVENT( EV_EnableWalkIK, "EnableWalkIK", void )
 	void					Event_EnableWalkIK( void );
+	D3_EVENT( EV_DisableWalkIK, "DisableWalkIK", void )
 	void					Event_DisableWalkIK( void );
+	D3_EVENT( EV_EnableLegIK, "EnableLegIK", void )
 	void					Event_EnableLegIK( int num );
+	D3_EVENT( EV_DisableLegIK, "DisableLegIK", void )
 	void					Event_DisableLegIK( int num );
+	D3_EVENT( AI_SetAnimPrefix, "setAnimPrefix", void )
 	void					Event_SetAnimPrefix( const char *name );
 	void					Event_LookAtEntity( idEntity *ent, float duration );
+	D3_EVENT( AI_PreventPain, "preventPain", void )
 	void					Event_PreventPain( float duration );
+	D3_EVENT( AI_DisablePain, "disablePain", void )
 	void					Event_DisablePain( void );
+	D3_EVENT( AI_EnablePain, "enablePain", void )
 	void					Event_EnablePain( void );
+	D3_EVENT( AI_GetPainAnim, "getPainAnim", string )
 	void					Event_GetPainAnim( void );
+	D3_EVENT( AI_StopAnim, "stopAnim", void )
 	void					Event_StopAnim( int channel, int frames );
+	D3_EVENT( AI_PlayAnim, "playAnim", integer )
 	void					Event_PlayAnim( int channel, const char *name );
+	D3_EVENT( AI_PlayCycle, "playCycle", integer )
 	void					Event_PlayCycle( int channel, const char *name );
+	D3_EVENT( AI_IdleAnim, "idleAnim", integer )
 	void					Event_IdleAnim( int channel, const char *name );
+	D3_EVENT( AI_SetSyncedAnimWeight, "setSyncedAnimWeight", void )
 	void					Event_SetSyncedAnimWeight( int channel, int anim, float weight );
+	D3_EVENT( AI_OverrideAnim, "overrideAnim", void )
 	void					Event_OverrideAnim( int channel );
+	D3_EVENT( AI_EnableAnim, "enableAnim", void )
 	void					Event_EnableAnim( int channel, int blendFrames );
+	D3_EVENT( AI_SetBlendFrames, "setBlendFrames", void )
 	void					Event_SetBlendFrames( int channel, int blendFrames );
+	D3_EVENT( AI_GetBlendFrames, "getBlendFrames", integer )
 	void					Event_GetBlendFrames( int channel );
+	D3_EVENT( AI_AnimState, "animState", void )
 	void					Event_AnimState( int channel, const char *name, int blendFrames );
+	D3_EVENT( AI_GetAnimState, "getAnimState", string )
 	void					Event_GetAnimState( int channel );
+	D3_EVENT( AI_InAnimState, "inAnimState", integer )
 	void					Event_InAnimState( int channel, const char *name );
+	D3_EVENT( AI_FinishAction, "finishAction", void )
 	void					Event_FinishAction( const char *name );
+	D3_EVENT( AI_AnimDone, "animDone", integer )
 	void					Event_AnimDone( int channel, int blendFrames );
+	D3_EVENT( AI_HasAnim, "hasAnim", float )
 	void					Event_HasAnim( int channel, const char *name );
+	D3_EVENT( AI_CheckAnim, "checkAnim", void )
 	void					Event_CheckAnim( int channel, const char *animname );
+	D3_EVENT( AI_ChooseAnim, "chooseAnim", string )
 	void					Event_ChooseAnim( int channel, const char *animname );
+	D3_EVENT( AI_AnimLength, "animLength", float )
 	void					Event_AnimLength( int channel, const char *animname );
+	D3_EVENT( AI_AnimDistance, "animDistance", float )
 	void					Event_AnimDistance( int channel, const char *animname );
+	D3_EVENT( AI_HasEnemies, "hasEnemies", integer )
 	void					Event_HasEnemies( void );
-	void					Event_NextEnemy( idEntity *ent );
+	D3_EVENT( AI_NextEnemy, "nextEnemy", entity )
+	void					Event_NextEnemy( D3_NULLABLE idEntity *ent );
+	D3_EVENT( AI_ClosestEnemyToPoint, "closestEnemyToPoint", entity )
 	void					Event_ClosestEnemyToPoint( const idVec3 &pos );
+	D3_EVENT( EV_StopSound, "stopSound", void )
 	void					Event_StopSound( int channel, int netsync );
+	D3_EVENT( AI_SetNextState, "setNextState", void )
 	void					Event_SetNextState( const char *name );
+	D3_EVENT( AI_SetState, "setState", void )
 	void					Event_SetState( const char *name );
+	D3_EVENT( AI_GetState, "getState", string )
 	void					Event_GetState( void );
+	D3_EVENT( AI_GetHead, "getHead", entity )
 	void					Event_GetHead( void );
+	D3_EVENT( EV_SetDamageGroupScale, "setDamageGroupScale", void )
 	void					Event_SetDamageGroupScale( const char* groupName, float scale);
+	D3_EVENT( EV_SetDamageGroupScaleAll, "setDamageGroupScaleAll", void )
 	void					Event_SetDamageGroupScaleAll( float scale );
+	D3_EVENT( EV_GetDamageGroupScale, "getDamageGroupScale", float )
 	void					Event_GetDamageGroupScale( const char* groupName );
+	D3_EVENT( EV_SetDamageCap, "setDamageCap", void )
 	void					Event_SetDamageCap( float _damageCap );
+	D3_EVENT( EV_SetWaitState, "setWaitState", void )
 	void					Event_SetWaitState( const char* waitState);
+	D3_EVENT( EV_GetWaitState, "getWaitState", string )
 	void					Event_GetWaitState();
 	
 };

@@ -38,6 +38,7 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 
+D3_CLASS()
 class idSecurityCamera : public idEntity {
 public:
 	CLASS_PROTOTYPE( idSecurityCamera );
@@ -87,10 +88,15 @@ private:
 	const idVec3			GetAxis( void ) const;
 	float					SweepSpeed( void ) const;
 
+	D3_EVENT( EV_SecurityCam_ReverseSweep, "<reverseSweep>", void )
 	void					Event_ReverseSweep( void );
+	D3_EVENT( EV_SecurityCam_ContinueSweep, "<continueSweep>", void )
 	void					Event_ContinueSweep( void );
+	D3_EVENT( EV_SecurityCam_Pause, "<pause>", void )
 	void					Event_Pause( void );
+	D3_EVENT( EV_SecurityCam_Alert, "<alert>", void )
 	void					Event_Alert( void );
+	D3_EVENT( EV_SecurityCam_AddLight, "<addLight>", void )
 	void					Event_AddLight( void );
 };
 

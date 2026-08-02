@@ -218,6 +218,7 @@ typedef struct {
 	idVec3	pos;
 } aasLocation_t;
 
+D3_CLASS()
 class idPlayer : public idActor {
 public:
 	enum {
@@ -513,6 +514,7 @@ public:
 	void					UpdateHudWeapon( bool flashWeapon = true );
 	void					UpdateHudStats( idUserInterface *hud );
 	void					UpdateHudAmmo( idUserInterface *hud );
+	D3_EVENT( EV_Player_StopAudioLog, "stopAudioLog", void )
 	void					Event_StopAudioLog( void );
 	void					StartAudioLog( void );
 	void					StopAudioLog( void );
@@ -739,34 +741,60 @@ private:
 
 	void					UseVehicle( void );
 
+	D3_EVENT( EV_Player_GetButtons, "getButtons", integer )
 	void					Event_GetButtons( void );
+	D3_EVENT( EV_Player_GetMove, "getMove", vector )
 	void					Event_GetMove( void );
+	D3_EVENT( EV_Player_GetViewAngles, "getViewAngles", vector )
 	void					Event_GetViewAngles( void );
+	D3_EVENT( EV_Player_StopFxFov, "stopFxFov", void )
 	void					Event_StopFxFov( void );
+	D3_EVENT( EV_Player_EnableWeapon, "enableWeapon", void )
 	void					Event_EnableWeapon( void );
+	D3_EVENT( EV_Player_DisableWeapon, "disableWeapon", void )
 	void					Event_DisableWeapon( void );
+	D3_EVENT( EV_Player_GetCurrentWeapon, "getCurrentWeapon", string )
 	void					Event_GetCurrentWeapon( void );
+	D3_EVENT( EV_Player_GetPreviousWeapon, "getPreviousWeapon", string )
 	void					Event_GetPreviousWeapon( void );
+	D3_EVENT( EV_Player_SelectWeapon, "selectWeapon", void )
 	void					Event_SelectWeapon( const char *weaponName );
+	D3_EVENT( EV_Player_GetWeaponEntity, "getWeaponEntity", entity )
 	void					Event_GetWeaponEntity( void );
+	D3_EVENT( EV_Player_OpenPDA, "openPDA", void )
 	void					Event_OpenPDA( void );
 	void					Event_PDAAvailable( void );
+	D3_EVENT( EV_Player_InPDA, "inPDA", integer )
 	void					Event_InPDA( void );
+	D3_EVENT( EV_Player_ExitTeleporter, "exitTeleporter", void )
 	void					Event_ExitTeleporter( void );
+	D3_EVENT( EV_Player_HideTip, "hideTip", void )
 	void					Event_HideTip( void );
+	D3_EVENT( EV_Player_LevelTrigger, "levelTrigger", void )
 	void					Event_LevelTrigger( void );
+	D3_EVENT( EV_Gibbed )
 	void					Event_Gibbed( void );
 
+	D3_EVENT( EV_Player_GiveInventoryItem, "giveInventoryItem", void )
 	void					Event_GiveInventoryItem( const char* name );
+	D3_EVENT( EV_Player_RemoveInventoryItem, "removeInventoryItem", void )
 	void					Event_RemoveInventoryItem( const char* name );
 
+	D3_EVENT( EV_Player_GetIdealWeapon, "getIdealWeapon", string )
 	void					Event_GetIdealWeapon( void );
+	D3_EVENT( EV_Player_WeaponAvailable, "weaponAvailable", integer )
 	void					Event_WeaponAvailable( const char* name );
+	D3_EVENT( EV_Player_SetPowerupTime, "setPowerupTime", void )
 	void					Event_SetPowerupTime( int powerup, int time );
+	D3_EVENT( EV_Player_IsPowerupActive, "isPowerupActive", integer )
 	void					Event_IsPowerupActive( int powerup );
+	D3_EVENT( EV_Player_StartWarp, "startWarp", void )
 	void					Event_StartWarp();
+	D3_EVENT( EV_Player_StopHelltime, "stopHelltime", void )
 	void					Event_StopHelltime( int mode );
+	D3_EVENT( EV_Player_ToggleBloom, "toggleBloom", void )
 	void					Event_ToggleBloom( int on );
+	D3_EVENT( EV_Player_SetBloomParms, "setBloomParms", void )
 	void					Event_SetBloomParms( float speed, float intensity );
 };
 

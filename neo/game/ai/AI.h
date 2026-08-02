@@ -246,6 +246,7 @@ private:
 	int					PVSAreas[ idEntity::MAX_PVS_AREAS ];
 };
 
+D3_CLASS()
 class idAI : public idActor {
 public:
 	CLASS_PROTOTYPE( idAI );
@@ -552,144 +553,280 @@ protected:
 	//
 	// ai/ai_events.cpp
 	//
+	D3_EVENT( EV_Activate )
 	void					Event_Activate( idEntity *activator );
+	D3_EVENT( EV_Touch )
 	void					Event_Touch( idEntity *other, trace_t *trace );
+	D3_EVENT( AI_FindEnemy, "findEnemy", entity )
 	void					Event_FindEnemy( int useFOV );
+	D3_EVENT( AI_FindEnemyAI, "findEnemyAI", entity )
 	void					Event_FindEnemyAI( int useFOV );
+	D3_EVENT( AI_FindEnemyInCombatNodes, "findEnemyInCombatNodes", entity )
 	void					Event_FindEnemyInCombatNodes( void );
-	void					Event_ClosestReachableEnemyOfEntity( idEntity *team_mate );
+	D3_EVENT( AI_ClosestReachableEnemyOfEntity, "closestReachableEnemyOfEntity", entity )
+	void					Event_ClosestReachableEnemyOfEntity( D3_NULLABLE idEntity *team_mate );
+	D3_EVENT( AI_HeardSound, "heardSound", entity )
 	void					Event_HeardSound( int ignore_team );
-	void					Event_SetEnemy( idEntity *ent );
+	D3_EVENT( AI_SetEnemy, "setEnemy", void )
+	void					Event_SetEnemy( D3_NULLABLE idEntity *ent );
+	D3_EVENT( AI_ClearEnemy, "clearEnemy", void )
 	void					Event_ClearEnemy( void );
+	D3_EVENT( AI_MuzzleFlash, "muzzleFlash", void )
 	void					Event_MuzzleFlash( const char *jointname );
+	D3_EVENT( AI_CreateMissile, "createMissile", entity )
 	void					Event_CreateMissile( const char *jointname );
+	D3_EVENT( AI_AttackMissile, "attackMissile", entity )
 	void					Event_AttackMissile( const char *jointname );
+	D3_EVENT( AI_FireMissileAtTarget, "fireMissileAtTarget", entity )
 	void					Event_FireMissileAtTarget( const char *jointname, const char *targetname );
+	D3_EVENT( AI_LaunchMissile, "launchMissile", entity )
 	void					Event_LaunchMissile( const idVec3 &muzzle, const idAngles &ang );
+	D3_EVENT( AI_LaunchProjectile, "launchProjectile", void )
 	void					Event_LaunchProjectile( const char *entityDefName );
+	D3_EVENT( AI_AttackMelee, "attackMelee", integer )
 	void					Event_AttackMelee( const char *meleeDefName );
+	D3_EVENT( AI_DirectDamage, "directDamage", void )
 	void					Event_DirectDamage( idEntity *damageTarget, const char *damageDefName );
+	D3_EVENT( AI_RadiusDamageFromJoint, "radiusDamageFromJoint", void )
 	void					Event_RadiusDamageFromJoint( const char *jointname, const char *damageDefName );
+	D3_EVENT( AI_BeginAttack, "attackBegin", void )
 	void					Event_BeginAttack( const char *name );
+	D3_EVENT( AI_EndAttack, "attackEnd", void )
 	void					Event_EndAttack( void );
+	D3_EVENT( AI_MeleeAttackToJoint, "meleeAttackToJoint", integer )
 	void					Event_MeleeAttackToJoint( const char *jointname, const char *meleeDefName );
+	D3_EVENT( AI_RandomPath, "randomPath", entity )
 	void					Event_RandomPath( void );
+	D3_EVENT( AI_CanBecomeSolid, "canBecomeSolid", float )
 	void					Event_CanBecomeSolid( void );
+	D3_EVENT( AI_BecomeSolid, "becomeSolid", void )
 	void					Event_BecomeSolid( void );
+	D3_EVENT( EV_BecomeNonSolid, "becomeNonSolid", void )
 	void					Event_BecomeNonSolid( void );
+	D3_EVENT( AI_BecomeRagdoll, "becomeRagdoll", integer )
 	void					Event_BecomeRagdoll( void );
+	D3_EVENT( AI_StopRagdoll, "stopRagdoll", void )
 	void					Event_StopRagdoll( void );
+	D3_EVENT( AI_SetHealth, "setHealth", void )
 	void					Event_SetHealth( float newHealth );
+	D3_EVENT( AI_GetHealth, "getHealth", float )
 	void					Event_GetHealth( void );
+	D3_EVENT( AI_AllowDamage, "allowDamage", void )
 	void					Event_AllowDamage( void );
+	D3_EVENT( AI_IgnoreDamage, "ignoreDamage", void )
 	void					Event_IgnoreDamage( void );
+	D3_EVENT( AI_GetCurrentYaw, "getCurrentYaw", float )
 	void					Event_GetCurrentYaw( void );
+	D3_EVENT( AI_TurnTo, "turnTo", void )
 	void					Event_TurnTo( float angle );
+	D3_EVENT( AI_TurnToPos, "turnToPos", void )
 	void					Event_TurnToPos( const idVec3 &pos );
-	void					Event_TurnToEntity( idEntity *ent );
+	D3_EVENT( AI_TurnToEntity, "turnToEntity", void )
+	void					Event_TurnToEntity( D3_NULLABLE idEntity *ent );
+	D3_EVENT( AI_MoveStatus, "moveStatus", integer )
 	void					Event_MoveStatus( void );
+	D3_EVENT( AI_StopMove, "stopMove", void )
 	void					Event_StopMove( void );
+	D3_EVENT( AI_MoveToCover, "moveToCover", void )
 	void					Event_MoveToCover( void );
+	D3_EVENT( AI_MoveToEnemy, "moveToEnemy", void )
 	void					Event_MoveToEnemy( void );
+	D3_EVENT( AI_MoveToEnemyHeight, "moveToEnemyHeight", void )
 	void					Event_MoveToEnemyHeight( void );
+	D3_EVENT( AI_MoveOutOfRange, "moveOutOfRange", void )
 	void					Event_MoveOutOfRange( idEntity *entity, float range );
+	D3_EVENT( AI_MoveToAttackPosition, "moveToAttackPosition", void )
 	void					Event_MoveToAttackPosition( idEntity *entity, const char *attack_anim );
+	D3_EVENT( AI_MoveToEntity, "moveToEntity", void )
 	void					Event_MoveToEntity( idEntity *ent );
+	D3_EVENT( AI_MoveToPosition, "moveToPosition", void )
 	void					Event_MoveToPosition( const idVec3 &pos );
+	D3_EVENT( AI_SlideTo, "slideTo", void )
 	void					Event_SlideTo( const idVec3 &pos, float time );
+	D3_EVENT( AI_Wander, "wander", void )
 	void					Event_Wander( void );
+	D3_EVENT( AI_FacingIdeal, "facingIdeal", integer )
 	void					Event_FacingIdeal( void );
+	D3_EVENT( AI_FaceEnemy, "faceEnemy", void )
 	void					Event_FaceEnemy( void );
-	void					Event_FaceEntity( idEntity *ent );
+	D3_EVENT( AI_FaceEntity, "faceEntity", void )
+	void					Event_FaceEntity( D3_NULLABLE idEntity *ent );
+	D3_EVENT( AI_WaitAction, "waitAction", void )
 	void					Event_WaitAction( const char *waitForState );
+	D3_EVENT( AI_GetCombatNode, "getCombatNode", entity )
 	void					Event_GetCombatNode( void );
-	void					Event_EnemyInCombatCone( idEntity *ent, int use_current_enemy_location );
+	D3_EVENT( AI_EnemyInCombatCone, "enemyInCombatCone", integer )
+	void					Event_EnemyInCombatCone( D3_NULLABLE idEntity *ent, int use_current_enemy_location );
+	D3_EVENT( AI_WaitMove, "waitMove", void )
 	void					Event_WaitMove( void );
+	D3_EVENT( AI_GetJumpVelocity, "getJumpVelocity", vector )
 	void					Event_GetJumpVelocity( const idVec3 &pos, float speed, float max_height );
-	void					Event_EntityInAttackCone( idEntity *ent );
-	void					Event_CanSeeEntity( idEntity *ent );
-	void					Event_SetTalkTarget( idEntity *target );
+	D3_EVENT( AI_EntityInAttackCone, "entityInAttackCone", integer )
+	void					Event_EntityInAttackCone( D3_NULLABLE idEntity *ent );
+	D3_EVENT( AI_CanSeeEntity, "canSee", integer )
+	void					Event_CanSeeEntity( D3_NULLABLE idEntity *ent );
+	D3_EVENT( AI_SetTalkTarget, "setTalkTarget", void )
+	void					Event_SetTalkTarget( D3_NULLABLE idEntity *target );
+	D3_EVENT( AI_GetTalkTarget, "getTalkTarget", entity )
 	void					Event_GetTalkTarget( void );
+	D3_EVENT( AI_SetTalkState, "setTalkState", void )
 	void					Event_SetTalkState( int state );
+	D3_EVENT( AI_EnemyRange, "enemyRange", float )
 	void					Event_EnemyRange( void );
+	D3_EVENT( AI_EnemyRange2D, "enemyRange2D", float )
 	void					Event_EnemyRange2D( void );
+	D3_EVENT( AI_GetEnemy, "getEnemy", entity )
 	void					Event_GetEnemy( void );
+	D3_EVENT( AI_GetEnemyPos, "getEnemyPos", vector )
 	void					Event_GetEnemyPos( void );
+	D3_EVENT( AI_GetEnemyEyePos, "getEnemyEyePos", vector )
 	void					Event_GetEnemyEyePos( void );
+	D3_EVENT( AI_PredictEnemyPos, "predictEnemyPos", vector )
 	void					Event_PredictEnemyPos( float time );
+	D3_EVENT( AI_CanHitEnemy, "canHitEnemy", integer )
 	void					Event_CanHitEnemy( void );
+	D3_EVENT( AI_CanHitEnemyFromAnim, "canHitEnemyFromAnim", integer )
 	void					Event_CanHitEnemyFromAnim( const char *animname );
+	D3_EVENT( AI_CanHitEnemyFromJoint, "canHitEnemyFromJoint", integer )
 	void					Event_CanHitEnemyFromJoint( const char *jointname );
+	D3_EVENT( AI_EnemyPositionValid, "enemyPositionValid", integer )
 	void					Event_EnemyPositionValid( void );
+	D3_EVENT( AI_ChargeAttack, "chargeAttack", void )
 	void					Event_ChargeAttack( const char *damageDef );
+	D3_EVENT( AI_TestChargeAttack, "testChargeAttack", float )
 	void					Event_TestChargeAttack( void );
+	D3_EVENT( AI_TestAnimMoveTowardEnemy, "testAnimMoveTowardEnemy", integer )
 	void					Event_TestAnimMoveTowardEnemy( const char *animname );
+	D3_EVENT( AI_TestAnimMove, "testAnimMove", integer )
 	void					Event_TestAnimMove( const char *animname );
+	D3_EVENT( AI_TestMoveToPosition, "testMoveToPosition", integer )
 	void					Event_TestMoveToPosition( const idVec3 &position );
+	D3_EVENT( AI_TestMeleeAttack, "testMeleeAttack", integer )
 	void					Event_TestMeleeAttack( void );
+	D3_EVENT( AI_TestAnimAttack, "testAnimAttack", integer )
 	void					Event_TestAnimAttack( const char *animname );
+	D3_EVENT( AI_Shrivel, "shrivel", void )
 	void					Event_Shrivel( float shirvel_time );
+	D3_EVENT( AI_Burn, "burn", void )
 	void					Event_Burn( void );
+	D3_EVENT( AI_PreBurn, "preBurn", void )
 	void					Event_PreBurn( void );
+	D3_EVENT( AI_ClearBurn, "clearBurn", void )
 	void					Event_ClearBurn( void );
+	D3_EVENT( AI_SetSmokeVisibility, "setSmokeVisibility", void )
 	void					Event_SetSmokeVisibility( int num, int on );
+	D3_EVENT( AI_NumSmokeEmitters, "numSmokeEmitters", integer )
 	void					Event_NumSmokeEmitters( void );
+	D3_EVENT( AI_StopThinking, "stopThinking", void )
 	void					Event_StopThinking( void );
+	D3_EVENT( AI_GetTurnDelta, "getTurnDelta", float )
 	void					Event_GetTurnDelta( void );
+	D3_EVENT( AI_GetMoveType, "getMoveType", integer )
 	void					Event_GetMoveType( void );
+	D3_EVENT( AI_SetMoveType, "setMoveType", void )
 	void					Event_SetMoveType( int moveType );
+	D3_EVENT( AI_SaveMove, "saveMove", void )
 	void					Event_SaveMove( void );
+	D3_EVENT( AI_RestoreMove, "restoreMove", void )
 	void					Event_RestoreMove( void );
+	D3_EVENT( AI_AllowMovement, "allowMovement", void )
 	void					Event_AllowMovement( float flag );
+	D3_EVENT( AI_JumpFrame, "<jumpframe>", void )
 	void					Event_JumpFrame( void );
+	D3_EVENT( AI_EnableClip, "enableClip", void )
 	void					Event_EnableClip( void );
+	D3_EVENT( AI_DisableClip, "disableClip", void )
 	void					Event_DisableClip( void );
+	D3_EVENT( AI_EnableGravity, "enableGravity", void )
 	void					Event_EnableGravity( void );
+	D3_EVENT( AI_DisableGravity, "disableGravity", void )
 	void					Event_DisableGravity( void );
+	D3_EVENT( AI_EnableAFPush, "enableAFPush", void )
 	void					Event_EnableAFPush( void );
+	D3_EVENT( AI_DisableAFPush, "disableAFPush", void )
 	void					Event_DisableAFPush( void );
+	D3_EVENT( AI_SetFlySpeed, "setFlySpeed", void )
 	void					Event_SetFlySpeed( float speed );
+	D3_EVENT( AI_SetFlyOffset, "setFlyOffset", void )
 	void					Event_SetFlyOffset( int offset );
+	D3_EVENT( AI_ClearFlyOffset, "clearFlyOffset", void )
 	void					Event_ClearFlyOffset( void );
+	D3_EVENT( AI_GetClosestHiddenTarget, "getClosestHiddenTarget", entity )
 	void					Event_GetClosestHiddenTarget( const char *type );
+	D3_EVENT( AI_GetRandomTarget, "getRandomTarget", entity )
 	void					Event_GetRandomTarget( const char *type );
+	D3_EVENT( AI_TravelDistanceToPoint, "travelDistanceToPoint", float )
 	void					Event_TravelDistanceToPoint( const idVec3 &pos );
+	D3_EVENT( AI_TravelDistanceToEntity, "travelDistanceToEntity", float )
 	void					Event_TravelDistanceToEntity( idEntity *ent );
+	D3_EVENT( AI_TravelDistanceBetweenPoints, "travelDistanceBetweenPoints", float )
 	void					Event_TravelDistanceBetweenPoints( const idVec3 &source, const idVec3 &dest );
+	D3_EVENT( AI_TravelDistanceBetweenEntities, "travelDistanceBetweenEntities", float )
 	void					Event_TravelDistanceBetweenEntities( idEntity *source, idEntity *dest );
-	void					Event_LookAtEntity( idEntity *ent, float duration );
+	D3_EVENT( AI_LookAtEntity, "lookAt", void )
+	void					Event_LookAtEntity( D3_NULLABLE idEntity *ent, float duration );
+	D3_EVENT( AI_LookAtEnemy, "lookAtEnemy", void )
 	void					Event_LookAtEnemy( float duration );
+	D3_EVENT( AI_SetJointMod, "setBoneMod", void )
 	void					Event_SetJointMod( int allowJointMod );
+	D3_EVENT( AI_ThrowMoveable, "throwMoveable", void )
 	void					Event_ThrowMoveable( void );
+	D3_EVENT( AI_ThrowAF, "throwAF", void )
 	void					Event_ThrowAF( void );
+	D3_EVENT( EV_SetAngles, "setAngles", void )
 	void					Event_SetAngles( idAngles const &ang );
+	D3_EVENT( EV_GetAngles, "getAngles", vector )
 	void					Event_GetAngles( void );
+	D3_EVENT( AI_RealKill, "<kill>", void )
 	void					Event_RealKill( void );
+	D3_EVENT( AI_Kill, "kill", void )
 	void					Event_Kill( void );
+	D3_EVENT( AI_WakeOnFlashlight, "wakeOnFlashlight", void )
 	void					Event_WakeOnFlashlight( int enable );
+	D3_EVENT( AI_LocateEnemy, "locateEnemy", void )
 	void					Event_LocateEnemy( void );
-	void					Event_KickObstacles( idEntity *kickEnt, float force );
+	D3_EVENT( AI_KickObstacles, "kickObstacles", void )
+	void					Event_KickObstacles( D3_NULLABLE idEntity *kickEnt, float force );
+	D3_EVENT( AI_GetObstacle, "getObstacle", entity )
 	void					Event_GetObstacle( void );
+	D3_EVENT( AI_PushPointIntoAAS, "pushPointIntoAAS", vector )
 	void					Event_PushPointIntoAAS( const idVec3 &pos );
+	D3_EVENT( AI_GetTurnRate, "getTurnRate", float )
 	void					Event_GetTurnRate( void );
+	D3_EVENT( AI_SetTurnRate, "setTurnRate", void )
 	void					Event_SetTurnRate( float rate );
+	D3_EVENT( AI_AnimTurn, "animTurn", void )
 	void					Event_AnimTurn( float angles );
+	D3_EVENT( AI_AllowHiddenMovement, "allowHiddenMovement", void )
 	void					Event_AllowHiddenMovement( int enable );
+	D3_EVENT( AI_TriggerParticles, "triggerParticles", void )
 	void					Event_TriggerParticles( const char *jointName );
+	D3_EVENT( AI_FindActorsInBounds, "findActorsInBounds", entity )
 	void					Event_FindActorsInBounds( const idVec3 &mins, const idVec3 &maxs );
+	D3_EVENT( AI_CanReachPosition, "canReachPosition", integer )
 	void 					Event_CanReachPosition( const idVec3 &pos );
-	void 					Event_CanReachEntity( idEntity *ent );
+	D3_EVENT( AI_CanReachEntity, "canReachEntity", integer )
+	void 					Event_CanReachEntity( D3_NULLABLE idEntity *ent );
+	D3_EVENT( AI_CanReachEnemy, "canReachEnemy", integer )
 	void					Event_CanReachEnemy( void );
+	D3_EVENT( AI_GetReachableEntityPosition, "getReachableEntityPosition", vector )
 	void					Event_GetReachableEntityPosition( idEntity *ent );
+	D3_EVENT( AI_MoveToPositionDirect, "moveToPositionDirect", void )
 	void					Event_MoveToPositionDirect( const idVec3 &pos );
+	D3_EVENT( AI_AvoidObstacles, "avoidObstacles", void )
 	void					Event_AvoidObstacles( int ignore);
+	D3_EVENT( AI_TriggerFX, "triggerFX", void )
 	void					Event_TriggerFX( const char* joint, const char* fx );
 
+	D3_EVENT( AI_StartEmitter, "startEmitter", entity )
 	void					Event_StartEmitter( const char* name, const char* joint, const char* particle );
+	D3_EVENT( AI_GetEmitter, "getEmitter", entity )
 	void					Event_GetEmitter( const char* name );
+	D3_EVENT( AI_StopEmitter, "stopEmitter", void )
 	void					Event_StopEmitter( const char* name );
 };
 
+D3_CLASS()
 class idCombatNode : public idEntity {
 public:
 	CLASS_PROTOTYPE( idCombatNode );
@@ -715,7 +852,9 @@ private:
 	idVec3				offset;
 	bool				disabled;
 
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
+	D3_EVENT( EV_CombatNode_MarkUsed, "markUsed", void )
 	void				Event_MarkUsed( void );
 };
 

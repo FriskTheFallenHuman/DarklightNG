@@ -45,19 +45,8 @@ If you have questions concerning this license or the applicable additional terms
 	
 ***********************************************************************/
 
-const idEventDef EV_SecurityCam_ReverseSweep( "<reverseSweep>" );
-const idEventDef EV_SecurityCam_ContinueSweep( "<continueSweep>" );
-const idEventDef EV_SecurityCam_Pause( "<pause>" );
-const idEventDef EV_SecurityCam_Alert( "<alert>" );
-const idEventDef EV_SecurityCam_AddLight( "<addLight>" );
 
-CLASS_DECLARATION( idEntity, idSecurityCamera )
-	EVENT( EV_SecurityCam_ReverseSweep,		idSecurityCamera::Event_ReverseSweep )
-	EVENT( EV_SecurityCam_ContinueSweep,	idSecurityCamera::Event_ContinueSweep )
-	EVENT( EV_SecurityCam_Pause,			idSecurityCamera::Event_Pause )
-	EVENT( EV_SecurityCam_Alert,			idSecurityCamera::Event_Alert )
-	EVENT( EV_SecurityCam_AddLight,			idSecurityCamera::Event_AddLight )
-END_CLASS
+
 
 /*
 ================

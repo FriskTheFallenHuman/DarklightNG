@@ -42,6 +42,7 @@ that can be bound to other entities.  Should not be subclassed.
 ===============================================================================
 */
 
+D3_CLASS()
 class idSpawnableEntity : public idEntity {
 public:
 	CLASS_PROTOTYPE( idSpawnableEntity );
@@ -63,6 +64,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idPlayerStart : public idEntity {
 public:
 	CLASS_PROTOTYPE( idPlayerStart );
@@ -84,7 +86,9 @@ public:
 private:
 	int					teleportStage;
 
+	D3_EVENT( EV_Activate )
 	void				Event_TeleportPlayer( idEntity *activator );
+	D3_EVENT( EV_TeleportStage, "<TeleportStage>", void )
 	void				Event_TeleportStage( idEntity *player );
 	void				TeleportPlayer( idPlayer *player );
 };
@@ -101,6 +105,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idActivator : public idEntity {
 public:
 	CLASS_PROTOTYPE( idActivator );
@@ -115,6 +120,7 @@ public:
 private:
 	bool				stay_on;
 
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -126,6 +132,7 @@ private:
 
 ===============================================================================
 */
+D3_CLASS()
 class idPathCorner : public idEntity {
 public:
 	CLASS_PROTOTYPE( idPathCorner );
@@ -137,6 +144,7 @@ public:
 	static idPathCorner *RandomPath( const idEntity *source, const idEntity *ignore );
 
 private:
+	D3_EVENT( AI_RandomPath )
 	void				Event_RandomPath( void );
 };
 
@@ -149,6 +157,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idDamagable : public idEntity {
 public:
 	CLASS_PROTOTYPE( idDamagable );
@@ -169,7 +178,9 @@ private:
 	int					nextTriggerTime;
 
 	void				BecomeBroken( idEntity *activator );
+	D3_EVENT( EV_Activate )
 	void				Event_BecomeBroken( idEntity *activator );
+	D3_EVENT( EV_RestoreDamagable, "<RestoreDamagable>", void )
 	void				Event_RestoreDamagable( void );
 };
 
@@ -182,6 +193,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idExplodable : public idEntity {
 public:
 	CLASS_PROTOTYPE( idExplodable );
@@ -189,6 +201,7 @@ public:
 	void				Spawn( void );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Explode( idEntity *activator );
 };
 
@@ -201,6 +214,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idSpring : public idEntity {
 public:
 	CLASS_PROTOTYPE( idSpring );
@@ -218,6 +232,7 @@ private:
 	idVec3				p2;
 	idForce_Spring		spring;
 
+	D3_EVENT( EV_PostSpawn )
 	void				Event_LinkSpring( void );
 };
 
@@ -230,6 +245,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idForceField : public idEntity {
 public:
 	CLASS_PROTOTYPE( idForceField );
@@ -246,8 +262,11 @@ private:
 
 	void				Toggle( void );
 
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
+	D3_EVENT( EV_Toggle, "Toggle", void )
 	void				Event_Toggle( void );
+	D3_EVENT( EV_FindTargets )
 	void				Event_FindTargets( void );
 };
 
@@ -260,6 +279,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idAnimated : public idAFEntity_Gibbable {
 public:
 	CLASS_PROTOTYPE( idAnimated );
@@ -286,14 +306,25 @@ private:
 
 	void					PlayNextAnim( void );
 
+	D3_EVENT( EV_Activate )
 	void					Event_Activate( idEntity *activator );	
+	D3_EVENT( EV_Animated_Start, "<start>", void )
 	void					Event_Start( void );
+	D3_EVENT( EV_StartRagdoll, "startRagdoll", void )
 	void					Event_StartRagdoll( void );
+	D3_EVENT( EV_AnimDone, "<AnimDone>", void )
 	void					Event_AnimDone( int animIndex );
+	D3_EVENT( EV_Footstep )
+	D3_EVENT( EV_FootstepLeft )
+	D3_EVENT( EV_FootstepRight )
 	void					Event_Footstep( void );
+	D3_EVENT( EV_LaunchMissiles, "launchMissiles", void )
 	void					Event_LaunchMissiles( const char *projectilename, const char *sound, const char *launchjoint, const char *targetjoint, int numshots, int framedelay );
+	D3_EVENT( EV_LaunchMissilesUpdate, "<launchMissiles>", void )
 	void					Event_LaunchMissilesUpdate( int launchjoint, int targetjoint, int numshots, int framedelay );
+	D3_EVENT( EV_SetAnimation, "setAnimation", void )
 	void					Event_SetAnimation( const char *animName );
+	D3_EVENT( EV_GetAnimationLength, "getAnimationLength", float )
 	void					Event_GetAnimationLength();
 };
 
@@ -306,6 +337,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idStaticEntity : public idEntity {
 public:
 	CLASS_PROTOTYPE( idStaticEntity );
@@ -326,6 +358,7 @@ public:
 	virtual void		ReadFromSnapshot( const idBitMsgDelta &msg );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 
 	int					spawnTime;
@@ -346,6 +379,7 @@ idFuncEmitter
 ===============================================================================
 */
 
+D3_CLASS()
 class idFuncEmitter : public idStaticEntity {
 public:
 	CLASS_PROTOTYPE( idFuncEmitter );
@@ -356,6 +390,7 @@ public:
 	void				Restore( idRestoreGame *savefile );
 
 	void				Spawn( void );
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 
 	virtual void		WriteToSnapshot( idBitMsgDelta &msg ) const;
@@ -375,6 +410,7 @@ idFuncSmoke
 ===============================================================================
 */
 
+D3_CLASS()
 class idFuncSmoke : public idEntity {
 public:
 	CLASS_PROTOTYPE( idFuncSmoke );
@@ -387,6 +423,7 @@ public:
 	void					Restore( idRestoreGame *savefile );
 
 	virtual void			Think( void );
+	D3_EVENT( EV_Activate )
 	void					Event_Activate( idEntity *activator );
 
 private:
@@ -404,6 +441,7 @@ idFuncSplat
 ===============================================================================
 */
 
+D3_CLASS()
 class idFuncSplat : public idFuncEmitter {
 public:
 	CLASS_PROTOTYPE( idFuncSplat );
@@ -413,7 +451,9 @@ public:
 	void				Spawn( void );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
+	D3_EVENT( EV_Splat, "<Splat>", void )
 	void				Event_Splat();
 };
 
@@ -426,6 +466,7 @@ idTextEntity
 ===============================================================================
 */
 
+D3_CLASS()
 class idTextEntity : public idEntity {
 public:
 	CLASS_PROTOTYPE( idTextEntity );
@@ -451,6 +492,7 @@ idLocationEntity
 ===============================================================================
 */
 
+D3_CLASS()
 class idLocationEntity : public idEntity {
 public:
 	CLASS_PROTOTYPE( idLocationEntity );
@@ -462,6 +504,7 @@ public:
 private:
 };
 
+D3_CLASS()
 class idLocationSeparatorEntity : public idEntity {
 public:
 	CLASS_PROTOTYPE( idLocationSeparatorEntity );
@@ -471,6 +514,7 @@ public:
 private:
 };
 
+D3_CLASS()
 class idVacuumSeparatorEntity : public idEntity {
 public:
 	CLASS_PROTOTYPE( idVacuumSeparatorEntity );
@@ -482,12 +526,14 @@ public:
 	void				Save( idSaveGame *savefile ) const;
 	void				Restore( idRestoreGame *savefile );
 
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );	
 
 private:
 	qhandle_t			portal;
 };
 
+D3_CLASS()
 class idVacuumEntity : public idEntity {
 public:
 	CLASS_PROTOTYPE( idVacuumEntity );
@@ -506,6 +552,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idBeam : public idEntity {
 public:
 	CLASS_PROTOTYPE( idBeam );
@@ -528,7 +575,9 @@ public:
 	virtual void		ReadFromSnapshot( const idBitMsgDelta &msg );
 
 private:
+	D3_EVENT( EV_PostSpawn )
 	void				Event_MatchTarget( void );
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 
 	idEntityPtr<idBeam>	target;
@@ -546,6 +595,7 @@ private:
 
 class idRenderModelLiquid;
 
+D3_CLASS()
 class idLiquid : public idEntity {
 public:
 	CLASS_PROTOTYPE( idLiquid );
@@ -556,6 +606,7 @@ public:
 	void				Restore( idRestoreGame *savefile );
 
 private:
+	D3_EVENT( EV_Touch )
 	void				Event_Touch( idEntity *other, trace_t *trace );
 
 
@@ -571,6 +622,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idShaking : public idEntity {
 public:
 	CLASS_PROTOTYPE( idShaking );
@@ -587,6 +639,7 @@ private:
 	bool					active;
 
 	void					BeginShaking( void );
+	D3_EVENT( EV_Activate )
 	void					Event_Activate( idEntity *activator );
 };
 
@@ -599,6 +652,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idEarthQuake : public idEntity {
 public:
 	CLASS_PROTOTYPE( idEarthQuake );
@@ -622,6 +676,7 @@ private:
 	bool				disabled;
 	float				shakeTime;
 
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -634,6 +689,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idFuncPortal : public idEntity {
 public:
 	CLASS_PROTOTYPE( idFuncPortal );
@@ -649,6 +705,7 @@ private:
 	qhandle_t			portal;
 	bool				state;
 
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -660,6 +717,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idFuncAASPortal : public idEntity {
 public:
 	CLASS_PROTOTYPE( idFuncAASPortal );
@@ -674,6 +732,7 @@ public:
 private:
 	bool				state;
 
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -685,6 +744,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idFuncAASObstacle : public idEntity {
 public:
 	CLASS_PROTOTYPE( idFuncAASObstacle );
@@ -699,6 +759,7 @@ public:
 private:
 	bool				state;
 
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -711,6 +772,7 @@ idFuncRadioChatter
 ===============================================================================
 */
 
+D3_CLASS()
 class idFuncRadioChatter : public idEntity {
 public:
 	CLASS_PROTOTYPE( idFuncRadioChatter );
@@ -724,7 +786,9 @@ public:
 
 private:
 	float				time;
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
+	D3_EVENT( EV_ResetRadioHud, "<resetradiohud>", void )
 	void				Event_ResetRadioHud( idEntity *activator );
 };
 
@@ -737,6 +801,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idPhantomObjects : public idEntity {
 public:
 	CLASS_PROTOTYPE( idPhantomObjects );
@@ -751,6 +816,7 @@ public:
 	virtual void		Think( void );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 	void				Event_Throw( void );
 	void				Event_ShakeObject( idEntity *object, int starttime );
@@ -774,6 +840,7 @@ idShockwave
 
 ===============================================================================
 */
+D3_CLASS()
 class idShockwave : public idEntity {
 public:
 	CLASS_PROTOTYPE( idShockwave );
@@ -788,6 +855,7 @@ public:
 	void				Restore( idRestoreGame *savefile );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 
 	bool				isActive;
@@ -813,6 +881,7 @@ idFuncMountedObject
 
 ===============================================================================
 */
+D3_CLASS()
 class idFuncMountedObject : public idEntity {
 public:
 	CLASS_PROTOTYPE( idFuncMountedObject );
@@ -829,7 +898,9 @@ private:
 	int					harc;
 	int					varc;
 
+	D3_EVENT( EV_Touch )
 	void				Event_Touch( idEntity *other, trace_t *trace ); 
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 
 public:
@@ -839,6 +910,7 @@ public:
 };
 
 
+D3_CLASS()
 class idFuncMountedWeapon : public idFuncMountedObject {
 public:
 	CLASS_PROTOTYPE( idFuncMountedWeapon );
@@ -865,6 +937,7 @@ private:
 
 	const idSoundShader	*soundFireWeapon;
 
+	D3_EVENT( EV_PostSpawn )
 	void				Event_PostSpawn( void );
 };
 
@@ -875,6 +948,7 @@ idPortalSky
 
 ===============================================================================
 */
+D3_CLASS()
 class idPortalSky : public idEntity {
 public:
 	CLASS_PROTOTYPE( idPortalSky );
@@ -883,7 +957,9 @@ public:
 	~idPortalSky();
 
 	void				Spawn( void );
+	D3_EVENT( EV_PostSpawn )
 	void				Event_PostSpawn();
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 

@@ -809,6 +809,7 @@ typedef struct AFCollision_s {
 } AFCollision_t;
 
 
+D3_CLASS()
 class idPhysics_AF : public idPhysics_Base {
 
 public:

@@ -44,10 +44,7 @@ idWorldspawn
 Every map should have exactly one worldspawn.
 ================
 */
-CLASS_DECLARATION( idEntity, idWorldspawn )
-	EVENT( EV_Remove,				idWorldspawn::Event_Remove )
-	EVENT( EV_SafeRemove,			idWorldspawn::Event_Remove )
-END_CLASS
+
 
 /*
 ================

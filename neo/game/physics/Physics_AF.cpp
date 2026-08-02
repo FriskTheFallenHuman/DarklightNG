@@ -31,8 +31,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "../Game_local.h"
 
-CLASS_DECLARATION( idPhysics_Base, idPhysics_AF )
-END_CLASS
+
 
 const float ERROR_REDUCTION					= 0.5f;
 const float ERROR_REDUCTION_MAX				= 256.0f;

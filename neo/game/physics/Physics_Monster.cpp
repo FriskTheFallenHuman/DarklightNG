@@ -31,8 +31,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "../Game_local.h"
 
-CLASS_DECLARATION( idPhysics_Actor, idPhysics_Monster )
-END_CLASS
+
 
 const float OVERCLIP = 1.001f;
 

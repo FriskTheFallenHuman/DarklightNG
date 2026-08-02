@@ -37,6 +37,7 @@ If you have questions concerning this license or the applicable additional terms
 ==============================================================================================
 */
 
+D3_CLASS()
 class idTestModel : public idAnimatedEntity {
 public:
 	CLASS_PROTOTYPE( idTestModel );
@@ -89,6 +90,8 @@ private:
 
 	virtual void			Think( void );
 
+	D3_EVENT( EV_FootstepLeft )
+	D3_EVENT( EV_FootstepRight )
 	void					Event_Footstep( void );
 };
 

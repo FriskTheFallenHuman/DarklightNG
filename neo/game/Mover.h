@@ -42,6 +42,7 @@ extern const idEventDef EV_ReachedAng;
 ===============================================================================
 */
 
+D3_CLASS()
 class idMover : public idEntity {
 public:
 	CLASS_PROTOTYPE( idMover );
@@ -114,8 +115,11 @@ protected:
 
 	idPhysics_Parametric	physicsObj;
 
+	D3_EVENT( EV_Mover_OpenPortal, "openPortal", void )
 	void					Event_OpenPortal( void );
+	D3_EVENT( EV_Mover_ClosePortal, "closePortal", void )
 	void					Event_ClosePortal( void );
+	D3_EVENT( EV_PartBlocked, "<partblocked>", void )
 	void					Event_PartBlocked( idEntity *blockingEntity );
 
 	void					MoveToPos( const idVec3 &pos);
@@ -157,44 +161,81 @@ private:
 	void					VectorForDir( float dir, idVec3 &vec );
 	idCurve_Spline<idVec3> *GetSpline( idEntity *splineEntity ) const;
 
+	D3_EVENT( EV_Thread_SetCallback )
 	void					Event_SetCallback( void );	
+	D3_EVENT( EV_TeamBlocked, "<teamblocked>", void )
 	void					Event_TeamBlocked( idEntity *blockedPart, idEntity *blockingEntity );
+	D3_EVENT( EV_StopMoving, "stopMoving", void )
 	void					Event_StopMoving( void );
+	D3_EVENT( EV_StopRotating, "stopRotating", void )
 	void					Event_StopRotating( void );
+	D3_EVENT( EV_ReachedPos, "<reachedpos>", void )
 	void					Event_UpdateMove( void );
+	D3_EVENT( EV_ReachedAng, "<reachedang>", void )
 	void					Event_UpdateRotation( void );
+	D3_EVENT( EV_Speed, "speed", void )
 	void					Event_SetMoveSpeed( float speed );
+	D3_EVENT( EV_Time, "time", void )
 	void					Event_SetMoveTime( float time );
+	D3_EVENT( EV_DecelTime, "decelTime", void )
 	void					Event_SetDecelerationTime( float time );
+	D3_EVENT( EV_AccelTime, "accelTime", void )
 	void					Event_SetAccellerationTime( float time );
+	D3_EVENT( EV_MoveTo, "moveTo", void )
 	void					Event_MoveTo( idEntity *ent );
+	D3_EVENT( EV_MoveToPos, "moveToPos", void )
 	void					Event_MoveToPos( idVec3 &pos );
+	D3_EVENT( EV_Move, "move", void )
 	void					Event_MoveDir( float angle, float distance );
+	D3_EVENT( EV_MoveAccelerateTo, "accelTo", void )
 	void					Event_MoveAccelerateTo( float speed, float time );
+	D3_EVENT( EV_MoveDecelerateTo, "decelTo", void )
 	void					Event_MoveDecelerateTo( float speed, float time );
+	D3_EVENT( EV_RotateDownTo, "rotateDownTo", void )
 	void					Event_RotateDownTo( int axis, float angle );
+	D3_EVENT( EV_RotateUpTo, "rotateUpTo", void )
 	void					Event_RotateUpTo( int axis, float angle );
+	D3_EVENT( EV_RotateTo, "rotateTo", void )
 	void					Event_RotateTo( idAngles &angles );
+	D3_EVENT( EV_Rotate, "rotate", void )
 	void					Event_Rotate( idAngles &angles );
+	D3_EVENT( EV_RotateOnce, "rotateOnce", void )
 	void					Event_RotateOnce( idAngles &angles );
+	D3_EVENT( EV_Bob, "bob", void )
 	void					Event_Bob( float speed, float phase, idVec3 &depth );
+	D3_EVENT( EV_Sway, "sway", void )
 	void					Event_Sway( float speed, float phase, idAngles &depth );
+	D3_EVENT( EV_AccelSound, "accelSound", void )
 	void					Event_SetAccelSound( const char *sound );
+	D3_EVENT( EV_DecelSound, "decelSound", void )
 	void					Event_SetDecelSound( const char *sound );
+	D3_EVENT( EV_MoveSound, "moveSound", void )
 	void					Event_SetMoveSound( const char *sound );
+	D3_EVENT( EV_FindGuiTargets, "<FindGuiTargets>", void )
 	void					Event_FindGuiTargets( void );
+	D3_EVENT( EV_Mover_InitGuiTargets, "<initguitargets>", void )
 	void					Event_InitGuiTargets( void );
+	D3_EVENT( EV_EnableSplineAngles, "enableSplineAngles", void )
 	void					Event_EnableSplineAngles( void );
+	D3_EVENT( EV_DisableSplineAngles, "disableSplineAngles", void )
 	void					Event_DisableSplineAngles( void );
+	D3_EVENT( EV_RemoveInitialSplineAngles, "removeInitialSplineAngles", void )
 	void					Event_RemoveInitialSplineAngles( void );
+	D3_EVENT( EV_StartSpline, "startSpline", void )
 	void					Event_StartSpline( idEntity *splineEntity );
+	D3_EVENT( EV_StopSpline, "stopSpline", void )
 	void					Event_StopSpline( void );
+	D3_EVENT( EV_Activate )
 	void					Event_Activate( idEntity *activator );
+	D3_EVENT( EV_PostRestore, "<postrestore>", void )
 	void					Event_PostRestore( int start, int total, int accel, int decel, int useSplineAng );
+	D3_EVENT( EV_IsMoving, "isMoving", integer )
 	void					Event_IsMoving( void );
+	D3_EVENT( EV_IsRotating, "isRotating", integer )
 	void					Event_IsRotating( void );
 };
 
+D3_CLASS()
 class idSplinePath : public idEntity {
 public:
 	CLASS_PROTOTYPE( idSplinePath );
@@ -211,9 +252,11 @@ struct floorInfo_s {
 	int						floor;
 };
 
+D3_CLASS()
 class idElevator : public idMover {
 public:
 	CLASS_PROTOTYPE( idElevator );
+	D3_EVENT( EV_PartBlocked, idElevator::Event_PartBlocked )
 
 							idElevator( void );
 
@@ -223,6 +266,7 @@ public:
 	void					Restore( idRestoreGame *savefile );
 
 	virtual bool			HandleSingleGuiCommand( idEntity *entityGui, idLexer *src );
+	D3_EVENT( EV_GotoFloor, "gotoFloor", void )
 	void					Event_GotoFloor( int floor );
 	floorInfo_s *			GetFloorInfo( int floor );
 
@@ -231,6 +275,7 @@ protected:
 	virtual void			BeginMove( idThread *thread = NULL );
 	void					SpawnTrigger( const idVec3 &pos );
 	void					GetLocalTriggerPosition();
+	D3_EVENT( EV_Touch )
 	void					Event_Touch( idEntity *other, trace_t *trace );
 
 private:
@@ -258,10 +303,14 @@ private:
 	void					DisableAllDoors( void );
 	void					EnableProperDoors( void );
 
+	D3_EVENT( EV_TeamBlocked )
 	void					Event_TeamBlocked( idEntity *blockedEntity, idEntity *blockingEntity );
+	D3_EVENT( EV_Activate )
 	void					Event_Activate( idEntity *activator );
+	D3_EVENT( EV_PostArrival, "postArrival", void )
 	void					Event_PostFloorArrival();
 
+	D3_EVENT( EV_SetGuiStates, "setGuiStates", void )
 	void					Event_SetGuiStates();
 
 };
@@ -282,6 +331,7 @@ typedef enum {
 	MOVER_2TO1
 } moverState_t;
 
+D3_CLASS()
 class idMover_Binary : public idEntity {
 public:
 	CLASS_PROTOTYPE( idMover_Binary );
@@ -355,21 +405,33 @@ protected:
 	void					FindGuiTargets( void );
 	void					SetGuiState( const char *key, const char *val ) const;
 
+	D3_EVENT( EV_Thread_SetCallback )
 	void					Event_SetCallback( void );
+	D3_EVENT( EV_Mover_ReturnToPos1, "<returntopos1>", void )
 	void					Event_ReturnToPos1( void );
+	D3_EVENT( EV_Activate )
 	void					Event_Use_BinaryMover( idEntity *activator );
+	D3_EVENT( EV_ReachedPos )
 	void					Event_Reached_BinaryMover( void );
+	D3_EVENT( EV_Mover_MatchTeam, "<matchteam>", void )
 	void					Event_MatchActivateTeam( moverState_t newstate, int time );
+	D3_EVENT( EV_Mover_Enable, "enable", void )
 	void					Event_Enable( void );
+	D3_EVENT( EV_Mover_Disable, "disable", void )
 	void					Event_Disable( void );
+	D3_EVENT( EV_Mover_OpenPortal )
 	void					Event_OpenPortal( void );
+	D3_EVENT( EV_Mover_ClosePortal )
 	void					Event_ClosePortal( void );
+	D3_EVENT( EV_FindGuiTargets )
 	void					Event_FindGuiTargets( void );
+	D3_EVENT( EV_Mover_InitGuiTargets )
 	void					Event_InitGuiTargets( void );
 
 	static void				GetMovedir( float dir, idVec3 &movedir );
 };
 
+D3_CLASS()
 class idDoor : public idMover_Binary {
 public:
 	CLASS_PROTOTYPE( idDoor );
@@ -420,24 +482,41 @@ private:
 	void					GetLocalTriggerPosition( const idClipModel *trigger );
 	void					CalcTriggerBounds( float size, idBounds &bounds );
 
+	D3_EVENT( EV_ReachedPos )
 	void					Event_Reached_BinaryMover( void );
+	D3_EVENT( EV_TeamBlocked )
 	void					Event_TeamBlocked( idEntity *blockedEntity, idEntity *blockingEntity );
+	D3_EVENT( EV_PartBlocked )
 	void					Event_PartBlocked( idEntity *blockingEntity );
+	D3_EVENT( EV_Touch )
 	void					Event_Touch( idEntity *other, trace_t *trace );
+	D3_EVENT( EV_Activate )
 	void					Event_Activate( idEntity *activator );
+	D3_EVENT( EV_Door_StartOpen, "<startOpen>", void )
 	void					Event_StartOpen( void );
+	D3_EVENT( EV_Door_SpawnDoorTrigger, "<spawnDoorTrigger>", void )
 	void					Event_SpawnDoorTrigger( void );
+	D3_EVENT( EV_Door_SpawnSoundTrigger, "<spawnSoundTrigger>", void )
 	void					Event_SpawnSoundTrigger( void );
+	D3_EVENT( EV_Door_Close, "close", void )
 	void					Event_Close( void );
+	D3_EVENT( EV_Door_Open, "open", void )
 	void					Event_Open( void );
+	D3_EVENT( EV_Door_Lock, "lock", void )
 	void					Event_Lock( int f );
+	D3_EVENT( EV_Door_IsOpen, "isOpen", float )
 	void					Event_IsOpen( void );
+	D3_EVENT( EV_Door_IsLocked, "isLocked", float )
 	void					Event_Locked( void );
+	D3_EVENT( EV_SpectatorTouch, "spectatorTouch", void )
 	void					Event_SpectatorTouch( idEntity *other, trace_t *trace );
+	D3_EVENT( EV_Mover_OpenPortal )
 	void					Event_OpenPortal( void );
+	D3_EVENT( EV_Mover_ClosePortal )
 	void					Event_ClosePortal( void );
 };
 
+D3_CLASS()
 class idPlat : public idMover_Binary {
 public:
 	CLASS_PROTOTYPE( idPlat );
@@ -462,8 +541,11 @@ private:
 	void					GetLocalTriggerPosition( const idClipModel *trigger );
 	void					SpawnPlatTrigger( idVec3 &pos );
 
+	D3_EVENT( EV_TeamBlocked )
 	void					Event_TeamBlocked( idEntity *blockedEntity, idEntity *blockingEntity );
+	D3_EVENT( EV_PartBlocked )
 	void					Event_PartBlocked( idEntity *blockingEntity );
+	D3_EVENT( EV_Touch )
 	void					Event_Touch( idEntity *other, trace_t *trace );
 };
 
@@ -476,6 +558,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idMover_Periodic : public idEntity {
 public:
 	CLASS_PROTOTYPE( idMover_Periodic );
@@ -496,10 +579,13 @@ protected:
 	idPhysics_Parametric	physicsObj;
 	float					damage;
 
+	D3_EVENT( EV_TeamBlocked )
 	void					Event_TeamBlocked( idEntity *blockedEntity, idEntity *blockingEntity );
+	D3_EVENT( EV_PartBlocked )
 	void					Event_PartBlocked( idEntity *blockingEntity );
 };
 
+D3_CLASS()
 class idRotater : public idMover_Periodic {
 public:
 	CLASS_PROTOTYPE( idRotater );
@@ -514,9 +600,11 @@ public:
 private:
 	idEntityPtr<idEntity>	activatedBy;
 
+	D3_EVENT( EV_Activate )
 	void					Event_Activate( idEntity *activator );
 };
 
+D3_CLASS()
 class idBobber : public idMover_Periodic {
 public:
 	CLASS_PROTOTYPE( idBobber );
@@ -528,6 +616,7 @@ public:
 private:
 };
 
+D3_CLASS()
 class idPendulum : public idMover_Periodic {
 public:
 	CLASS_PROTOTYPE( idPendulum );
@@ -539,6 +628,7 @@ public:
 private:
 };
 
+D3_CLASS()
 class idRiser : public idMover_Periodic {
 public:
 	CLASS_PROTOTYPE( idRiser );
@@ -548,6 +638,7 @@ public:
 	void					Spawn( void );
 
 private:
+	D3_EVENT( EV_Activate )
 	void					Event_Activate( idEntity *activator );
 };
 

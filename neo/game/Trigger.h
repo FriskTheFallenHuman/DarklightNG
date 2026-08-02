@@ -40,6 +40,7 @@ extern const idEventDef EV_Disable;
 ===============================================================================
 */
 
+D3_CLASS()
 class idTrigger : public idEntity {
 public:
 	CLASS_PROTOTYPE( idTrigger );
@@ -60,7 +61,9 @@ public:
 protected:
 	void				CallScript( void ) const;
 
+	D3_EVENT( EV_Enable, "enable", void )
 	void				Event_Enable( void );
+	D3_EVENT( EV_Disable, "disable", void )
 	void				Event_Disable( void );
 
 	const function_t *	scriptFunction;
@@ -75,6 +78,7 @@ protected:
 ===============================================================================
 */
 
+D3_CLASS()
 class idTrigger_Multi : public idTrigger {
 public:
 	CLASS_PROTOTYPE( idTrigger_Multi );
@@ -106,8 +110,11 @@ private:
 
 	bool				CheckFacing( idEntity *activator );
 	void				TriggerAction( idEntity *activator );
+	D3_EVENT( EV_TriggerAction, "<triggerAction>", void )
 	void				Event_TriggerAction( idEntity *activator );
+	D3_EVENT( EV_Activate )
 	void				Event_Trigger( idEntity *activator );
+	D3_EVENT( EV_Touch )
 	void				Event_Touch( idEntity *other, trace_t *trace );
 };
 
@@ -120,6 +127,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idTrigger_EntityName : public idTrigger {
 public:
 	CLASS_PROTOTYPE( idTrigger_EntityName );
@@ -141,8 +149,11 @@ private:
 	idStr				entityName;
 
 	void				TriggerAction( idEntity *activator );
+	D3_EVENT( EV_TriggerAction )
 	void				Event_TriggerAction( idEntity *activator );
+	D3_EVENT( EV_Activate )
 	void				Event_Trigger( idEntity *activator );
+	D3_EVENT( EV_Touch )
 	void				Event_Touch( idEntity *other, trace_t *trace );
 };
 
@@ -154,6 +165,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idTrigger_Timer : public idTrigger {
 public:
 	CLASS_PROTOTYPE( idTrigger_Timer );
@@ -176,7 +188,9 @@ private:
 	idStr				onName;
 	idStr				offName;
 
+	D3_EVENT( EV_Timer, "<timer>", void )
 	void				Event_Timer( void );
+	D3_EVENT( EV_Activate )
 	void				Event_Use( idEntity *activator );
 };
 
@@ -189,6 +203,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idTrigger_Count : public idTrigger {
 public:
 	CLASS_PROTOTYPE( idTrigger_Count );
@@ -205,7 +220,9 @@ private:
 	int					count;
 	float				delay;
 
+	D3_EVENT( EV_Activate )
 	void				Event_Trigger( idEntity *activator );
+	D3_EVENT( EV_TriggerAction )
 	void				Event_TriggerAction( idEntity *activator );
 };
 
@@ -218,6 +235,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idTrigger_Hurt : public idTrigger {
 public:
 	CLASS_PROTOTYPE( idTrigger_Hurt );
@@ -234,7 +252,9 @@ private:
 	float				delay;
 	int					nextTime;
 
+	D3_EVENT( EV_Touch )
 	void				Event_Touch( idEntity *other, trace_t *trace );
+	D3_EVENT( EV_Activate )
 	void				Event_Toggle( idEntity *activator );
 };
 
@@ -247,12 +267,14 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idTrigger_Fade : public idTrigger {
 public:
 
 	CLASS_PROTOTYPE( idTrigger_Fade );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Trigger( idEntity *activator );
 };
 
@@ -265,6 +287,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idTrigger_Touch : public idTrigger {
 public:
 
@@ -286,6 +309,7 @@ public:
 private:
 	idClipModel *		clipModel;
 
+	D3_EVENT( EV_Activate )
 	void				Event_Trigger( idEntity *activator );
 };
 
@@ -297,6 +321,7 @@ private:
 
 ===============================================================================
 */
+D3_CLASS()
 class idTrigger_Flag : public idTrigger_Multi {
 public:
 	CLASS_PROTOTYPE( idTrigger_Flag );
@@ -310,6 +335,7 @@ private:
 
 	const idEventDef *	eventFlag;
 
+	D3_EVENT( EV_Touch )
 	void				Event_Touch( idEntity *other, trace_t *trace );
 };
 

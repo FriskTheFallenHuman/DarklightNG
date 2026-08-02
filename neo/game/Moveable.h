@@ -40,6 +40,7 @@ If you have questions concerning this license or the applicable additional terms
 extern const idEventDef EV_BecomeNonSolid;
 extern const idEventDef EV_IsAtRest;
 
+D3_CLASS()
 class idMoveable : public idEntity {
 public:
 	CLASS_PROTOTYPE( idMoveable );
@@ -90,10 +91,15 @@ protected:
 	void					InitInitialSpline( int startTime );
 	bool					FollowInitialSplinePath( void );
 
+	D3_EVENT( EV_Activate )
 	void					Event_Activate( idEntity *activator );
+	D3_EVENT( EV_BecomeNonSolid )
 	void					Event_BecomeNonSolid( void );
+	D3_EVENT( EV_SetOwnerFromSpawnArgs, "<setOwnerFromSpawnArgs>", void )
 	void					Event_SetOwnerFromSpawnArgs( void );
+	D3_EVENT( EV_IsAtRest, "isAtRest", integer )
 	void					Event_IsAtRest( void );
+	D3_EVENT( EV_EnableDamage, "enableDamage", void )
 	void					Event_EnableDamage( float enable );
 };
 
@@ -107,6 +113,7 @@ protected:
 ===============================================================================
 */
 
+D3_CLASS()
 class idBarrel : public idMoveable {
 
 public:
@@ -143,6 +150,7 @@ private:
 ===============================================================================
 */
 
+D3_CLASS()
 class idExplodingBarrel : public idBarrel {
 public:
 	CLASS_PROTOTYPE( idExplodingBarrel );
@@ -198,9 +206,13 @@ private:
 	void					AddLight( const char *name , bool burn );
 	void					ExplodingEffects( void );
 
+	D3_EVENT( EV_Activate )
 	void					Event_Activate( idEntity *activator );
+	D3_EVENT( EV_Respawn, "<respawn>", void )
 	void					Event_Respawn();
+	D3_EVENT( EV_Explode, "<explode>", void )
 	void					Event_Explode();
+	D3_EVENT( EV_TriggerTargets, "<triggertargets>", void )
 	void					Event_TriggerTargets();
 };
 

@@ -37,6 +37,7 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
+D3_CLASS()
 class idWorldspawn : public idEntity {
 public:
 	CLASS_PROTOTYPE( idWorldspawn );
@@ -49,6 +50,8 @@ public:
 	void			Restore( idRestoreGame *savefile );
 
 private:
+	D3_EVENT( EV_Remove )
+	D3_EVENT( EV_SafeRemove )
 	void			Event_Remove( void );
 };
 

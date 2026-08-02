@@ -48,8 +48,7 @@ that can be bound to other entities.  Should not be subclassed.
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idSpawnableEntity )
-END_CLASS
+
 
 /*
 ======================
@@ -68,12 +67,8 @@ void idSpawnableEntity::Spawn() {
 ===============================================================================
 */
 
-const idEventDef EV_TeleportStage( "<TeleportStage>", "e" );
 
-CLASS_DECLARATION( idEntity, idPlayerStart )
-	EVENT( EV_Activate,			idPlayerStart::Event_TeleportPlayer )
-	EVENT( EV_TeleportStage,	idPlayerStart::Event_TeleportStage )
-END_CLASS
+
 
 /*
 ===============
@@ -255,9 +250,7 @@ void idPlayerStart::Event_TeleportPlayer( idEntity *activator ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idActivator )
-	EVENT( EV_Activate,		idActivator::Event_Activate )
-END_CLASS
+
 
 /*
 ===============
@@ -339,9 +332,7 @@ idPathCorner
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idPathCorner )
-	EVENT( AI_RandomPath,		idPathCorner::Event_RandomPath )
-END_CLASS
+
 
 /*
 =====================
@@ -421,12 +412,8 @@ void idPathCorner::Event_RandomPath( void ) {
 ===============================================================================
 */
 
-const idEventDef EV_RestoreDamagable( "<RestoreDamagable>" );
 
-CLASS_DECLARATION( idEntity, idDamagable )
-	EVENT( EV_Activate,			idDamagable::Event_BecomeBroken )
-	EVENT( EV_RestoreDamagable,	idDamagable::Event_RestoreDamagable )
-END_CLASS
+
 
 /*
 ================
@@ -605,9 +592,7 @@ void idDamagable::Event_RestoreDamagable( void ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idExplodable )
-	EVENT( EV_Activate,	idExplodable::Event_Explode )
-END_CLASS
+
 
 /*
 ================
@@ -655,9 +640,7 @@ void idExplodable::Event_Explode( idEntity *activator ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idSpring )
-	EVENT( EV_PostSpawn,	idSpring::Event_LinkSpring )
-END_CLASS
+
 
 /*
 ================
@@ -760,13 +743,8 @@ void idSpring::Spawn( void ) {
 ===============================================================================
 */
 
-const idEventDef EV_Toggle( "Toggle", NULL );
 
-CLASS_DECLARATION( idEntity, idForceField )
-	EVENT( EV_Activate,		idForceField::Event_Activate )
-	EVENT( EV_Toggle,		idForceField::Event_Toggle )
-	EVENT( EV_FindTargets,	idForceField::Event_FindTargets )
-END_CLASS
+
 
 /*
 ===============
@@ -900,27 +878,8 @@ void idForceField::Event_FindTargets( void ) {
 ===============================================================================
 */
 
-const idEventDef EV_Animated_Start( "<start>" );
-const idEventDef EV_LaunchMissiles( "launchMissiles", "ssssdf" );
-const idEventDef EV_LaunchMissilesUpdate( "<launchMissiles>", "dddd" );
-const idEventDef EV_AnimDone( "<AnimDone>", "d" );
-const idEventDef EV_StartRagdoll( "startRagdoll" );
-const idEventDef EV_SetAnimation( "setAnimation", "s" );
-const idEventDef EV_GetAnimationLength( "getAnimationLength", NULL, 'f' );
 
-CLASS_DECLARATION( idAFEntity_Gibbable, idAnimated )
-	EVENT( EV_Activate,				idAnimated::Event_Activate )
-	EVENT( EV_Animated_Start,		idAnimated::Event_Start )
-	EVENT( EV_StartRagdoll,			idAnimated::Event_StartRagdoll )
-	EVENT( EV_AnimDone,				idAnimated::Event_AnimDone )
-	EVENT( EV_Footstep,				idAnimated::Event_Footstep )
-	EVENT( EV_FootstepLeft,			idAnimated::Event_Footstep )
-	EVENT( EV_FootstepRight,		idAnimated::Event_Footstep )
-	EVENT( EV_LaunchMissiles,		idAnimated::Event_LaunchMissiles )
-	EVENT( EV_LaunchMissilesUpdate,	idAnimated::Event_LaunchMissilesUpdate )
-	EVENT( EV_SetAnimation,			idAnimated::Event_SetAnimation )
-	EVENT( EV_GetAnimationLength,	idAnimated::Event_GetAnimationLength )
-END_CLASS
+
 
 /*
 ===============
@@ -1500,9 +1459,7 @@ static bool StaticInlineShouldBake( const idDict &args, const idRenderModel *mod
 		!StaticInlineScriptMentionsEntity( entityName ) && !StaticInlineHasIncomingTarget( entityName );
 }
 
-CLASS_DECLARATION( idEntity, idStaticEntity )
-	EVENT( EV_Activate,				idStaticEntity::Event_Activate )
-END_CLASS
+
 
 /*
 ===============
@@ -1759,9 +1716,7 @@ idFuncEmitter
 */
 
 
-CLASS_DECLARATION( idStaticEntity, idFuncEmitter )
-EVENT( EV_Activate,				idFuncEmitter::Event_Activate )
-END_CLASS
+
 
 /*
 ===============
@@ -1857,11 +1812,7 @@ idFuncSplat
 */
 
 
-const idEventDef EV_Splat( "<Splat>" );
-CLASS_DECLARATION( idFuncEmitter, idFuncSplat )
-EVENT( EV_Activate,		idFuncSplat::Event_Activate )
-EVENT( EV_Splat,		idFuncSplat::Event_Splat )
-END_CLASS
+
 
 /*
 ===============
@@ -1918,9 +1869,7 @@ idFuncSmoke
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idFuncSmoke )
-EVENT( EV_Activate,				idFuncSmoke::Event_Activate )
-END_CLASS
+
 
 /*
 ===============
@@ -2028,8 +1977,7 @@ void idFuncSmoke::Think( void ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idTextEntity )
-END_CLASS
+
 
 /*
 ================
@@ -2095,9 +2043,7 @@ void idTextEntity::Think( void ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idVacuumSeparatorEntity )
-	EVENT( EV_Activate,		idVacuumSeparatorEntity::Event_Activate )
-END_CLASS
+
 
 
 /*
@@ -2171,8 +2117,7 @@ idLocationSeparatorEntity
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idLocationSeparatorEntity )
-END_CLASS
+
 
 /*
 ================
@@ -2201,8 +2146,7 @@ void idLocationSeparatorEntity::Spawn() {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idVacuumEntity )
-END_CLASS
+
 
 /*
 ================
@@ -2229,8 +2173,7 @@ idLocationEntity
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idLocationEntity )
-END_CLASS
+
 
 /*
 ======================
@@ -2265,10 +2208,7 @@ const char *idLocationEntity::GetLocation( void ) const {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idBeam )
-	EVENT( EV_PostSpawn,			idBeam::Event_MatchTarget )
-	EVENT( EV_Activate,				idBeam::Event_Activate )
-END_CLASS
+
 
 /*
 ===============
@@ -2467,9 +2407,7 @@ void idBeam::ReadFromSnapshot( const idBitMsgDelta &msg ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idLiquid )
-	EVENT( EV_Touch,			idLiquid::Event_Touch )
-END_CLASS
+
 
 /*
 ================
@@ -2530,9 +2468,7 @@ void idLiquid::Event_Touch( idEntity *other, trace_t *trace ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idShaking )
-	EVENT( EV_Activate,				idShaking::Event_Activate )
-END_CLASS
+
 
 /*
 ===============
@@ -2622,9 +2558,7 @@ void idShaking::Event_Activate( idEntity *activator ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idEarthQuake )
-	EVENT( EV_Activate,				idEarthQuake::Event_Activate )
-END_CLASS
+
 
 /*
 ===============
@@ -2785,9 +2719,7 @@ void idEarthQuake::Think( void ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idFuncPortal )
-	EVENT( EV_Activate,				idFuncPortal::Event_Activate )
-END_CLASS
+
 
 /*
 ===============
@@ -2853,9 +2785,7 @@ void idFuncPortal::Event_Activate( idEntity *activator ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idFuncAASPortal )
-	EVENT( EV_Activate,				idFuncAASPortal::Event_Activate )
-END_CLASS
+
 
 /*
 ===============
@@ -2913,9 +2843,7 @@ void idFuncAASPortal::Event_Activate( idEntity *activator ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idFuncAASObstacle )
-	EVENT( EV_Activate,				idFuncAASObstacle::Event_Activate )
-END_CLASS
+
 
 /*
 ===============
@@ -2975,13 +2903,9 @@ idFuncRadioChatter
 ===============================================================================
 */
 
-const idEventDef EV_ResetRadioHud( "<resetradiohud>", "e" );
 
 
-CLASS_DECLARATION( idEntity, idFuncRadioChatter )
-EVENT( EV_Activate,				idFuncRadioChatter::Event_Activate )
-EVENT( EV_ResetRadioHud,		idFuncRadioChatter::Event_ResetRadioHud )
-END_CLASS
+
 
 /*
 ===============
@@ -3070,9 +2994,7 @@ void idFuncRadioChatter::Event_ResetRadioHud( idEntity *activator ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idPhantomObjects )
-	EVENT( EV_Activate,				idPhantomObjects::Event_Activate )
-END_CLASS
+
 
 /*
 ===============
@@ -3322,9 +3244,7 @@ idShockwave
 
 ===============================================================================
 */
-CLASS_DECLARATION( idEntity, idShockwave )
-EVENT( EV_Activate,			idShockwave::Event_Activate )
-END_CLASS
+
 
 /*
 ===============
@@ -3563,10 +3483,7 @@ idFuncMountedObject
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idFuncMountedObject )
-EVENT( EV_Touch,			idFuncMountedObject::Event_Touch )
-EVENT( EV_Activate,			idFuncMountedObject::Event_Activate )
-END_CLASS
+
 
 /*
 ===============
@@ -3700,9 +3617,7 @@ idFuncMountedWeapon
 
 ===============================================================================
 */
-CLASS_DECLARATION( idFuncMountedObject, idFuncMountedWeapon )
-EVENT( EV_PostSpawn,		idFuncMountedWeapon::Event_PostSpawn )
-END_CLASS
+
 
 idFuncMountedWeapon::idFuncMountedWeapon() {
 	turret = NULL;
@@ -3807,10 +3722,7 @@ idPortalSky
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idPortalSky )
-	EVENT( EV_PostSpawn,			idPortalSky::Event_PostSpawn )
-	EVENT( EV_Activate,				idPortalSky::Event_Activate )
-END_CLASS
+
 
 /*
 ===============

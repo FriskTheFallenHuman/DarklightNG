@@ -40,8 +40,7 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idMultiModelAF )
-END_CLASS
+
 
 /*
 ================
@@ -132,8 +131,7 @@ void idMultiModelAF::Think( void ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idMultiModelAF, idChain )
-END_CLASS
+
 
 /*
 ================
@@ -241,8 +239,7 @@ void idChain::Spawn( void ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idAnimatedEntity, idAFAttachment )
-END_CLASS
+
 
 /*
 =====================
@@ -513,11 +510,8 @@ void idAFAttachment::UnlinkCombat( void ) {
 ===============================================================================
 */
 
-const idEventDef EV_SetConstraintPosition( "SetConstraintPosition", "sv" );
 
-CLASS_DECLARATION( idAnimatedEntity, idAFEntity_Base )
-	EVENT( EV_SetConstraintPosition,	idAFEntity_Base::Event_SetConstraintPosition )
-END_CLASS
+
 
 static const float BOUNCE_SOUND_MIN_VELOCITY	= 80.0f;
 static const float BOUNCE_SOUND_MAX_VELOCITY	= 200.0f;
@@ -942,13 +936,8 @@ idAFEntity_Gibbable
 ===============================================================================
 */
 
-const idEventDef EV_Gib( "gib", "s" );
-const idEventDef EV_Gibbed( "<gibbed>" );
 
-CLASS_DECLARATION( idAFEntity_Base, idAFEntity_Gibbable )
-	EVENT( EV_Gib,		idAFEntity_Gibbable::Event_Gib )
-	EVENT( EV_Gibbed,	idAFEntity_Base::Event_Remove )
-END_CLASS
+
 
 
 /*
@@ -1258,9 +1247,7 @@ void idAFEntity_Gibbable::Event_Gib( const char *damageDefName ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idAFEntity_Gibbable, idAFEntity_Generic )
-	EVENT( EV_Activate,			idAFEntity_Generic::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -1373,10 +1360,7 @@ void idAFEntity_Generic::Event_Activate( idEntity *activator ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idAFEntity_Gibbable, idAFEntity_WithAttachedHead )
-	EVENT( EV_Gib,				idAFEntity_WithAttachedHead::Event_Gib )
-	EVENT( EV_Activate,			idAFEntity_WithAttachedHead::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -1640,8 +1624,7 @@ void idAFEntity_WithAttachedHead::Event_Activate( idEntity *activator ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idAFEntity_Base, idAFEntity_Vehicle )
-END_CLASS
+
 
 /*
 ================
@@ -1756,8 +1739,7 @@ float idAFEntity_Vehicle::GetSteerAngle( void ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idAFEntity_Vehicle, idAFEntity_VehicleSimple )
-END_CLASS
+
 
 /*
 ================
@@ -1949,8 +1931,7 @@ void idAFEntity_VehicleSimple::Think( void ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idAFEntity_Vehicle, idAFEntity_VehicleFourWheels )
-END_CLASS
+
 
 
 /*
@@ -2126,8 +2107,7 @@ void idAFEntity_VehicleFourWheels::Think( void ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idAFEntity_Vehicle, idAFEntity_VehicleSixWheels )
-END_CLASS
+
 
 	/*
 ================
@@ -2313,18 +2293,8 @@ idAFEntity_VehicleAutomated
 
 ===============================================================================
 */
-const idEventDef EV_Vehicle_setVelocity( "setVelocity", "f" );
-const idEventDef EV_Vehicle_setTorque( "setTorque", "f" );
-const idEventDef EV_Vehicle_setSteeringSpeed( "setSteeringSpeed", "f" );
-const idEventDef EV_Vehicle_setWaypoint( "setWaypoint", "e" );
 
-CLASS_DECLARATION( idAFEntity_VehicleSixWheels, idAFEntity_VehicleAutomated )
-EVENT( EV_PostSpawn,				idAFEntity_VehicleAutomated::PostSpawn )
-EVENT( EV_Vehicle_setVelocity,		idAFEntity_VehicleAutomated::Event_SetVelocity )
-EVENT( EV_Vehicle_setTorque,		idAFEntity_VehicleAutomated::Event_SetTorque )
-EVENT( EV_Vehicle_setSteeringSpeed,	idAFEntity_VehicleAutomated::Event_SetSteeringSpeed )
-EVENT( EV_Vehicle_setWaypoint,		idAFEntity_VehicleAutomated::Event_SetWayPoint )
-END_CLASS
+
 
 /*
 ================
@@ -2507,8 +2477,7 @@ void idAFEntity_VehicleAutomated::Think( void ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idAFEntity_Base, idAFEntity_SteamPipe )
-END_CLASS
+
 
 
 /*
@@ -2655,13 +2624,8 @@ void idAFEntity_SteamPipe::Think( void ) {
 ===============================================================================
 */
 
-const idEventDef EV_SetFingerAngle( "setFingerAngle", "f" );
-const idEventDef EV_StopFingers( "stopFingers" );
 
-CLASS_DECLARATION( idAFEntity_Base, idAFEntity_ClawFourFingers )
-	EVENT( EV_SetFingerAngle,		idAFEntity_ClawFourFingers::Event_SetFingerAngle )
-	EVENT( EV_StopFingers,			idAFEntity_ClawFourFingers::Event_StopFingers )
-END_CLASS
+
 
 static const char *clawConstraintNames[] = {
 	"claw1", "claw2", "claw3", "claw4"
@@ -3138,12 +3102,8 @@ idHarvestable
 ===============================================================================
 */
 
-const idEventDef EV_Harvest_SpawnHarvestTrigger( "<spawnHarvestTrigger>", NULL );
 
-CLASS_DECLARATION( idEntity, idHarvestable )
-EVENT( EV_Harvest_SpawnHarvestTrigger,	idHarvestable::Event_SpawnHarvestTrigger )
-EVENT( EV_Touch,						idHarvestable::Event_Touch )
-END_CLASS
+
 
 idHarvestable::idHarvestable() {
 	trigger = NULL;
@@ -3566,11 +3526,8 @@ idAFEntity_Harvest
 ===============================================================================
 */
 
-const idEventDef EV_Harvest_SpawnHarvestEntity( "<spawnHarvestEntity>", NULL );
 
-CLASS_DECLARATION( idAFEntity_WithAttachedHead, idAFEntity_Harvest )
-EVENT( EV_Harvest_SpawnHarvestEntity,	idAFEntity_Harvest::Event_SpawnHarvestEntity )
-END_CLASS
+
 
 /*
 ================

@@ -53,10 +53,7 @@ move around it to view it from different angles.
 
 #include "../Game_local.h"
 
-CLASS_DECLARATION( idAnimatedEntity, idTestModel )
-	EVENT( EV_FootstepLeft,			idTestModel::Event_Footstep )
-	EVENT( EV_FootstepRight,		idTestModel::Event_Footstep )	
-END_CLASS
+
 
 /*
 ================

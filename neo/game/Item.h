@@ -38,6 +38,7 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
+D3_CLASS()
 class idItem : public idEntity {
 public:
 	CLASS_PROTOTYPE( idItem );
@@ -94,13 +95,19 @@ private:
 	bool					UpdateRenderEntity( renderEntity_s *renderEntity, const renderView_t *renderView ) const;
 	static bool				ModelCallback( renderEntity_s *renderEntity, const renderView_t *renderView );
 
+	D3_EVENT( EV_DropToFloor, "<dropToFloor>", void )
 	void					Event_DropToFloor( void );
+	D3_EVENT( EV_Touch )
 	void					Event_Touch( idEntity *other, trace_t *trace );
+	D3_EVENT( EV_Activate )
 	void					Event_Trigger( idEntity *activator );
+	D3_EVENT( EV_RespawnItem, "respawn", void )
 	void					Event_Respawn( void );
+	D3_EVENT( EV_RespawnFx, "<respawnFx>", void )
 	void					Event_RespawnFx( void );
 };
 
+D3_CLASS()
 class idItemPowerup : public idItem {
 public:
 	CLASS_PROTOTYPE( idItemPowerup );
@@ -118,6 +125,7 @@ private:
 	int						type;
 };
 
+D3_CLASS()
 class idObjective : public idItem {
 public:
 	CLASS_PROTOTYPE( idObjective );
@@ -132,12 +140,17 @@ public:
 private:
 	idVec3					playerPos;
 
+	D3_EVENT( EV_Activate )
 	void					Event_Trigger( idEntity *activator );
+	D3_EVENT( EV_HideObjective, "<hideobjective>", void )
 	void					Event_HideObjective( idEntity *e );
+	D3_EVENT( EV_GetPlayerPos, "<getplayerpos>", void )
 	void					Event_GetPlayerPos();
+	D3_EVENT( EV_CamShot, "<camshot>", void )
 	void					Event_CamShot();
 };
 
+D3_CLASS()
 class idVideoCDItem : public idItem {
 public:
 	CLASS_PROTOTYPE( idVideoCDItem );
@@ -146,6 +159,7 @@ public:
 	virtual bool			GiveToPlayer( idPlayer *player );
 };
 
+D3_CLASS()
 class idPDAItem : public idItem {
 public:
 	CLASS_PROTOTYPE( idPDAItem );
@@ -153,6 +167,7 @@ public:
 	virtual bool			GiveToPlayer( idPlayer *player );
 };
 
+D3_CLASS()
 class idMoveableItem : public idItem {
 public:
 	CLASS_PROTOTYPE( idMoveableItem );
@@ -191,12 +206,15 @@ private:
 
 	void					Gib( const idVec3 &dir, const char *damageDefName );
 
+	D3_EVENT( EV_DropToFloor )
 	void					Event_DropToFloor( void );
+	D3_EVENT( EV_Gib )
 	void					Event_Gib( const char *damageDefName );
 };
 
 #ifdef CTF
 
+D3_CLASS()
 class idItemTeam : public idMoveableItem {
 public:
     CLASS_PROTOTYPE( idItemTeam );
@@ -247,9 +265,13 @@ private:
 
 private:
 
+	D3_EVENT( EV_TakeFlag, "takeflag", void )
 	void					Event_TakeFlag( idPlayer * player );
+    D3_EVENT( EV_DropFlag, "dropflag", void )
     void					Event_DropFlag( bool death );
+	D3_EVENT( EV_FlagReturn, "flagreturn", void )
 	void					Event_FlagReturn( idPlayer * player = NULL );
+	D3_EVENT( EV_FlagCapture, "flagcapture", void )
 	void					Event_FlagCapture( void );
 
 	void					PrivateReturn( void );
@@ -262,6 +284,7 @@ private:
 #endif
 
 
+D3_CLASS()
 class idMoveablePDAItem : public idMoveableItem {
 public:
 	CLASS_PROTOTYPE( idMoveablePDAItem );
@@ -277,6 +300,7 @@ public:
 ===============================================================================
 */
 
+D3_CLASS()
 class idItemRemover : public idEntity {
 public:
 	CLASS_PROTOTYPE( idItemRemover );
@@ -285,9 +309,11 @@ public:
 	void					RemoveItem( idPlayer *player );
 
 private:
+	D3_EVENT( EV_Activate )
 	void					Event_Trigger( idEntity *activator );
 };
 
+D3_CLASS()
 class idObjectiveComplete : public idItemRemover {
 public:
 	CLASS_PROTOTYPE( idObjectiveComplete );
@@ -302,8 +328,11 @@ public:
 private:
 	idVec3					playerPos;
 
+	D3_EVENT( EV_Activate )
 	void					Event_Trigger( idEntity *activator );
+	D3_EVENT( EV_HideObjective )
 	void					Event_HideObjective( idEntity *e );
+	D3_EVENT( EV_GetPlayerPos )
 	void					Event_GetPlayerPos();
 };
 

@@ -207,4 +207,7 @@ ID_INLINE int idEventDef::GetEventNum( void ) const {
 	return eventnum;
 }
 
+// Declares every event symbol discovered through D3_EVENT annotations.
+#include "../generated/DoomTypeInfo.generated.h"
+
 #endif /* !__SYS_EVENT_H__ */

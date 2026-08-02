@@ -59,6 +59,7 @@ typedef struct parametricPState_s {
 	bool									useSplineAngles;		// set the orientation using the spline
 } parametricPState_t;
 
+D3_CLASS()
 class idPhysics_Parametric : public idPhysics_Base {
 
 public:

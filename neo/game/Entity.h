@@ -104,6 +104,13 @@ public:
 };
 
 
+D3_EVENT( EV_ClearSignal, "clearSignal", void )
+void D3_EventSignature_ClearSignal( int signal );
+D3_EVENT( EV_MotionBlurOn, "motionBlurOn", void )
+void D3_EventSignature_MotionBlurOn( void );
+D3_EVENT( EV_MotionBlurOff, "motionBlurOff", void )
+void D3_EventSignature_MotionBlurOff( void );
+D3_CLASS( Abstract )
 class idEntity : public idClass {
 public:
 	static const int		MAX_PVS_AREAS = 4;
@@ -413,73 +420,141 @@ private:
 	void					UpdatePVSAreas( void );
 
 	// events
+	D3_EVENT( EV_GetName, "getName", string )
 	void					Event_GetName( void );
+	D3_EVENT( EV_SetName, "setName", void )
 	void					Event_SetName( const char *name );
+	D3_EVENT( EV_FindTargets, "<findTargets>", void )
 	void					Event_FindTargets( void );
+	D3_EVENT( EV_ActivateTargets, "activateTargets", void )
 	void					Event_ActivateTargets( idEntity *activator );
+	D3_EVENT( EV_NumTargets, "numTargets", float )
 	void					Event_NumTargets( void );
+	D3_EVENT( EV_GetTarget, "getTarget", entity )
 	void					Event_GetTarget( float index );
+	D3_EVENT( EV_RandomTarget, "randomTarget", entity )
 	void					Event_RandomTarget( const char *ignore );
+	D3_EVENT( EV_Bind, "bind", void )
 	void					Event_Bind( idEntity *master );
+	D3_EVENT( EV_BindPosition, "bindPosition", void )
 	void					Event_BindPosition( idEntity *master );
+	D3_EVENT( EV_BindToJoint, "bindToJoint", void )
 	void					Event_BindToJoint( idEntity *master, const char *jointname, float orientated );
+	D3_EVENT( EV_Unbind, "unbind", void )
 	void					Event_Unbind( void );
+	D3_EVENT( EV_RemoveBinds, "removeBinds", void )
 	void					Event_RemoveBinds( void );
+	D3_EVENT( EV_SpawnBind, "<spawnbind>", void )
 	void					Event_SpawnBind( void );
+	D3_EVENT( EV_SetOwner, "setOwner", void )
 	void					Event_SetOwner( idEntity *owner );
+	D3_EVENT( EV_SetModel, "setModel", void )
 	void					Event_SetModel( const char *modelname );
+	D3_EVENT( EV_SetSkin, "setSkin", void )
 	void					Event_SetSkin( const char *skinname );
+	D3_EVENT( EV_GetShaderParm, "getShaderParm", float )
 	void					Event_GetShaderParm( int parmnum );
+	D3_EVENT( EV_SetShaderParm, "setShaderParm", void )
 	void					Event_SetShaderParm( int parmnum, float value );
+	D3_EVENT( EV_SetShaderParms, "setShaderParms", void )
 	void					Event_SetShaderParms( float parm0, float parm1, float parm2, float parm3 );
+	D3_EVENT( EV_SetColor, "setColor", void )
 	void					Event_SetColor( float red, float green, float blue );
+	D3_EVENT( EV_GetColor, "getColor", vector )
 	void					Event_GetColor( void );
+	D3_EVENT( EV_IsHidden, "isHidden", integer )
 	void					Event_IsHidden( void );
+	D3_EVENT( EV_Hide, "hide", void )
 	void					Event_Hide( void );
+	D3_EVENT( EV_Show, "show", void )
 	void					Event_Show( void );
+	D3_EVENT( EV_CacheSoundShader, "cacheSoundShader", void )
 	void					Event_CacheSoundShader( const char *soundName );
+	D3_EVENT( EV_StartSoundShader, "startSoundShader", float )
 	void					Event_StartSoundShader( const char *soundName, int channel );
+	D3_EVENT( EV_StopSound )
 	void					Event_StopSound( int channel, int netSync );
+	D3_EVENT( EV_StartSound, "startSound", float )
 	void					Event_StartSound( const char *soundName, int channel, int netSync );
+	D3_EVENT( EV_FadeSound, "fadeSound", void )
 	void					Event_FadeSound( int channel, float to, float over );
+	D3_EVENT( EV_GetWorldOrigin, "getWorldOrigin", vector )
 	void					Event_GetWorldOrigin( void );
+	D3_EVENT( EV_SetWorldOrigin, "setWorldOrigin", void )
 	void					Event_SetWorldOrigin( idVec3 const &org );
+	D3_EVENT( EV_GetOrigin, "getOrigin", vector )
 	void					Event_GetOrigin( void );
+	D3_EVENT( EV_SetOrigin, "setOrigin", void )
 	void					Event_SetOrigin( const idVec3 &org );
+	D3_EVENT( EV_GetAngles )
 	void					Event_GetAngles( void );
+	D3_EVENT( EV_SetAngles )
 	void					Event_SetAngles( const idAngles &ang );
+	D3_EVENT( EV_SetLinearVelocity, "setLinearVelocity", void )
 	void					Event_SetLinearVelocity( const idVec3 &velocity );
+	D3_EVENT( EV_GetLinearVelocity, "getLinearVelocity", vector )
 	void					Event_GetLinearVelocity( void );
+	D3_EVENT( EV_SetAngularVelocity, "setAngularVelocity", void )
 	void					Event_SetAngularVelocity( const idVec3 &velocity );
+	D3_EVENT( EV_GetAngularVelocity, "getAngularVelocity", vector )
 	void					Event_GetAngularVelocity( void );
+	D3_EVENT( EV_SetSize, "setSize", void )
 	void					Event_SetSize( const idVec3 &mins, const idVec3 &maxs );
+	D3_EVENT( EV_GetSize, "getSize", vector )
 	void					Event_GetSize( void );
+	D3_EVENT( EV_GetMins, "getMins", vector )
 	void					Event_GetMins( void );
+	D3_EVENT( EV_GetMaxs, "getMaxs", vector )
 	void					Event_GetMaxs( void );
-	void					Event_Touches( idEntity *ent );
+	D3_EVENT( EV_Touches, "touches", integer )
+	void					Event_Touches( D3_NULLABLE idEntity *ent );
+	D3_EVENT( EV_SetGuiParm, "setGuiParm", void )
 	void					Event_SetGuiParm( const char *key, const char *val );
+	D3_EVENT( EV_SetGuiFloat, "setGuiFloat", void )
 	void					Event_SetGuiFloat( const char *key, float f );
+	D3_EVENT( EV_GetNextKey, "getNextKey", string )
 	void					Event_GetNextKey( const char *prefix, const char *lastMatch );
+	D3_EVENT( EV_SetKey, "setKey", void )
 	void					Event_SetKey( const char *key, const char *value );
+	D3_EVENT( EV_GetKey, "getKey", string )
 	void					Event_GetKey( const char *key );
+	D3_EVENT( EV_GetIntKey, "getIntKey", float )
 	void					Event_GetIntKey( const char *key );
+	D3_EVENT( EV_GetFloatKey, "getFloatKey", float )
 	void					Event_GetFloatKey( const char *key );
+	D3_EVENT( EV_GetVectorKey, "getVectorKey", vector )
 	void					Event_GetVectorKey( const char *key );
+	D3_EVENT( EV_GetEntityKey, "getEntityKey", entity )
 	void					Event_GetEntityKey( const char *key );
+	D3_EVENT( EV_RestorePosition, "restorePosition", void )
 	void					Event_RestorePosition( void );
+	D3_EVENT( EV_UpdateCameraTarget, "<updateCameraTarget>", void )
 	void					Event_UpdateCameraTarget( void );
-	void					Event_DistanceTo( idEntity *ent );
+	D3_EVENT( EV_DistanceTo, "distanceTo", float )
+	void					Event_DistanceTo( D3_NULLABLE idEntity *ent );
+	D3_EVENT( EV_DistanceToPoint, "distanceToPoint", float )
 	void					Event_DistanceToPoint( const idVec3 &point );
+	D3_EVENT( EV_StartFx, "startFx", void )
 	void					Event_StartFx( const char *fx );
+	D3_EVENT( EV_Thread_WaitFrame, "waitFrame", void )
 	void					Event_WaitFrame( void );
+	D3_EVENT( EV_Thread_Wait, "wait", void )
 	void					Event_Wait( float time );
+	D3_EVENT( EV_HasFunction, "hasFunction", integer )
 	void					Event_HasFunction( const char *name );
+	D3_EVENT( EV_CallFunction, "callFunction", void )
 	void					Event_CallFunction( const char *name );
+	D3_EVENT( EV_SetNeverDormant, "setNeverDormant", void )
 	void					Event_SetNeverDormant( int enable );
+	D3_EVENT( EV_SetGui, "setGui", void )
 	void					Event_SetGui( int guiNum, const char *guiName);
+	D3_EVENT( EV_PrecacheGui, "precacheGui", void )
 	void					Event_PrecacheGui( const char *guiName );
+	D3_EVENT( EV_GetGuiParm, "getGuiParm", string )
 	void					Event_GetGuiParm(int guiNum, const char *key);
+	D3_EVENT( EV_GetGuiParmFloat, "getGuiParmFloat", float )
 	void					Event_GetGuiParmFloat(int guiNum, const char *key);
+	D3_EVENT( EV_GuiNamedEvent, "guiNamedEvent", void )
 	void					Event_GuiNamedEvent(int guiNum, const char *event);
 };
 
@@ -500,6 +575,7 @@ typedef struct damageEffect_s {
 	struct damageEffect_s *	next;
 } damageEffect_t;
 
+D3_CLASS()
 class idAnimatedEntity : public idEntity {
 public:
 	CLASS_PROTOTYPE( idAnimatedEntity );
@@ -538,12 +614,19 @@ protected:
 	damageEffect_t *		damageEffects;
 
 private:
+	D3_EVENT( EV_GetJointHandle, "getJointHandle", integer )
 	void					Event_GetJointHandle( const char *jointname );
+	D3_EVENT( EV_ClearAllJoints, "clearAllJoints", void )
 	void 					Event_ClearAllJoints( void );
+	D3_EVENT( EV_ClearJoint, "clearJoint", void )
 	void 					Event_ClearJoint( jointHandle_t jointnum );
+	D3_EVENT( EV_SetJointPos, "setJointPos", void )
 	void 					Event_SetJointPos( jointHandle_t jointnum, jointModTransform_t transform_type, const idVec3 &pos );
+	D3_EVENT( EV_SetJointAngle, "setJointAngle", void )
 	void 					Event_SetJointAngle( jointHandle_t jointnum, jointModTransform_t transform_type, const idAngles &angles );
+	D3_EVENT( EV_GetJointPos, "getJointPos", vector )
 	void 					Event_GetJointPos( jointHandle_t jointnum );
+	D3_EVENT( EV_GetJointAngle, "getJointAngle", vector )
 	void 					Event_GetJointAngle( jointHandle_t jointnum );
 };
 

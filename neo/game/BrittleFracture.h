@@ -52,6 +52,7 @@ typedef struct shard_s {
 } shard_t;
 
 
+D3_CLASS()
 class idBrittleFracture : public idEntity {
 
 public:
@@ -125,7 +126,9 @@ private:
 	void						CreateFractures( const idRenderModel *renderModel );
 	void						FindNeighbours( void );
 
+	D3_EVENT( EV_Activate )
 	void						Event_Activate( idEntity *activator );
+	D3_EVENT( EV_Touch )
 	void						Event_Touch( idEntity *other, trace_t *trace );
 };
 

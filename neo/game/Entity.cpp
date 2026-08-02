@@ -40,149 +40,8 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 // overridable events
-const idEventDef EV_PostSpawn( "<postspawn>", NULL );
-const idEventDef EV_FindTargets( "<findTargets>", NULL );
-const idEventDef EV_Touch( "<touch>", "et" );
-const idEventDef EV_GetName( "getName", NULL, 's' );
-const idEventDef EV_SetName( "setName", "s" );
-const idEventDef EV_Activate( "activate", "e" );
-const idEventDef EV_ActivateTargets( "activateTargets", "e" );
-const idEventDef EV_NumTargets( "numTargets", NULL, 'f' );
-const idEventDef EV_GetTarget( "getTarget", "f", 'e' );
-const idEventDef EV_RandomTarget( "randomTarget", "s", 'e' );
-const idEventDef EV_Bind( "bind", "e" );
-const idEventDef EV_BindPosition( "bindPosition", "e" );
-const idEventDef EV_BindToJoint( "bindToJoint", "esf" );
-const idEventDef EV_Unbind( "unbind", NULL );
-const idEventDef EV_RemoveBinds( "removeBinds" );
-const idEventDef EV_SpawnBind( "<spawnbind>", NULL );
-const idEventDef EV_SetOwner( "setOwner", "e" );
-const idEventDef EV_SetModel( "setModel", "s" );
-const idEventDef EV_SetSkin( "setSkin", "s" );
-const idEventDef EV_GetWorldOrigin( "getWorldOrigin", NULL, 'v' );
-const idEventDef EV_SetWorldOrigin( "setWorldOrigin", "v" );
-const idEventDef EV_GetOrigin( "getOrigin", NULL, 'v' );
-const idEventDef EV_SetOrigin( "setOrigin", "v" );
-const idEventDef EV_GetAngles( "getAngles", NULL, 'v' );
-const idEventDef EV_SetAngles( "setAngles", "v" );
-const idEventDef EV_GetLinearVelocity( "getLinearVelocity", NULL, 'v' );
-const idEventDef EV_SetLinearVelocity( "setLinearVelocity", "v" );
-const idEventDef EV_GetAngularVelocity( "getAngularVelocity", NULL, 'v' );
-const idEventDef EV_SetAngularVelocity( "setAngularVelocity", "v" );
-const idEventDef EV_GetSize( "getSize", NULL, 'v' );
-const idEventDef EV_SetSize( "setSize", "vv" );
-const idEventDef EV_GetMins( "getMins", NULL, 'v' );
-const idEventDef EV_GetMaxs( "getMaxs", NULL, 'v' );
-const idEventDef EV_IsHidden( "isHidden", NULL, 'd' );
-const idEventDef EV_Hide( "hide", NULL );
-const idEventDef EV_Show( "show", NULL );
-const idEventDef EV_Touches( "touches", "E", 'd' );
-const idEventDef EV_ClearSignal( "clearSignal", "d" );
-const idEventDef EV_GetShaderParm( "getShaderParm", "d", 'f' );
-const idEventDef EV_SetShaderParm( "setShaderParm", "df" );
-const idEventDef EV_SetShaderParms( "setShaderParms", "ffff" );
-const idEventDef EV_SetColor( "setColor", "fff" );
-const idEventDef EV_GetColor( "getColor", NULL, 'v' );
-const idEventDef EV_CacheSoundShader( "cacheSoundShader", "s" );
-const idEventDef EV_StartSoundShader( "startSoundShader", "sd", 'f' );
-const idEventDef EV_StartSound( "startSound", "sdd", 'f' );
-const idEventDef EV_StopSound( "stopSound", "dd" );
-const idEventDef EV_FadeSound( "fadeSound", "dff" );
-const idEventDef EV_SetGuiParm( "setGuiParm", "ss" );
-const idEventDef EV_SetGuiFloat( "setGuiFloat", "sf" );
-const idEventDef EV_GetNextKey( "getNextKey", "ss", 's' );
-const idEventDef EV_SetKey( "setKey", "ss" );
-const idEventDef EV_GetKey( "getKey", "s", 's' );
-const idEventDef EV_GetIntKey( "getIntKey", "s", 'f' );
-const idEventDef EV_GetFloatKey( "getFloatKey", "s", 'f' );
-const idEventDef EV_GetVectorKey( "getVectorKey", "s", 'v' );
-const idEventDef EV_GetEntityKey( "getEntityKey", "s", 'e' );
-const idEventDef EV_RestorePosition( "restorePosition" );
-const idEventDef EV_UpdateCameraTarget( "<updateCameraTarget>", NULL );
-const idEventDef EV_DistanceTo( "distanceTo", "E", 'f' );
-const idEventDef EV_DistanceToPoint( "distanceToPoint", "v", 'f' );
-const idEventDef EV_StartFx( "startFx", "s" );
-const idEventDef EV_HasFunction( "hasFunction", "s", 'd' );
-const idEventDef EV_CallFunction( "callFunction", "s" );
-const idEventDef EV_SetNeverDormant( "setNeverDormant", "d" );
-const idEventDef EV_SetGui ( "setGui", "ds" );
-const idEventDef EV_PrecacheGui ( "precacheGui", "s" );
-const idEventDef EV_GetGuiParm ( "getGuiParm", "ds", 's' );
-const idEventDef EV_GetGuiParmFloat ( "getGuiParmFloat", "ds", 'f' );
-const idEventDef EV_MotionBlurOn( "motionBlurOn" );
-const idEventDef EV_MotionBlurOff( "motionBlurOff" );
-const idEventDef EV_GuiNamedEvent ( "guiNamedEvent", "ds" );
 
-ABSTRACT_DECLARATION( idClass, idEntity )
-	EVENT( EV_GetName,				idEntity::Event_GetName )
-	EVENT( EV_SetName,				idEntity::Event_SetName )
-	EVENT( EV_FindTargets,			idEntity::Event_FindTargets )
-	EVENT( EV_ActivateTargets,		idEntity::Event_ActivateTargets )
-	EVENT( EV_NumTargets,			idEntity::Event_NumTargets )
-	EVENT( EV_GetTarget,			idEntity::Event_GetTarget )
-	EVENT( EV_RandomTarget,			idEntity::Event_RandomTarget )
-	EVENT( EV_BindToJoint,			idEntity::Event_BindToJoint )
-	EVENT( EV_RemoveBinds,			idEntity::Event_RemoveBinds )
-	EVENT( EV_Bind,					idEntity::Event_Bind )
-	EVENT( EV_BindPosition,			idEntity::Event_BindPosition )
-	EVENT( EV_Unbind,				idEntity::Event_Unbind )
-	EVENT( EV_SpawnBind,			idEntity::Event_SpawnBind )
-	EVENT( EV_SetOwner,				idEntity::Event_SetOwner )
-	EVENT( EV_SetModel,				idEntity::Event_SetModel )
-	EVENT( EV_SetSkin,				idEntity::Event_SetSkin )
-	EVENT( EV_GetShaderParm,		idEntity::Event_GetShaderParm )
-	EVENT( EV_SetShaderParm,		idEntity::Event_SetShaderParm )
-	EVENT( EV_SetShaderParms,		idEntity::Event_SetShaderParms )
-	EVENT( EV_SetColor,				idEntity::Event_SetColor )
-	EVENT( EV_GetColor,				idEntity::Event_GetColor )
-	EVENT( EV_IsHidden,				idEntity::Event_IsHidden )
-	EVENT( EV_Hide,					idEntity::Event_Hide )
-	EVENT( EV_Show,					idEntity::Event_Show )
-	EVENT( EV_CacheSoundShader,		idEntity::Event_CacheSoundShader )
-	EVENT( EV_StartSoundShader,		idEntity::Event_StartSoundShader )
-	EVENT( EV_StartSound,			idEntity::Event_StartSound )
-	EVENT( EV_StopSound,			idEntity::Event_StopSound )
-	EVENT( EV_FadeSound,			idEntity::Event_FadeSound )
-	EVENT( EV_GetWorldOrigin,		idEntity::Event_GetWorldOrigin )
-	EVENT( EV_SetWorldOrigin,		idEntity::Event_SetWorldOrigin )
-	EVENT( EV_GetOrigin,			idEntity::Event_GetOrigin )
-	EVENT( EV_SetOrigin,			idEntity::Event_SetOrigin )
-	EVENT( EV_GetAngles,			idEntity::Event_GetAngles )
-	EVENT( EV_SetAngles,			idEntity::Event_SetAngles )
-	EVENT( EV_GetLinearVelocity,	idEntity::Event_GetLinearVelocity )
-	EVENT( EV_SetLinearVelocity,	idEntity::Event_SetLinearVelocity )
-	EVENT( EV_GetAngularVelocity,	idEntity::Event_GetAngularVelocity )
-	EVENT( EV_SetAngularVelocity,	idEntity::Event_SetAngularVelocity )
-	EVENT( EV_GetSize,				idEntity::Event_GetSize )
-	EVENT( EV_SetSize,				idEntity::Event_SetSize )
-	EVENT( EV_GetMins,				idEntity::Event_GetMins)
-	EVENT( EV_GetMaxs,				idEntity::Event_GetMaxs )
-	EVENT( EV_Touches,				idEntity::Event_Touches )
-	EVENT( EV_SetGuiParm, 			idEntity::Event_SetGuiParm )
-	EVENT( EV_SetGuiFloat, 			idEntity::Event_SetGuiFloat )
-	EVENT( EV_GetNextKey,			idEntity::Event_GetNextKey )
-	EVENT( EV_SetKey,				idEntity::Event_SetKey )
-	EVENT( EV_GetKey,				idEntity::Event_GetKey )
-	EVENT( EV_GetIntKey,			idEntity::Event_GetIntKey )
-	EVENT( EV_GetFloatKey,			idEntity::Event_GetFloatKey )
-	EVENT( EV_GetVectorKey,			idEntity::Event_GetVectorKey )
-	EVENT( EV_GetEntityKey,			idEntity::Event_GetEntityKey )
-	EVENT( EV_RestorePosition,		idEntity::Event_RestorePosition )
-	EVENT( EV_UpdateCameraTarget,	idEntity::Event_UpdateCameraTarget )
-	EVENT( EV_DistanceTo,			idEntity::Event_DistanceTo )
-	EVENT( EV_DistanceToPoint,		idEntity::Event_DistanceToPoint )
-	EVENT( EV_StartFx,				idEntity::Event_StartFx )
-	EVENT( EV_Thread_WaitFrame,		idEntity::Event_WaitFrame )
-	EVENT( EV_Thread_Wait,			idEntity::Event_Wait )
-	EVENT( EV_HasFunction,			idEntity::Event_HasFunction )
-	EVENT( EV_CallFunction,			idEntity::Event_CallFunction )
-	EVENT( EV_SetNeverDormant,		idEntity::Event_SetNeverDormant )
-	EVENT( EV_SetGui,				idEntity::Event_SetGui )
-	EVENT( EV_PrecacheGui,			idEntity::Event_PrecacheGui )
-	EVENT( EV_GetGuiParm,			idEntity::Event_GetGuiParm )
-	EVENT( EV_GetGuiParmFloat,		idEntity::Event_GetGuiParmFloat )
-	EVENT( EV_GuiNamedEvent,		idEntity::Event_GuiNamedEvent )
-END_CLASS
+
 
 /*
 ================
@@ -5083,23 +4942,8 @@ bool idEntity::IsGrabbed() {
 ===============================================================================
 */
 
-const idEventDef EV_GetJointHandle( "getJointHandle", "s", 'd' );
-const idEventDef EV_ClearAllJoints( "clearAllJoints" );
-const idEventDef EV_ClearJoint( "clearJoint", "d" );
-const idEventDef EV_SetJointPos( "setJointPos", "ddv" );
-const idEventDef EV_SetJointAngle( "setJointAngle", "ddv" );
-const idEventDef EV_GetJointPos( "getJointPos", "d", 'v' );
-const idEventDef EV_GetJointAngle( "getJointAngle", "d", 'v' );
 
-CLASS_DECLARATION( idEntity, idAnimatedEntity )
-	EVENT( EV_GetJointHandle,		idAnimatedEntity::Event_GetJointHandle )
-	EVENT( EV_ClearAllJoints,		idAnimatedEntity::Event_ClearAllJoints )
-	EVENT( EV_ClearJoint,			idAnimatedEntity::Event_ClearJoint )
-	EVENT( EV_SetJointPos,			idAnimatedEntity::Event_SetJointPos )
-	EVENT( EV_SetJointAngle,		idAnimatedEntity::Event_SetJointAngle )
-	EVENT( EV_GetJointPos,			idAnimatedEntity::Event_GetJointPos )
-	EVENT( EV_GetJointAngle,		idAnimatedEntity::Event_GetJointAngle )
-END_CLASS
+
 
 /*
 ================

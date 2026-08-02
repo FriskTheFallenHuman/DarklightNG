@@ -39,6 +39,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #define contactEntity_t		idEntityPtr<idEntity>
 
+D3_CLASS()
 class idPhysics_Base : public idPhysics {
 
 public:

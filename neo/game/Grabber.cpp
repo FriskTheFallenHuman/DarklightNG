@@ -49,8 +49,7 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idGrabber )
-END_CLASS
+
 
 /*
 ==============

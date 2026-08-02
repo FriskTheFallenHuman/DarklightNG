@@ -5104,12 +5104,8 @@ idCombatNode
 
 ***********************************************************************/
 
-const idEventDef EV_CombatNode_MarkUsed( "markUsed" );
 
-CLASS_DECLARATION( idEntity, idCombatNode )
-	EVENT( EV_CombatNode_MarkUsed,				idCombatNode::Event_MarkUsed )
-	EVENT( EV_Activate,							idCombatNode::Event_Activate )
-END_CLASS
+
 
 /*
 =====================

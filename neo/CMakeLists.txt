@@ -14,6 +14,60 @@ set(DARKLIGHT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
 get_filename_component(DARKLIGHT_ROOT "${DARKLIGHT_ROOT}" ABSOLUTE)
 set(DARKLIGHT_OUT "${DARKLIGHT_ROOT}/out")
 
+# C# TypeInfo header tool. This follows the UnrealHeaderTool model: inert tags
+# on declarations are scanned before the DLL compiles, and one generated header
+# supplies both event declarations and (at its single implementation include)
+# the event objects and class registration tables. A stamp absorbs no-op scans
+# so unchanged generated files keep their timestamps and do not force builds.
+find_program(DOTNET_EXECUTABLE dotnet REQUIRED)
+set(DARKLIGHT_TYPEINFO_PROJECT "${CMAKE_CURRENT_SOURCE_DIR}/TypeInfo/DoomTypeInfo.csproj")
+set(DARKLIGHT_TYPEINFO_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/game/generated/DoomTypeInfo.generated.h")
+set(DARKLIGHT_TYPEINFO_SCRIPT "${DARKLIGHT_ROOT}/base/script/doom_events.script")
+set(DARKLIGHT_TYPEINFO_STAMP "${DARKLIGHT_OUT}/typeinfo/typeinfo.stamp")
+
+file(GLOB_RECURSE DARKLIGHT_TYPEINFO_TOOL_SOURCES CONFIGURE_DEPENDS
+	"TypeInfo/*.cs"
+	"TypeInfo/*.csproj"
+)
+list(FILTER DARKLIGHT_TYPEINFO_TOOL_SOURCES EXCLUDE REGEX "/(bin|obj)/")
+file(GLOB_RECURSE DARKLIGHT_TYPEINFO_INPUTS CONFIGURE_DEPENDS
+	"game/*.cpp"
+	"game/*.h"
+)
+list(FILTER DARKLIGHT_TYPEINFO_INPUTS EXCLUDE REGEX "/game/generated/")
+
+add_custom_command(
+	OUTPUT "${DARKLIGHT_TYPEINFO_STAMP}"
+	BYPRODUCTS
+		"${DARKLIGHT_TYPEINFO_HEADER}"
+		"${DARKLIGHT_TYPEINFO_SCRIPT}"
+	COMMAND "${CMAKE_COMMAND}" -E make_directory "${DARKLIGHT_OUT}/typeinfo"
+	# MSBuild's native VC environment carries a legacy LIB entry that Roslyn
+	# reports as CS1668. The C# tool has no native library dependencies.
+	COMMAND "${CMAKE_COMMAND}" -E env --unset=LIB "${DOTNET_EXECUTABLE}" run
+		--project "${DARKLIGHT_TYPEINFO_PROJECT}"
+		--configuration Release
+		--no-launch-profile
+		--
+		generate
+		--source "${CMAKE_CURRENT_SOURCE_DIR}/game"
+		--header "${DARKLIGHT_TYPEINFO_HEADER}"
+		--script "${DARKLIGHT_TYPEINFO_SCRIPT}"
+		--stamp "${DARKLIGHT_TYPEINFO_STAMP}"
+		--exclude EndLevel.cpp
+	DEPENDS ${DARKLIGHT_TYPEINFO_TOOL_SOURCES} ${DARKLIGHT_TYPEINFO_INPUTS}
+	WORKING_DIRECTORY "${DARKLIGHT_ROOT}"
+	COMMENT "Generating Doom events and runtime class metadata"
+	VERBATIM
+)
+
+add_custom_target(darklight_typeinfo DEPENDS "${DARKLIGHT_TYPEINFO_STAMP}")
+set_target_properties(darklight_typeinfo PROPERTIES FOLDER "Build Tools")
+set_source_files_properties(
+	"${DARKLIGHT_TYPEINFO_HEADER}"
+	PROPERTIES GENERATED TRUE
+)
+
 # Keep the normal playable Release pair beside base/. Other configurations use
 # their own directories so a Debug gamex86.dll can never silently replace the
 # Release DLL while Visual Studio still considers the Release target current.
@@ -83,6 +137,7 @@ list(REMOVE_ITEM GAME_SOURCES
 )
 
 add_library(game SHARED ${GAME_SOURCES} "game/Game.def")
+add_dependencies(game darklight_typeinfo)
 set_source_files_properties("game/gamesys/TypeInfo.cpp" PROPERTIES
 	SKIP_PRECOMPILE_HEADERS ON
 	COMPILE_DEFINITIONS _ALLOW_KEYWORD_MACROS

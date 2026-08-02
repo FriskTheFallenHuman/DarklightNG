@@ -42,6 +42,7 @@ If you have questions concerning this license or the applicable additional terms
 class idEntity;
 class idPhysics;
 
+D3_CLASS()
 class idForce : public idClass {
 
 public:

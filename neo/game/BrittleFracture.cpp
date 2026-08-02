@@ -32,10 +32,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "Game_local.h"
 
 
-CLASS_DECLARATION( idEntity, idBrittleFracture )
-	EVENT( EV_Activate, idBrittleFracture::Event_Activate )
-	EVENT( EV_Touch, idBrittleFracture::Event_Touch )
-END_CLASS
+
 
 const int SHARD_ALIVE_TIME	= 5000;
 const int SHARD_FADE_START	= 2000;

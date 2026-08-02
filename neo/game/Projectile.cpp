@@ -44,25 +44,9 @@ static const int BFG_DAMAGE_FREQUENCY			= 333;
 static const float BOUNCE_SOUND_MIN_VELOCITY	= 200.0f;
 static const float BOUNCE_SOUND_MAX_VELOCITY	= 400.0f;
 
-const idEventDef EV_Explode( "<explode>", NULL );
-const idEventDef EV_Fizzle( "<fizzle>", NULL );
-const idEventDef EV_RadiusDamage( "<radiusdmg>", "e" );
-const idEventDef EV_GetProjectileState( "getProjectileState", NULL, 'd' );
 
-const idEventDef EV_CreateProjectile( "projectileCreateProjectile", "evv" );
-const idEventDef EV_LaunchProjectile( "projectileLaunchProjectile", "vvv" );
-const idEventDef EV_SetGravity( "setGravity", "f" );
 
-CLASS_DECLARATION( idEntity, idProjectile )
-	EVENT( EV_Explode,				idProjectile::Event_Explode )
-	EVENT( EV_Fizzle,				idProjectile::Event_Fizzle )
-	EVENT( EV_Touch,				idProjectile::Event_Touch )
-	EVENT( EV_RadiusDamage,			idProjectile::Event_RadiusDamage )
-	EVENT( EV_GetProjectileState,	idProjectile::Event_GetProjectileState )
-	EVENT( EV_CreateProjectile,		idProjectile::Event_CreateProjectile )
-	EVENT( EV_LaunchProjectile,		idProjectile::Event_LaunchProjectile )
-	EVENT( EV_SetGravity,			idProjectile::Event_SetGravity )
-END_CLASS
+
 
 /*
 ================
@@ -1372,11 +1356,8 @@ bool idProjectile::ClientReceiveEvent( int event, int time, const idBitMsg &msg 
 ===============================================================================
 */
 
-const idEventDef EV_SetEnemy( "setEnemy", "E" );
 
-CLASS_DECLARATION( idProjectile, idGuidedProjectile )
-	EVENT( EV_SetEnemy,		idGuidedProjectile::Event_SetEnemy )
-END_CLASS
+
 
 /*
 ================
@@ -1604,8 +1585,7 @@ idSoulCubeMissile
 ===============================================================================
 */
 
-CLASS_DECLARATION( idGuidedProjectile, idSoulCubeMissile )
-END_CLASS
+
 
 /*
 ================
@@ -1823,11 +1803,8 @@ idBFGProjectile
 
 ===============================================================================
 */
-const idEventDef EV_RemoveBeams( "<removeBeams>", NULL );
 
-CLASS_DECLARATION( idProjectile, idBFGProjectile )
-	EVENT( EV_RemoveBeams,		idBFGProjectile::Event_RemoveBeams )
-END_CLASS
+
 
 
 /*
@@ -2268,10 +2245,7 @@ void idBFGProjectile::Explode( const trace_t &collision, idEntity *ignore ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idDebris )
-EVENT( EV_Explode,			idDebris::Event_Explode )
-EVENT( EV_Fizzle,			idDebris::Event_Fizzle )
-END_CLASS
+
 
 /*
 ================

@@ -44,8 +44,7 @@ idTarget
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idTarget )
-END_CLASS
+
 
 
 /*
@@ -56,9 +55,7 @@ idTarget_Remove
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_Remove )
-	EVENT( EV_Activate, idTarget_Remove::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -89,9 +86,7 @@ idTarget_Show
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_Show )
-	EVENT( EV_Activate, idTarget_Show::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -122,9 +117,7 @@ idTarget_Damage
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_Damage )
-	EVENT( EV_Activate, idTarget_Damage::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -154,9 +147,7 @@ idTarget_SessionCommand
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_SessionCommand )
-	EVENT( EV_Activate, idTarget_SessionCommand::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -177,9 +168,7 @@ Just a modified form of idTarget_SessionCommand
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_EndLevel )
-	EVENT( EV_Activate,		idTarget_EndLevel::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -225,9 +214,7 @@ idTarget_WaitForButton
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_WaitForButton )
-	EVENT( EV_Activate, idTarget_WaitForButton::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -273,9 +260,7 @@ idTarget_SetGlobalShaderParm
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_SetGlobalShaderTime )
-EVENT( EV_Activate,	idTarget_SetGlobalShaderTime::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -298,9 +283,7 @@ idTarget_SetShaderParm
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_SetShaderParm )
-	EVENT( EV_Activate,	idTarget_SetShaderParm::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -352,9 +335,7 @@ idTarget_SetShaderTime
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_SetShaderTime )
-	EVENT( EV_Activate,	idTarget_SetShaderTime::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -386,9 +367,7 @@ idTarget_FadeEntity
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_FadeEntity )
-	EVENT( EV_Activate,				idTarget_FadeEntity::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -495,9 +474,7 @@ idTarget_LightFadeIn
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_LightFadeIn )
-	EVENT( EV_Activate,				idTarget_LightFadeIn::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -538,9 +515,7 @@ idTarget_LightFadeOut
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_LightFadeOut )
-	EVENT( EV_Activate,				idTarget_LightFadeOut::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -581,9 +556,7 @@ idTarget_Give
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_Give )
-	EVENT( EV_Activate,				idTarget_Give::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -636,9 +609,7 @@ idTarget_GiveEmail
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_GiveEmail )
-EVENT( EV_Activate,				idTarget_GiveEmail::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -672,9 +643,7 @@ idTarget_SetModel
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_SetModel )
-	EVENT( EV_Activate,	idTarget_SetModel::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -716,18 +685,8 @@ idTarget_SetInfluence
 ===============================================================================
 */
 
-const idEventDef EV_RestoreInfluence( "<RestoreInfluece>" );
-const idEventDef EV_GatherEntities( "<GatherEntities>" );
-const idEventDef EV_Flash( "<Flash>", "fd" );
-const idEventDef EV_ClearFlash( "<ClearFlash>", "f" );
 
-CLASS_DECLARATION( idTarget, idTarget_SetInfluence )
-	EVENT( EV_Activate,	idTarget_SetInfluence::Event_Activate )
-	EVENT( EV_RestoreInfluence,	idTarget_SetInfluence::Event_RestoreInfluence )
-	EVENT( EV_GatherEntities, idTarget_SetInfluence::Event_GatherEntities )
-	EVENT( EV_Flash, idTarget_SetInfluence::Event_Flash )
-	EVENT( EV_ClearFlash, idTarget_SetInfluence::Event_ClearFlash )
-END_CLASS
+
 
 /*
 ================
@@ -1253,9 +1212,7 @@ idTarget_SetKeyVal
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_SetKeyVal )
-	EVENT( EV_Activate,	idTarget_SetKeyVal::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -1305,9 +1262,7 @@ idTarget_SetFov
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_SetFov )
-	EVENT( EV_Activate,	idTarget_SetFov::Event_Activate )
-END_CLASS
+
 
 
 /*
@@ -1384,9 +1339,7 @@ idTarget_SetPrimaryObjective
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_SetPrimaryObjective )
-	EVENT( EV_Activate,	idTarget_SetPrimaryObjective::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -1408,9 +1361,7 @@ idTarget_LockDoor
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_LockDoor )
-	EVENT( EV_Activate,	idTarget_LockDoor::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -1443,9 +1394,7 @@ idTarget_CallObjectFunction
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_CallObjectFunction )
-	EVENT( EV_Activate,	idTarget_CallObjectFunction::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -1490,9 +1439,7 @@ idTarget_EnableLevelWeapons
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_EnableLevelWeapons )
-	EVENT( EV_Activate,	idTarget_EnableLevelWeapons::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -1532,14 +1479,8 @@ idTarget_Tip
 ===============================================================================
 */
 
-const idEventDef EV_TipOff( "<TipOff>" );
-extern const idEventDef EV_GetPlayerPos( "<getplayerpos>" );
 
-CLASS_DECLARATION( idTarget, idTarget_Tip )
-	EVENT( EV_Activate,		idTarget_Tip::Event_Activate )
-	EVENT( EV_TipOff,		idTarget_Tip::Event_TipOff )
-	EVENT( EV_GetPlayerPos,	idTarget_Tip::Event_GetPlayerPos )
-END_CLASS
+
 
 
 /*
@@ -1633,9 +1574,7 @@ idTarget_GiveSecurity
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_GiveSecurity )
-EVENT( EV_Activate,	idTarget_GiveSecurity::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -1658,9 +1597,7 @@ idTarget_RemoveWeapons
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_RemoveWeapons )
-EVENT( EV_Activate,	idTarget_RemoveWeapons::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -1690,9 +1627,7 @@ idTarget_LevelTrigger
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_LevelTrigger )
-EVENT( EV_Activate,	idTarget_LevelTrigger::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -1717,9 +1652,7 @@ idTarget_EnableStamina
 ===============================================================================
 */
 
-CLASS_DECLARATION( idTarget, idTarget_EnableStamina )
-EVENT( EV_Activate,	idTarget_EnableStamina::Event_Activate )
-END_CLASS
+
 
 /*
 ================
@@ -1747,11 +1680,7 @@ idTarget_FadeSoundClass
 ===============================================================================
 */
 
-const idEventDef EV_RestoreVolume( "<RestoreVolume>" );
-CLASS_DECLARATION( idTarget, idTarget_FadeSoundClass )
-EVENT( EV_Activate,	idTarget_FadeSoundClass::Event_Activate )
-EVENT( EV_RestoreVolume, idTarget_FadeSoundClass::Event_RestoreVolume )
-END_CLASS
+
 
 /*
 ================
@@ -1784,4 +1713,3 @@ void idTarget_FadeSoundClass::Event_RestoreVolume() {
 	// restore volume
 	gameSoundWorld->FadeSoundClasses( 0, fadeDB, fadeTime );
 }
-

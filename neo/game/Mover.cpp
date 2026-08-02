@@ -53,85 +53,8 @@ idMover
 ===============================================================================
 */
 
-const idEventDef EV_FindGuiTargets( "<FindGuiTargets>", NULL );
-const idEventDef EV_TeamBlocked( "<teamblocked>", "ee" );
-const idEventDef EV_PartBlocked( "<partblocked>", "e" );
-const idEventDef EV_ReachedPos( "<reachedpos>", NULL );
-const idEventDef EV_ReachedAng( "<reachedang>", NULL );
-const idEventDef EV_PostRestore( "<postrestore>", "ddddd" );
-const idEventDef EV_StopMoving( "stopMoving", NULL );
-const idEventDef EV_StopRotating( "stopRotating", NULL );
-const idEventDef EV_Speed( "speed", "f" );
-const idEventDef EV_Time( "time", "f" );
-const idEventDef EV_AccelTime( "accelTime", "f" );
-const idEventDef EV_DecelTime( "decelTime", "f" );
-const idEventDef EV_MoveTo( "moveTo", "e" );
-const idEventDef EV_MoveToPos( "moveToPos", "v" );
-const idEventDef EV_Move( "move", "ff" );
-const idEventDef EV_MoveAccelerateTo( "accelTo", "ff" );
-const idEventDef EV_MoveDecelerateTo( "decelTo", "ff" );
-const idEventDef EV_RotateDownTo( "rotateDownTo", "df" );
-const idEventDef EV_RotateUpTo( "rotateUpTo", "df" );
-const idEventDef EV_RotateTo( "rotateTo", "v" );
-const idEventDef EV_Rotate( "rotate", "v" );
-const idEventDef EV_RotateOnce( "rotateOnce", "v" );
-const idEventDef EV_Bob( "bob", "ffv" );
-const idEventDef EV_Sway( "sway", "ffv" );
-const idEventDef EV_Mover_OpenPortal( "openPortal" );
-const idEventDef EV_Mover_ClosePortal( "closePortal" );
-const idEventDef EV_AccelSound( "accelSound", "s" );
-const idEventDef EV_DecelSound( "decelSound", "s" );
-const idEventDef EV_MoveSound( "moveSound", "s" );
-const idEventDef EV_Mover_InitGuiTargets( "<initguitargets>", NULL );
-const idEventDef EV_EnableSplineAngles( "enableSplineAngles", NULL );
-const idEventDef EV_DisableSplineAngles( "disableSplineAngles", NULL );
-const idEventDef EV_RemoveInitialSplineAngles( "removeInitialSplineAngles", NULL );
-const idEventDef EV_StartSpline( "startSpline", "e" );
-const idEventDef EV_StopSpline( "stopSpline", NULL );
-const idEventDef EV_IsMoving( "isMoving", NULL, 'd' );
-const idEventDef EV_IsRotating( "isRotating", NULL, 'd' );
 
-CLASS_DECLARATION( idEntity, idMover )
-	EVENT( EV_FindGuiTargets,		idMover::Event_FindGuiTargets )
-	EVENT( EV_Thread_SetCallback,	idMover::Event_SetCallback )
-	EVENT( EV_TeamBlocked,			idMover::Event_TeamBlocked )
-	EVENT( EV_PartBlocked,			idMover::Event_PartBlocked )
-	EVENT( EV_ReachedPos,			idMover::Event_UpdateMove )
-	EVENT( EV_ReachedAng,			idMover::Event_UpdateRotation )
-	EVENT( EV_PostRestore,			idMover::Event_PostRestore )
-	EVENT( EV_StopMoving,			idMover::Event_StopMoving )
-	EVENT( EV_StopRotating,			idMover::Event_StopRotating )
-	EVENT( EV_Speed,				idMover::Event_SetMoveSpeed )
-	EVENT( EV_Time,					idMover::Event_SetMoveTime )
-	EVENT( EV_AccelTime,			idMover::Event_SetAccellerationTime )
-	EVENT( EV_DecelTime,			idMover::Event_SetDecelerationTime )
-	EVENT( EV_MoveTo,				idMover::Event_MoveTo )
-	EVENT( EV_MoveToPos,			idMover::Event_MoveToPos )
-	EVENT( EV_Move,					idMover::Event_MoveDir )
-	EVENT( EV_MoveAccelerateTo,		idMover::Event_MoveAccelerateTo )
-	EVENT( EV_MoveDecelerateTo,		idMover::Event_MoveDecelerateTo )
-	EVENT( EV_RotateDownTo,			idMover::Event_RotateDownTo )
-	EVENT( EV_RotateUpTo,			idMover::Event_RotateUpTo )
-	EVENT( EV_RotateTo,				idMover::Event_RotateTo )
-	EVENT( EV_Rotate,				idMover::Event_Rotate )
-	EVENT( EV_RotateOnce,			idMover::Event_RotateOnce )
-	EVENT( EV_Bob,					idMover::Event_Bob )
-	EVENT( EV_Sway,					idMover::Event_Sway )
-	EVENT( EV_Mover_OpenPortal,		idMover::Event_OpenPortal )
-	EVENT( EV_Mover_ClosePortal,	idMover::Event_ClosePortal )
-	EVENT( EV_AccelSound,			idMover::Event_SetAccelSound )
-	EVENT( EV_DecelSound,			idMover::Event_SetDecelSound )
-	EVENT( EV_MoveSound,			idMover::Event_SetMoveSound )
-	EVENT( EV_Mover_InitGuiTargets,	idMover::Event_InitGuiTargets )
-	EVENT( EV_EnableSplineAngles,	idMover::Event_EnableSplineAngles )
-	EVENT( EV_DisableSplineAngles,	idMover::Event_DisableSplineAngles )
-	EVENT( EV_RemoveInitialSplineAngles, idMover::Event_RemoveInitialSplineAngles )
-	EVENT( EV_StartSpline,			idMover::Event_StartSpline )
-	EVENT( EV_StopSpline,			idMover::Event_StopSpline )
-	EVENT( EV_Activate,				idMover::Event_Activate )
-	EVENT( EV_IsMoving,				idMover::Event_IsMoving )
-	EVENT( EV_IsRotating,			idMover::Event_IsRotating )
-END_CLASS
+
 
 /*
 ================
@@ -1543,8 +1466,7 @@ void idMover::SetPortalState( bool open ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idSplinePath )
-END_CLASS
+
 
 /*
 ================
@@ -1570,19 +1492,8 @@ idElevator
 
 ===============================================================================
 */
-const idEventDef EV_PostArrival( "postArrival", NULL );
-const idEventDef EV_GotoFloor( "gotoFloor", "d" );
-const idEventDef EV_SetGuiStates( "setGuiStates" );
 
-CLASS_DECLARATION( idMover, idElevator )
-	EVENT( EV_Activate,				idElevator::Event_Activate )
-	EVENT( EV_TeamBlocked,			idElevator::Event_TeamBlocked )
-	EVENT( EV_PartBlocked,			idElevator::Event_PartBlocked )
-	EVENT( EV_PostArrival,			idElevator::Event_PostFloorArrival )
-	EVENT( EV_GotoFloor,			idElevator::Event_GotoFloor )
-	EVENT( EV_Touch,				idElevator::Event_Touch )
-	EVENT( EV_SetGuiStates,			idElevator::Event_SetGuiStates )
-END_CLASS
+
 
 /*
 ================
@@ -2076,24 +1987,8 @@ Pos1 is "at rest", pos2 is "activated"
 ===============================================================================
 */
 
-const idEventDef EV_Mover_ReturnToPos1( "<returntopos1>", NULL );
-const idEventDef EV_Mover_MatchTeam( "<matchteam>", "dd" );
-const idEventDef EV_Mover_Enable( "enable", NULL );
-const idEventDef EV_Mover_Disable( "disable", NULL );
 
-CLASS_DECLARATION( idEntity, idMover_Binary )
-	EVENT( EV_FindGuiTargets,			idMover_Binary::Event_FindGuiTargets )
-	EVENT( EV_Thread_SetCallback,		idMover_Binary::Event_SetCallback )
-	EVENT( EV_Mover_ReturnToPos1,		idMover_Binary::Event_ReturnToPos1 )
-	EVENT( EV_Activate,					idMover_Binary::Event_Use_BinaryMover )
-	EVENT( EV_ReachedPos,				idMover_Binary::Event_Reached_BinaryMover )
-	EVENT( EV_Mover_MatchTeam,			idMover_Binary::Event_MatchActivateTeam )
-	EVENT( EV_Mover_Enable,				idMover_Binary::Event_Enable )
-	EVENT( EV_Mover_Disable,			idMover_Binary::Event_Disable )
-	EVENT( EV_Mover_OpenPortal,			idMover_Binary::Event_OpenPortal )
-	EVENT( EV_Mover_ClosePortal,		idMover_Binary::Event_ClosePortal )
-	EVENT( EV_Mover_InitGuiTargets,		idMover_Binary::Event_InitGuiTargets )
-END_CLASS
+
 
 /*
 ================
@@ -3099,33 +2994,8 @@ targeted by another entity.
 ===============================================================================
 */
 
-const idEventDef EV_Door_StartOpen( "<startOpen>", NULL );
-const idEventDef EV_Door_SpawnDoorTrigger( "<spawnDoorTrigger>", NULL );
-const idEventDef EV_Door_SpawnSoundTrigger( "<spawnSoundTrigger>", NULL );
-const idEventDef EV_Door_Open( "open", NULL );
-const idEventDef EV_Door_Close( "close", NULL );
-const idEventDef EV_Door_Lock( "lock", "d" );
-const idEventDef EV_Door_IsOpen( "isOpen", NULL, 'f' );
-const idEventDef EV_Door_IsLocked( "isLocked", NULL, 'f' );
 
-CLASS_DECLARATION( idMover_Binary, idDoor )
-	EVENT( EV_TeamBlocked,				idDoor::Event_TeamBlocked )
-	EVENT( EV_PartBlocked,				idDoor::Event_PartBlocked )
-	EVENT( EV_Touch,					idDoor::Event_Touch )
-	EVENT( EV_Activate,					idDoor::Event_Activate )
-	EVENT( EV_Door_StartOpen,			idDoor::Event_StartOpen )
-	EVENT( EV_Door_SpawnDoorTrigger,	idDoor::Event_SpawnDoorTrigger )
-	EVENT( EV_Door_SpawnSoundTrigger,	idDoor::Event_SpawnSoundTrigger )
-	EVENT( EV_Door_Open,				idDoor::Event_Open )
-	EVENT( EV_Door_Close,				idDoor::Event_Close )
-	EVENT( EV_Door_Lock,				idDoor::Event_Lock )
-	EVENT( EV_Door_IsOpen,				idDoor::Event_IsOpen )
-	EVENT( EV_Door_IsLocked,			idDoor::Event_Locked )
-	EVENT( EV_ReachedPos,				idDoor::Event_Reached_BinaryMover )
-	EVENT( EV_SpectatorTouch,			idDoor::Event_SpectatorTouch )
-	EVENT( EV_Mover_OpenPortal,			idDoor::Event_OpenPortal )
-	EVENT( EV_Mover_ClosePortal,		idDoor::Event_ClosePortal )
-END_CLASS
+
 
 /*
 ================
@@ -4032,11 +3902,7 @@ idPlat
 ===============================================================================
 */
 
-CLASS_DECLARATION( idMover_Binary, idPlat )
-	EVENT( EV_Touch,			idPlat::Event_Touch )
-	EVENT( EV_TeamBlocked,		idPlat::Event_TeamBlocked )
-	EVENT( EV_PartBlocked,		idPlat::Event_PartBlocked )
-END_CLASS
+
 
 /*
 ===============
@@ -4271,10 +4137,7 @@ idMover_Periodic
 ===============================================================================
 */
 
-CLASS_DECLARATION( idEntity, idMover_Periodic )
-	EVENT( EV_TeamBlocked,		idMover_Periodic::Event_TeamBlocked )
-	EVENT( EV_PartBlocked,		idMover_Periodic::Event_PartBlocked )
-END_CLASS
+
 
 /*
 ===============
@@ -4386,9 +4249,7 @@ idRotater
 ===============================================================================
 */
 
-CLASS_DECLARATION( idMover_Periodic, idRotater )
-	EVENT( EV_Activate,			idRotater::Event_Activate )
-END_CLASS
+
 
 /*
 ===============
@@ -4485,8 +4346,7 @@ idBobber
 ===============================================================================
 */
 
-CLASS_DECLARATION( idMover_Periodic, idBobber )
-END_CLASS
+
 
 /*
 ===============
@@ -4546,8 +4406,7 @@ idPendulum
 ===============================================================================
 */
 
-CLASS_DECLARATION( idMover_Periodic, idPendulum )
-END_CLASS
+
 
 /*
 ===============
@@ -4607,9 +4466,7 @@ idBobber
 ===============================================================================
 */
 
-CLASS_DECLARATION( idMover_Periodic, idRiser )
-EVENT( EV_Activate,				idRiser::Event_Activate )
-END_CLASS
+
 
 /*
 ===============

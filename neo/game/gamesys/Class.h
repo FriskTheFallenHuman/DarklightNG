@@ -53,6 +53,13 @@ struct idEventFunc {
 #define EVENT( event, function )	{ &( event ), ( void ( idClass::* )( void ) )( &function ) },
 #define END_CLASS					{ NULL, NULL } };
 
+// UnrealHeaderTool-style annotations consumed by neo/TypeInfo. The
+// tool parses the C++ declaration following each tag, so the tags have no
+// runtime expansion and require no matching end marker.
+#define D3_CLASS( ... )
+#define D3_EVENT( ... )
+#define D3_NULLABLE
+
 
 class idEventArg {
 public:
@@ -171,6 +178,7 @@ typedef void ( idClass::*classSpawnFunc_t )( void );
 class idSaveGame;
 class idRestoreGame;
 
+D3_CLASS( Abstract )
 class idClass {
 public:
 	ABSTRACT_PROTOTYPE( idClass );
@@ -233,6 +241,7 @@ public:
 	bool						ProcessEventArgPtr( const idEventDef *ev, int *data );
 	void						CancelEvents( const idEventDef *ev );
 
+	D3_EVENT( EV_Remove, "<immediateremove>", void )
 	void						Event_Remove( void );
 
 	// Static functions
@@ -252,6 +261,7 @@ private:
 	bool						PostEventArgs( const idEventDef *ev, int time, int numargs, ... );
 	bool						ProcessEventArgs( const idEventDef *ev, int numargs, ... );
 
+	D3_EVENT( EV_SafeRemove, "remove", void )
 	void						Event_SafeRemove( void );
 
 	static bool					initialized;

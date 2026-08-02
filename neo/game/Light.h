@@ -41,6 +41,7 @@ extern const idEventDef EV_Light_GetLightParm;
 extern const idEventDef EV_Light_SetLightParm;
 extern const idEventDef EV_Light_SetLightParms;
 
+D3_CLASS()
 class idLight : public idEntity {
 public:
 	CLASS_PROTOTYPE( idLight );
@@ -123,19 +124,33 @@ private:
 	void			PresentLightDefChange( void );
 	void			PresentModelDefChange( void );
 
+	D3_EVENT( EV_Light_SetShader, "setShader", void )
 	void			Event_SetShader( const char *shadername );
+	D3_EVENT( EV_Light_GetLightParm, "getLightParm", float )
 	void			Event_GetLightParm( int parmnum );
+	D3_EVENT( EV_Light_SetLightParm, "setLightParm", void )
 	void			Event_SetLightParm( int parmnum, float value );
+	D3_EVENT( EV_Light_SetLightParms, "setLightParms", void )
 	void			Event_SetLightParms( float parm0, float parm1, float parm2, float parm3 );
+	D3_EVENT( EV_Light_SetRadiusXYZ, "setRadiusXYZ", void )
 	void			Event_SetRadiusXYZ( float x, float y, float z );
+	D3_EVENT( EV_Light_SetRadius, "setRadius", void )
 	void			Event_SetRadius( float radius );
+	D3_EVENT( EV_Hide )
 	void			Event_Hide( void );
+	D3_EVENT( EV_Show )
 	void			Event_Show( void );
+	D3_EVENT( EV_Light_On, "On", void )
 	void			Event_On( void );
+	D3_EVENT( EV_Light_Off, "Off", void )
 	void			Event_Off( void );
+	D3_EVENT( EV_Activate )
 	void			Event_ToggleOnOff( idEntity *activator );
+	D3_EVENT( EV_PostSpawn )
 	void			Event_SetSoundHandles( void );
+	D3_EVENT( EV_Light_FadeOut, "fadeOutLight", void )
 	void			Event_FadeOut( float time );
+	D3_EVENT( EV_Light_FadeIn, "fadeInLight", void )
 	void			Event_FadeIn( float time );
 };
 

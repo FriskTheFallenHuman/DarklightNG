@@ -38,6 +38,7 @@ idTarget
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget : public idEntity {
 public:
 	CLASS_PROTOTYPE( idTarget );
@@ -52,11 +53,13 @@ idTarget_Remove
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_Remove : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_Remove );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -69,11 +72,13 @@ idTarget_Show
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_Show : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_Show );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -86,11 +91,13 @@ idTarget_Damage
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_Damage : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_Damage );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -103,11 +110,13 @@ idTarget_SessionCommand
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_SessionCommand : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_SessionCommand );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -120,11 +129,13 @@ idTarget_EndLevel
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_EndLevel : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_EndLevel );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 
 };
@@ -138,6 +149,7 @@ idTarget_WaitForButton
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_WaitForButton : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_WaitForButton );
@@ -145,6 +157,7 @@ public:
 	void				Think( void );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -156,11 +169,13 @@ idTarget_SetGlobalShaderTime
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_SetGlobalShaderTime : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_SetGlobalShaderTime );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -173,11 +188,13 @@ idTarget_SetShaderParm
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_SetShaderParm : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_SetShaderParm );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -190,11 +207,13 @@ idTarget_SetShaderTime
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_SetShaderTime : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_SetShaderTime );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -206,6 +225,7 @@ idTarget_FadeEntity
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_FadeEntity : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_FadeEntity );
@@ -222,6 +242,7 @@ private:
 	int					fadeStart;
 	int					fadeEnd;
 
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -233,11 +254,13 @@ idTarget_LightFadeIn
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_LightFadeIn : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_LightFadeIn );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -249,11 +272,13 @@ idTarget_LightFadeOut
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_LightFadeOut : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_LightFadeOut );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -265,6 +290,7 @@ idTarget_Give
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_Give : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_Give );
@@ -272,6 +298,7 @@ public:
 	void				Spawn( void );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -284,6 +311,7 @@ idTarget_GiveEmail
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_GiveEmail : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_GiveEmail );
@@ -291,6 +319,7 @@ public:
 	void				Spawn( void );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -302,6 +331,7 @@ idTarget_SetModel
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_SetModel : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_SetModel );
@@ -309,6 +339,7 @@ public:
 	void				Spawn( void );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -326,6 +357,7 @@ typedef struct SavedGui_s {
 	idUserInterface*	gui[MAX_RENDERENTITY_GUI];
 } SavedGui_t;
 
+D3_CLASS()
 class idTarget_SetInfluence : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_SetInfluence );
@@ -338,10 +370,15 @@ public:
 	void				Spawn( void );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
+	D3_EVENT( EV_RestoreInfluence, "<RestoreInfluece>", void )
 	void				Event_RestoreInfluence();
+	D3_EVENT( EV_GatherEntities, "<GatherEntities>", void )
 	void				Event_GatherEntities();
+	D3_EVENT( EV_Flash, "<Flash>", void )
 	void				Event_Flash( float flash, int out );
+	D3_EVENT( EV_ClearFlash, "<ClearFlash>", void )
 	void				Event_ClearFlash( float flash );
 	void				Think( void );
 
@@ -371,11 +408,13 @@ idTarget_SetKeyVal
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_SetKeyVal : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_SetKeyVal );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -388,6 +427,7 @@ idTarget_SetFov
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_SetFov : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_SetFov );
@@ -400,6 +440,7 @@ public:
 private:
 	idInterpolate<int>	fovSetting;
 
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -412,11 +453,13 @@ idTarget_SetPrimaryObjective
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_SetPrimaryObjective : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_SetPrimaryObjective );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -428,11 +471,13 @@ idTarget_LockDoor
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_LockDoor: public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_LockDoor );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -444,11 +489,13 @@ idTarget_CallObjectFunction
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_CallObjectFunction : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_CallObjectFunction );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -461,11 +508,13 @@ idTarget_LockDoor
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_EnableLevelWeapons : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_EnableLevelWeapons );
 
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -478,6 +527,7 @@ idTarget_Tip
 ===============================================================================
 */
 
+D3_CLASS()
 class idTarget_Tip : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_Tip );
@@ -492,8 +542,11 @@ public:
 private:
 	idVec3				playerPos;
 
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
+	D3_EVENT( EV_TipOff, "<TipOff>", void )
 	void				Event_TipOff( void );
+	D3_EVENT( EV_GetPlayerPos )
 	void				Event_GetPlayerPos( void );
 };
 
@@ -504,10 +557,12 @@ idTarget_GiveSecurity
 
 ===============================================================================
 */
+D3_CLASS()
 class idTarget_GiveSecurity : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_GiveSecurity );
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -519,10 +574,12 @@ idTarget_RemoveWeapons
 
 ===============================================================================
 */
+D3_CLASS()
 class idTarget_RemoveWeapons : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_RemoveWeapons );
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -534,10 +591,12 @@ idTarget_LevelTrigger
 
 ===============================================================================
 */
+D3_CLASS()
 class idTarget_LevelTrigger : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_LevelTrigger );
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -548,10 +607,12 @@ idTarget_EnableStamina
 
 ===============================================================================
 */
+D3_CLASS()
 class idTarget_EnableStamina : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_EnableStamina );
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
 };
 
@@ -562,11 +623,14 @@ idTarget_FadeSoundClass
 
 ===============================================================================
 */
+D3_CLASS()
 class idTarget_FadeSoundClass : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_FadeSoundClass );
 private:
+	D3_EVENT( EV_Activate )
 	void				Event_Activate( idEntity *activator );
+	D3_EVENT( EV_RestoreVolume, "<RestoreVolume>", void )
 	void				Event_RestoreVolume();
 };
 

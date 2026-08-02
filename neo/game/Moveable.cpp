@@ -39,18 +39,8 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
-const idEventDef EV_BecomeNonSolid( "becomeNonSolid" );
-const idEventDef EV_SetOwnerFromSpawnArgs( "<setOwnerFromSpawnArgs>" );
-const idEventDef EV_IsAtRest( "isAtRest", NULL, 'd' );
-const idEventDef EV_EnableDamage( "enableDamage", "f" );
 
-CLASS_DECLARATION( idEntity, idMoveable )
-	EVENT( EV_Activate,					idMoveable::Event_Activate )
-	EVENT( EV_BecomeNonSolid,			idMoveable::Event_BecomeNonSolid )
-	EVENT( EV_SetOwnerFromSpawnArgs,	idMoveable::Event_SetOwnerFromSpawnArgs )
-	EVENT( EV_IsAtRest,					idMoveable::Event_IsAtRest )
-	EVENT( EV_EnableDamage,				idMoveable::Event_EnableDamage )
-END_CLASS
+
 
 
 static const float BOUNCE_SOUND_MIN_VELOCITY	= 80.0f;
@@ -602,8 +592,7 @@ void idMoveable::Event_EnableDamage( float enable ) {
 ===============================================================================
 */
 
-CLASS_DECLARATION( idMoveable, idBarrel )
-END_CLASS
+
 
 /*
 ================
@@ -786,15 +775,8 @@ idExplodingBarrel
 
 ===============================================================================
 */
-const idEventDef EV_Respawn( "<respawn>" );
-const idEventDef EV_TriggerTargets( "<triggertargets>" );
 
-CLASS_DECLARATION( idBarrel, idExplodingBarrel )
-	EVENT( EV_Activate,					idExplodingBarrel::Event_Activate )
-	EVENT( EV_Respawn,					idExplodingBarrel::Event_Respawn )
-	EVENT( EV_Explode,					idExplodingBarrel::Event_Explode )
-	EVENT( EV_TriggerTargets,			idExplodingBarrel::Event_TriggerTargets )
-END_CLASS
+
 
 /*
 ================

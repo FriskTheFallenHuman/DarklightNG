@@ -41,6 +41,7 @@ If you have questions concerning this license or the applicable additional terms
 ===================================================================================
 */
 
+D3_CLASS()
 class idPhysics_Actor : public idPhysics_Base {
 
 public:

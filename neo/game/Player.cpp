@@ -60,63 +60,8 @@ const int HEALTHPULSE_TIME = 333;
 // minimum speed to bob and play run/walk animations at
 const float MIN_BOB_SPEED = 5.0f;
 
-const idEventDef EV_Player_GetButtons( "getButtons", NULL, 'd' );
-const idEventDef EV_Player_GetMove( "getMove", NULL, 'v' );
-const idEventDef EV_Player_GetViewAngles( "getViewAngles", NULL, 'v' );
-const idEventDef EV_Player_StopFxFov( "stopFxFov" );
-const idEventDef EV_Player_EnableWeapon( "enableWeapon" );
-const idEventDef EV_Player_DisableWeapon( "disableWeapon" );
-const idEventDef EV_Player_GetCurrentWeapon( "getCurrentWeapon", NULL, 's' );
-const idEventDef EV_Player_GetPreviousWeapon( "getPreviousWeapon", NULL, 's' );
-const idEventDef EV_Player_SelectWeapon( "selectWeapon", "s" );
-const idEventDef EV_Player_GetWeaponEntity( "getWeaponEntity", NULL, 'e' );
-const idEventDef EV_Player_OpenPDA( "openPDA" );
-const idEventDef EV_Player_InPDA( "inPDA", NULL, 'd' );
-const idEventDef EV_Player_ExitTeleporter( "exitTeleporter" );
-const idEventDef EV_Player_StopAudioLog( "stopAudioLog" );
-const idEventDef EV_Player_HideTip( "hideTip" );
-const idEventDef EV_Player_LevelTrigger( "levelTrigger" );
-const idEventDef EV_SpectatorTouch( "spectatorTouch", "et" );
-const idEventDef EV_Player_GiveInventoryItem( "giveInventoryItem", "s" );
-const idEventDef EV_Player_RemoveInventoryItem( "removeInventoryItem", "s" );
-const idEventDef EV_Player_GetIdealWeapon( "getIdealWeapon", NULL, 's' );
-const idEventDef EV_Player_SetPowerupTime( "setPowerupTime", "dd" );
-const idEventDef EV_Player_IsPowerupActive( "isPowerupActive", "d", 'd' );
-const idEventDef EV_Player_WeaponAvailable( "weaponAvailable", "s", 'd');
-const idEventDef EV_Player_StartWarp( "startWarp" );
-const idEventDef EV_Player_StopHelltime( "stopHelltime", "d" );
-const idEventDef EV_Player_ToggleBloom( "toggleBloom", "d" );
-const idEventDef EV_Player_SetBloomParms( "setBloomParms", "ff" );
 
-CLASS_DECLARATION( idActor, idPlayer )
-	EVENT( EV_Player_GetButtons,			idPlayer::Event_GetButtons )
-	EVENT( EV_Player_GetMove,				idPlayer::Event_GetMove )
-	EVENT( EV_Player_GetViewAngles,			idPlayer::Event_GetViewAngles )
-	EVENT( EV_Player_StopFxFov,				idPlayer::Event_StopFxFov )
-	EVENT( EV_Player_EnableWeapon,			idPlayer::Event_EnableWeapon )
-	EVENT( EV_Player_DisableWeapon,			idPlayer::Event_DisableWeapon )
-	EVENT( EV_Player_GetCurrentWeapon,		idPlayer::Event_GetCurrentWeapon )
-	EVENT( EV_Player_GetPreviousWeapon,		idPlayer::Event_GetPreviousWeapon )
-	EVENT( EV_Player_SelectWeapon,			idPlayer::Event_SelectWeapon )
-	EVENT( EV_Player_GetWeaponEntity,		idPlayer::Event_GetWeaponEntity )
-	EVENT( EV_Player_OpenPDA,				idPlayer::Event_OpenPDA )
-	EVENT( EV_Player_InPDA,					idPlayer::Event_InPDA )
-	EVENT( EV_Player_ExitTeleporter,		idPlayer::Event_ExitTeleporter )
-	EVENT( EV_Player_StopAudioLog,			idPlayer::Event_StopAudioLog )
-	EVENT( EV_Player_HideTip,				idPlayer::Event_HideTip )
-	EVENT( EV_Player_LevelTrigger,			idPlayer::Event_LevelTrigger )
-	EVENT( EV_Gibbed,						idPlayer::Event_Gibbed )
-	EVENT( EV_Player_GiveInventoryItem,		idPlayer::Event_GiveInventoryItem )
-	EVENT( EV_Player_RemoveInventoryItem,	idPlayer::Event_RemoveInventoryItem )
-	EVENT( EV_Player_GetIdealWeapon,		idPlayer::Event_GetIdealWeapon )
-	EVENT( EV_Player_WeaponAvailable,		idPlayer::Event_WeaponAvailable )
-	EVENT( EV_Player_SetPowerupTime,		idPlayer::Event_SetPowerupTime )
-	EVENT( EV_Player_IsPowerupActive,		idPlayer::Event_IsPowerupActive )
-	EVENT( EV_Player_StartWarp,				idPlayer::Event_StartWarp )
-	EVENT( EV_Player_StopHelltime,			idPlayer::Event_StopHelltime )
-	EVENT( EV_Player_ToggleBloom,			idPlayer::Event_ToggleBloom )
-	EVENT( EV_Player_SetBloomParms,			idPlayer::Event_SetBloomParms )
-END_CLASS
+
 
 const int MAX_RESPAWN_TIME = 10000;
 const int RAGDOLL_DEATH_TIME = 3000;

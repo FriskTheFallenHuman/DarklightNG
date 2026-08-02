@@ -39,33 +39,8 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
-const idEventDef EV_Light_SetShader( "setShader", "s" );
-const idEventDef EV_Light_GetLightParm( "getLightParm", "d", 'f' );
-const idEventDef EV_Light_SetLightParm( "setLightParm", "df" );
-const idEventDef EV_Light_SetLightParms( "setLightParms", "ffff" );
-const idEventDef EV_Light_SetRadiusXYZ( "setRadiusXYZ", "fff" );
-const idEventDef EV_Light_SetRadius( "setRadius", "f" );
-const idEventDef EV_Light_On( "On", NULL );
-const idEventDef EV_Light_Off( "Off", NULL );
-const idEventDef EV_Light_FadeOut( "fadeOutLight", "f" );
-const idEventDef EV_Light_FadeIn( "fadeInLight", "f" );
 
-CLASS_DECLARATION( idEntity, idLight )
-	EVENT( EV_Light_SetShader,		idLight::Event_SetShader )
-	EVENT( EV_Light_GetLightParm,	idLight::Event_GetLightParm )
-	EVENT( EV_Light_SetLightParm,	idLight::Event_SetLightParm )
-	EVENT( EV_Light_SetLightParms,	idLight::Event_SetLightParms )
-	EVENT( EV_Light_SetRadiusXYZ,	idLight::Event_SetRadiusXYZ )
-	EVENT( EV_Light_SetRadius,		idLight::Event_SetRadius )
-	EVENT( EV_Hide,					idLight::Event_Hide )
-	EVENT( EV_Show,					idLight::Event_Show )
-	EVENT( EV_Light_On,				idLight::Event_On )
-	EVENT( EV_Light_Off,			idLight::Event_Off )
-	EVENT( EV_Activate,				idLight::Event_ToggleOnOff )
-	EVENT( EV_PostSpawn,			idLight::Event_SetSoundHandles )
-	EVENT( EV_Light_FadeOut,		idLight::Event_FadeOut )
-	EVENT( EV_Light_FadeIn,			idLight::Event_FadeIn )
-END_CLASS
+
 
 
 /*

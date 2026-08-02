@@ -37,6 +37,7 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
+D3_CLASS()
 class idSound : public idEntity {
 public:
 	CLASS_PROTOTYPE( idSound );
@@ -66,9 +67,13 @@ private:
 	idAngles		shakeRotate;
 	int				playingUntilTime;
 
+	D3_EVENT( EV_Activate )
 	void			Event_Trigger( idEntity *activator );
+	D3_EVENT( EV_Speaker_Timer, "<timer>", void )
 	void			Event_Timer( void );
+	D3_EVENT( EV_Speaker_On, "On", void )
 	void			Event_On( void );
+	D3_EVENT( EV_Speaker_Off, "Off", void )
 	void			Event_Off( void );
 	void			DoSound( bool play );
 };

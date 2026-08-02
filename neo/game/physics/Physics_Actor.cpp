@@ -31,8 +31,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "../Game_local.h"
 
-CLASS_DECLARATION( idPhysics_Base, idPhysics_Actor )
-END_CLASS
+
 
 /*
 ================
