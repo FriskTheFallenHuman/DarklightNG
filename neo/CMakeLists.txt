@@ -68,18 +68,12 @@ set_source_files_properties(
 	PROPERTIES GENERATED TRUE
 )
 
-# Keep the normal playable Release pair beside base/. Other configurations use
-# their own directories so a Debug gamex86.dll can never silently replace the
-# Release DLL while Visual Studio still considers the Release target current.
+# Keep every playable configuration beside base/ so Visual Studio always emits
+# Doom3.exe and gamex86.dll into the project root.
 foreach(configuration Debug Release RelWithDebInfo MinSizeRel)
 	string(TOUPPER "${configuration}" configuration_upper)
-	if(configuration STREQUAL "Release")
-		set(configuration_runtime_directory "${DARKLIGHT_ROOT}")
-	else()
-		set(configuration_runtime_directory "${DARKLIGHT_OUT}/${configuration}")
-	endif()
-	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${configuration_upper} "${configuration_runtime_directory}")
-	set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${configuration_upper} "${configuration_runtime_directory}")
+	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${configuration_upper} "${DARKLIGHT_ROOT}")
+	set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${configuration_upper} "${DARKLIGHT_ROOT}")
 	set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${configuration_upper} "${DARKLIGHT_OUT}/${configuration}")
 	set(CMAKE_PDB_OUTPUT_DIRECTORY_${configuration_upper} "${DARKLIGHT_OUT}/${configuration}")
 	set(CMAKE_COMPILE_PDB_OUTPUT_DIRECTORY_${configuration_upper} "${DARKLIGHT_OUT}/${configuration}")
