@@ -52,6 +52,8 @@ public:
 	void AddText(const char *msg);
 	void SetConsoleText ( const idStr& text );
 	void ExecuteCommand ( const idStr& cmd = "" );
+	idStr NavigateHistory( int direction, const char *inProgress );
+	const char *GetConsoleText() const { return consoleStr.c_str(); }
 	
 	idStr consoleStr;
     idStrList consoleHistory;

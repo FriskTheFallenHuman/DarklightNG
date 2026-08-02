@@ -178,6 +178,11 @@ class idGLWidget : public CWnd
 public:
 	idGLWidget();
 	void setDrawable(idGLDrawable *d);
+	void DrawToCurrentContext( int width, int height );
+	void HandleMouseMove( float x, float y );
+	void HandleMouseButton( int button, bool down, float x, float y );
+	void HandleMouseWheel( short delta );
+	bool UsesScreenCoordinates() const { return drawable != NULL && drawable->ScreenCoords(); }
 
 // Attributes
 public:

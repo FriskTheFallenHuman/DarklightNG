@@ -63,6 +63,7 @@ CNewTexWnd::CNewTexWnd() {
 	hdcTexture = NULL;
 	cursor.x = cursor.y = 0;
 	origin.x = origin.y = 0;
+	externalInput = false;
 }
 
 /*
@@ -249,14 +250,20 @@ const idMaterial *CNewTexWnd::NextPos() {
 void CNewTexWnd::OnPaint() {
 
 	CPaintDC	dc(this);	// device context for painting
-
-	int nOld = g_qeglobals.d_texturewin.m_nTotalHeight;
-
-	//hdcTexture = GetDC();
 	if (!qwglMakeCurrent(dc.GetSafeHdc(), win32.hGLRC)) {
 		common->Printf("ERROR: wglMakeCurrent failed..\n ");
+		return;
 	}
-	else {
+	DrawToCurrentContext( rectClient.Width(), rectClient.Height() );
+	qwglSwapBuffers(dc.GetSafeHdc());
+	TRACE("Texture Paint\n");
+}
+
+void CNewTexWnd::DrawToCurrentContext( int width, int height ) {
+	rectClient.SetRect( 0, 0, Max( 1, width ), Max( 1, height ) );
+
+	int nOld = g_qeglobals.d_texturewin.m_nTotalHeight;
+	{
 		const char	*name;
 		qglClearColor
 		(
@@ -361,8 +368,6 @@ void CNewTexWnd::OnPaint() {
 		// reset the current texture
 		globalImages->BindNull();
 		qglFinish();
-		qwglSwapBuffers(dc.GetSafeHdc());
-		TRACE("Texture Paint\n");
 	}
 
 	if (g_PrefsDlg.m_bTextureScrollbar && (m_bNeedRange || g_qeglobals.d_texturewin.m_nTotalHeight != nOld)) {
@@ -484,7 +489,7 @@ const idMaterial *CNewTexWnd::getMaterialAtPoint(CPoint point) {
 void CNewTexWnd::OnLButtonDown(UINT nFlags, CPoint point) {
 	cursor = point;
 
-	SetFocus();
+	if ( !externalInput ) SetFocus();
 	bool fitScale = Sys_KeyDown(VK_CONTROL);
 	bool edit = Sys_KeyDown(VK_SHIFT) && !fitScale;
 
@@ -515,7 +520,7 @@ void CNewTexWnd::OnMButtonDown(UINT nFlags, CPoint point) {
  */
 void CNewTexWnd::OnRButtonDown(UINT nFlags, CPoint point) {
 	cursor = point;
-	SetFocus();
+	if ( !externalInput ) SetFocus();
 }
 
 /*
@@ -524,7 +529,7 @@ void CNewTexWnd::OnRButtonDown(UINT nFlags, CPoint point) {
  */
 void CNewTexWnd::OnLButtonUp(UINT nFlags, CPoint point) {
 	CWnd::OnLButtonUp(nFlags, point);
-	g_pParentWnd->SetFocus();
+	if ( !externalInput ) g_pParentWnd->SetFocus();
 }
 
 /*
@@ -584,9 +589,13 @@ void CNewTexWnd::OnMouseMove(UINT nFlags, CPoint point) {
 				}
 
 				*px2 = *px;
-				CPoint screen = cursor;
-				ClientToScreen(&screen);
-				SetCursorPos(screen.x, screen.y);
+				if ( externalInput ) {
+					cursor = point;
+				} else {
+					CPoint screen = cursor;
+					ClientToScreen(&screen);
+					SetCursorPos(screen.x, screen.y);
+				}
 				//Sys_SetCursorPos(cursor.x, cursor.y);
 				InvalidateRect(NULL, false);
 				UpdateWindow();
@@ -598,9 +607,13 @@ void CNewTexWnd::OnMouseMove(UINT nFlags, CPoint point) {
 				}
 
 				//Sys_SetCursorPos(cursor.x, cursor.y);
-				CPoint screen = cursor;
-				ClientToScreen(&screen);
-				SetCursorPos(screen.x, screen.y);
+				if ( externalInput ) {
+					cursor = point;
+				} else {
+					CPoint screen = cursor;
+					ClientToScreen(&screen);
+					SetCursorPos(screen.x, screen.y);
+				}
 				if (g_PrefsDlg.m_bTextureScrollbar) {
 					SetScrollPos(SB_VERT, abs(origin.y));
 				}
@@ -698,11 +711,30 @@ void Texture_HideAll() {
 }
 
 const idMaterial *Texture_ForName(const char *name) {
-	const idMaterial *mat = declManager->FindMaterial(name);
+	// Keep the engine's reserved empty/default declarations out of the editor
+	// drawing path.  They are procedural placeholders and may have no resident
+	// editor image at startup.  The explicit material has a real TGA and is safe
+	// to use before the material browser has ever been opened.
+	const bool useEditorDefault = name == NULL || name[0] == '\0' ||
+		!idStr::Icmp( name, "_default" ) || !idStr::Icmp( name, "_emptyName" ) ||
+		!idStr::Icmp( name, "textures/default" );
+	const char *resolvedName = useEditorDefault ? "textures/default" : name;
+	const idMaterial *mat = declManager->FindMaterial(resolvedName);
 	if ( !mat ) {
 		mat = declManager->FindMaterial("_default");
 	} else {
 		mat->SetMaterialFlag(MF_EDITOR_VISIBLE);
+		// Parsing a material does not necessarily resolve its qer_editorimage.
+		// Touch it here so brush construction cannot retain an uninitialized
+		// editor image merely because the material browser has not drawn yet.
+		idImage *editorImage = mat->GetEditorImage();
+		if ( useEditorDefault ) {
+			// Bind performs idImage's deferred upload and establishes uploadWidth /
+			// uploadHeight. Brush_BuildWindings uses those dimensions to generate
+			// UVs, so waiting for the Textures tab to bind the image is too late.
+			editorImage->Bind();
+			globalImages->BindNull();
+		}
 	}
 	return mat;
 }
@@ -730,6 +762,12 @@ void Texture_ShowInuse(void) {
 			}
 		}
 	}
+
+	// This is the brush-creation material, so it must remain available even
+	// when the currently loaded map does not use it yet.  Texture_HideAll above
+	// otherwise removes it from the startup/in-use browser immediately after a
+	// map load.
+	Texture_ForName( "textures/default" );
 
 	Sys_UpdateWindows(W_TEXTURE);
 
@@ -896,6 +934,37 @@ BOOL CNewTexWnd::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 	OnVScroll((zDelta >= 0) ? SB_LINEUP : SB_LINEDOWN, 0, NULL);
 	OnVScroll((zDelta >= 0) ? SB_LINEUP : SB_LINEDOWN, 0, NULL);
 	return TRUE;
+}
+
+void CNewTexWnd::HandleMouseMove( int x, int y, UINT buttons ) {
+	externalInput = true;
+	OnMouseMove( buttons, CPoint( x, y ) );
+	externalInput = false;
+}
+
+void CNewTexWnd::HandleMouseButton( int button, bool down, int x, int y, UINT buttons ) {
+	externalInput = true;
+	CPoint point( x, y );
+	if ( button == 0 ) {
+		if ( down ) OnLButtonDown( buttons, point ); else OnLButtonUp( buttons, point );
+	} else if ( button == 1 ) {
+		if ( down ) OnRButtonDown( buttons, point ); else OnRButtonUp( buttons, point );
+	} else if ( button == 2 ) {
+		if ( down ) OnMButtonDown( buttons, point ); else OnMButtonUp( buttons, point );
+	}
+	externalInput = false;
+}
+
+void CNewTexWnd::HandleMouseWheel( short delta ) {
+	const int amount = delta >= 0 ? 90 : -90;
+	origin.y += amount;
+	if ( origin.y > 0 ) {
+		origin.y = 0;
+	}
+	const int minimum = Min( 0, rectClient.Height() - g_qeglobals.d_texturewin.m_nTotalHeight );
+	if ( origin.y < minimum ) {
+		origin.y = minimum;
+	}
 }
 
 BOOL CNewTexWnd::PreTranslateMessage(MSG* pMsg)

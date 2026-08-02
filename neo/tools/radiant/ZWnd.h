@@ -62,6 +62,9 @@ public:
 // Implementation
 public:
 	virtual ~CZWnd();
+	void DrawToCurrentContext( int width, int height );
+	void HandleMouseMove( int x, int y, UINT buttons );
+	void HandleMouseButton( int button, bool down, int x, int y, UINT buttons );
 
 	CZClip *m_pZClip;
 

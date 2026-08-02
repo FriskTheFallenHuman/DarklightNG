@@ -519,6 +519,8 @@ CXYWnd::CXYWnd() {
 	g_nPathLimit = 0;
 	m_nTimerID = -1;
 	m_nButtonstate = 0;
+	m_externalInput = false;
+	m_externalMouseCapture = false;
 	XY_Init();
 }
 
@@ -775,7 +777,7 @@ void CXYWnd::DropClipPoint(UINT nFlags, CPoint point) {
 	CRect	rctZ;
 	GetClientRect(rctZ);
 	if (g_pMovingClip) {
-		SetCapture();
+		if ( m_externalInput ) m_externalMouseCapture = true; else SetCapture();
 		SnapToPoint(point.x, rctZ.Height() - 1 - point.y, *g_pMovingClip);
 	}
 	else {
@@ -844,7 +846,7 @@ void CXYWnd::DropPathPoint(UINT nFlags, CPoint point) {
 	CRect	rctZ;
 	GetClientRect(rctZ);
 	if (g_pMovingPath) {
-		SetCapture();
+		if ( m_externalInput ) m_externalMouseCapture = true; else SetCapture();
 		SnapToPoint(point.x, rctZ.Height() - 1 - point.y, *g_pMovingPath);
 	}
 	else {
@@ -1114,7 +1116,7 @@ void CXYWnd::OnLButtonUp(UINT nFlags, CPoint point) {
 
 	if (ClipMode()) {
 		if (g_pMovingClip) {
-			ReleaseCapture();
+			if ( m_externalInput ) m_externalMouseCapture = false; else ReleaseCapture();
 			g_pMovingClip = NULL;
 		}
 	}
@@ -1150,7 +1152,7 @@ void CXYWnd::OnRButtonUp(UINT nFlags, CPoint point) {
 			bGo = false;
 		}
 
-		if (bGo) {
+		if (bGo && !m_externalInput) {
 			HandleDrop();
 		}
 	}
@@ -1163,16 +1165,21 @@ void CXYWnd::OnRButtonUp(UINT nFlags, CPoint point) {
  =======================================================================================================================
  */
 void CXYWnd::OriginalButtonDown(UINT nFlags, CPoint point) {
-	CRect	rctZ;
-	GetClientRect(rctZ);
-	SetWindowPos(&wndTop, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-	if (g_pParentWnd->GetTopWindow() != this) {
-		BringWindowToTop();
+	int height = m_nHeight;
+	if ( m_externalInput ) {
+		m_externalMouseCapture = true;
+	} else {
+		CRect rctZ;
+		GetClientRect(rctZ);
+		height = rctZ.Height();
+		SetWindowPos(&wndTop, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+		if (g_pParentWnd->GetTopWindow() != this) {
+			BringWindowToTop();
+		}
+		SetFocus();
+		SetCapture();
 	}
-
-	SetFocus();
-	SetCapture();
-	XY_MouseDown(point.x, rctZ.Height() - 1 - point.y, nFlags);
+	XY_MouseDown(point.x, height - 1 - point.y, nFlags);
 	m_nScrollFlags = nFlags;
 }
 
@@ -1181,11 +1188,15 @@ void CXYWnd::OriginalButtonDown(UINT nFlags, CPoint point) {
  =======================================================================================================================
  */
 void CXYWnd::OriginalButtonUp(UINT nFlags, CPoint point) {
-	CRect	rctZ;
-	GetClientRect(rctZ);
-	XY_MouseUp(point.x, rctZ.Height() - 1 - point.y, nFlags);
+	int height = m_nHeight;
+	if ( !m_externalInput ) {
+		CRect rctZ;
+		GetClientRect(rctZ);
+		height = rctZ.Height();
+	}
+	XY_MouseUp(point.x, height - 1 - point.y, nFlags);
 	if (!(nFlags & (MK_LBUTTON | MK_RBUTTON | MK_MBUTTON))) {
-		ReleaseCapture();
+		if ( m_externalInput ) m_externalMouseCapture = false; else ReleaseCapture();
 	}
 }
 
@@ -1204,7 +1215,7 @@ void CXYWnd::OnMouseMove(UINT nFlags, CPoint point) {
 	(
 		g_PrefsDlg.m_bChaseMouse == TRUE &&
 		(point.x < 0 || point.y < 0 || point.x > m_nWidth || point.y > m_nHeight) &&
-		GetCapture() == this
+		(m_externalMouseCapture || GetCapture() == this)
 	) {
 		float	fAdjustment = (g_qeglobals.d_gridsize / 8 * 64) / m_fScale;
 
@@ -1258,7 +1269,7 @@ void CXYWnd::OnMouseMove(UINT nFlags, CPoint point) {
 		// down to a single interface..
 		//
 		if (PointMode()) {
-			if (g_pMovingPoint && GetCapture() == this) {
+			if (g_pMovingPoint && (m_externalMouseCapture || GetCapture() == this)) {
 				bCrossHair = true;
 				SnapToPoint(point.x, m_nHeight - 1 - point.y, g_pMovingPoint->m_ptClip);
 				g_pMovingPoint->UpdatePointPtr();
@@ -1282,7 +1293,7 @@ void CXYWnd::OnMouseMove(UINT nFlags, CPoint point) {
 			}
 		}
 		else if (ClipMode()) {
-			if (g_pMovingClip && GetCapture() == this) {
+			if (g_pMovingClip && (m_externalMouseCapture || GetCapture() == this)) {
 				bCrossHair = true;
 				SnapToPoint(point.x, m_nHeight - 1 - point.y, g_pMovingClip->m_ptClip);
 				Sys_UpdateWindows(XY | W_CAMERA_IFON);
@@ -1331,7 +1342,7 @@ void CXYWnd::OnMouseMove(UINT nFlags, CPoint point) {
 			}
 		}
 		else if (PathMode()) {
-			if (g_pMovingPath && GetCapture() == this) {
+			if (g_pMovingPath && (m_externalMouseCapture || GetCapture() == this)) {
 				bCrossHair = true;
 				SnapToPoint(point.x, m_nHeight - 1 - point.y, g_pMovingPath->m_ptClip);
 				Sys_UpdateWindows(XY | W_CAMERA_IFON);
@@ -1409,7 +1420,7 @@ void CXYWnd::SetClipMode(bool bMode) {
 	}
 	else {
 		if (g_pMovingClip) {
-			ReleaseCapture();
+			if ( m_externalInput ) m_externalMouseCapture = false; else ReleaseCapture();
 			g_pMovingClip = NULL;
 		}
 
@@ -1470,14 +1481,20 @@ void CXYWnd::SetPointMode(bool b) {
  */
 void CXYWnd::OnPaint() {
 	CPaintDC	dc(this);					// device context for painting
-	bool		bPaint = true;
 	if (!qwglMakeCurrent(dc.m_hDC, win32.hGLRC)) {
 		common->Printf("ERROR: wglMakeCurrent failed.. Error:%i\n", qglGetError());
 		common->Printf("Please restart Q3Radiant if the Map view is not working\n");
-		bPaint = false;
+		return;
 	}
 
-	if (bPaint) {
+	DrawToCurrentContext( m_nWidth, m_nHeight );
+	qwglSwapBuffers(dc.m_hDC);
+	TRACE("XY Paint\n");
+}
+
+void CXYWnd::DrawToCurrentContext( int width, int height ) {
+	m_nWidth = Max( 1, width );
+	m_nHeight = Max( 1, height );
 		QE_CheckOpenGLForErrors();
 		XY_Draw();
 		QE_CheckOpenGLForErrors();
@@ -1618,9 +1635,6 @@ void CXYWnd::OnPaint() {
 			qglPopMatrix();
 		}
 
-		qwglSwapBuffers(dc.m_hDC);
-		TRACE("XY Paint\n");
-	}
 }
 
 /*
@@ -2123,10 +2137,8 @@ bool MergeMenu(CMenu * pMenuDestination, const CMenu * pMenuAdd, bool bTopLevel 
  =======================================================================================================================
  =======================================================================================================================
  */
-void CXYWnd::HandleDrop() {
-	if (g_PrefsDlg.m_bRightClick == false) {
-		return;
-	}
+HMENU CXYWnd::PrepareContextMenu( int x, int y ) {
+	m_ptDown = CPoint( x, y );
 
 	if (!m_mnuDrop.GetSafeHmenu()) {		// first time, load it up
 		m_mnuDrop.CreatePopupMenu();
@@ -2210,9 +2222,23 @@ void CXYWnd::HandleDrop() {
 		}
 	}
 
-	CPoint	ptMouse;
-	GetCursorPos(&ptMouse);
-	m_mnuDrop.TrackPopupMenu(TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_RIGHTBUTTON, ptMouse.x, ptMouse.y, this);
+	return m_mnuDrop.GetSafeHmenu();
+}
+
+void CXYWnd::ExecuteContextCommand( UINT command ) {
+	SendMessage( WM_COMMAND, MAKEWPARAM( command, 0 ), 0 );
+}
+
+void CXYWnd::HandleDrop() {
+	if ( g_PrefsDlg.m_bRightClick == false ) {
+		return;
+	}
+	if ( PrepareContextMenu( m_ptDown.x, m_ptDown.y ) == NULL ) {
+		return;
+	}
+	CPoint ptMouse;
+	GetCursorPos( &ptMouse );
+	m_mnuDrop.TrackPopupMenu( TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_RIGHTBUTTON, ptMouse.x, ptMouse.y, this );
 }
 
 /*
@@ -2734,7 +2760,7 @@ bool CXYWnd::XY_MouseMoved(int x, int y, int buttons) {
 
 /*
  =======================================================================================================================
-    DRAWING £
+    DRAWING Â£
     XY_DrawGrid
  =======================================================================================================================
  */
@@ -3306,7 +3332,7 @@ bool FilterBrush(brush_t *pb) {
 
 /*
  =======================================================================================================================
-    PATH LINES £
+    PATH LINES Â£
     DrawPathLines Draws connections between entities. Needs to consider all entities, not just ones on screen, because
     the lines can be visible when neither end is. Called for both camera view and xy view.
  =======================================================================================================================
@@ -4467,6 +4493,36 @@ BOOL CXYWnd::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 		g_pParentWnd->OnViewZoomout();
 	}
 	return TRUE;
+}
+
+void CXYWnd::HandleMouseMove( int x, int y, UINT buttons ) {
+	m_externalInput = true;
+	OnMouseMove( buttons, CPoint( x, y ) );
+	m_externalInput = false;
+}
+
+void CXYWnd::HandleMouseButton( int button, bool down, int x, int y, UINT buttons ) {
+	m_externalInput = true;
+	CPoint point( x, y );
+	if ( button == 0 ) {
+		if ( down ) OnLButtonDown( buttons, point ); else OnLButtonUp( buttons, point );
+	} else if ( button == 1 ) {
+		if ( down ) OnRButtonDown( buttons, point ); else OnRButtonUp( buttons, point );
+	} else if ( button == 2 ) {
+		if ( down ) OnMButtonDown( buttons, point ); else OnMButtonUp( buttons, point );
+	}
+	m_externalInput = false;
+}
+
+void CXYWnd::HandleMouseWheel( short delta ) {
+	m_externalInput = true;
+	OnMouseWheel( 0, delta, CPoint( 0, 0 ) );
+	m_externalInput = false;
+}
+
+void CXYWnd::SetExternalPanAnchor( int screenX, int screenY ) {
+	m_ptCursor.x = screenX;
+	m_ptCursor.y = screenY;
 }
 
 

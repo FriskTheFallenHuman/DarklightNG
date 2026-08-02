@@ -31,6 +31,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "qe3.h"
 #include "WaitDlg.h"
+#include "RadiantImGui.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -43,18 +44,27 @@ static char THIS_FILE[] = __FILE__;
 
 
 CWaitDlg::CWaitDlg(CWnd* pParent, const char *msg)
-	: CDialog(CWaitDlg::IDD, pParent)
+	: CDialog(CWaitDlg::IDD, pParent), headless( RadiantImGuiEnabled() )
 {
 	//{{AFX_DATA_INIT(CWaitDlg)
 	waitStr = msg;
 	//}}AFX_DATA_INIT
 	cancelPressed = false;
-	Create(CWaitDlg::IDD);
+	if ( !headless ) {
+		Create(CWaitDlg::IDD);
+	}
 	//g_pParentWnd->SetBusy(true);
 }
 
 CWaitDlg::~CWaitDlg() {
 	g_pParentWnd->SetBusy(false);
+}
+
+void CWaitDlg::SetWindowText( LPCTSTR value ) {
+	waitStr = value != NULL ? value : "";
+	if ( !headless ) {
+		CDialog::SetWindowText( value );
+	}
 }
 
 void CWaitDlg::DoDataExchange(CDataExchange* pDX)
@@ -100,6 +110,10 @@ void CWaitDlg::SetText(const char *msg, bool append) {
 		waitStr = msg;
 		text = msg;
 	}
+	if ( headless ) {
+		RadiantImGuiPumpMessages();
+		return;
+	}
 	UpdateData(FALSE);
 	Invalidate();
 	UpdateWindow();
@@ -107,6 +121,9 @@ void CWaitDlg::SetText(const char *msg, bool append) {
 }
 
 void CWaitDlg::AllowCancel( bool enable ) {
+	if ( headless ) {
+		return;
+	}
 	// this shows or hides the Cancel button
 	CWnd* pCancelButton = GetDlgItem (IDCANCEL);
 	ASSERT (pCancelButton);
@@ -118,6 +135,10 @@ void CWaitDlg::AllowCancel( bool enable ) {
 }
 
 bool CWaitDlg::CancelPressed( void ) {
+	if ( headless ) {
+		RadiantImGuiPumpMessages();
+		return false;
+	}
 #if _MSC_VER >= 1300
 	MSG *msg = AfxGetCurrentMessage();			// TODO Robert fix me!!
 #else

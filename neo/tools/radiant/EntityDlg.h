@@ -83,6 +83,12 @@ public:
 	static const char *TranslateString(const char *p);
 	void AddProp();
 	void DelProp();
+	void ApplyKeyValue( const char *key, const char *value );
+	void DeleteKeyValue( const char *key );
+	entity_t *GetEditEntity() const { return editEntity; }
+	eclass_t *GetSelectedClass();
+	void SelectClass( eclass_t *entityClass );
+	void ApplyAngle( const char *value );
 	void UpdateFromListBox();
 	CEdit editKey;
 	CEdit editVal;

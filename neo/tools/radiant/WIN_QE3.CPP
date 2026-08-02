@@ -31,6 +31,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "qe3.h"
 #include "mru.h"
+#include "RadiantImGui.h"
 
 extern CEdit				*g_pEdit;
 
@@ -61,7 +62,11 @@ void Sys_MarkMapModified(void) {
  =======================================================================================================================
  */
 void Sys_SetTitle(const char *text) {
-	g_pParentWnd->SetWindowText(va("%s: %s",EDITOR_WINDOWTEXT, text));
+	const char *title = va("%s: %s",EDITOR_WINDOWTEXT, text);
+	g_pParentWnd->SetWindowText(title);
+	if ( RadiantImGuiWindow() != NULL ) {
+		SetWindowTextA( RadiantImGuiWindow(), title );
+	}
 }
 
 /*
@@ -363,7 +368,10 @@ void OpenDialog(void) {
 	AddNewItem(g_qeglobals.d_lpMruMenu, ofn.lpstrFile);
 
 	// Refresh the File menu. FIXME
-	PlaceMenuMRUItem(g_qeglobals.d_lpMruMenu, GetSubMenu(GetMenu(g_pParentWnd->GetSafeHwnd()), 0), ID_FILE_EXIT);
+	HMENU frameMenu = GetMenu(g_pParentWnd->GetSafeHwnd());
+	if (frameMenu != NULL) {
+		PlaceMenuMRUItem(g_qeglobals.d_lpMruMenu, GetSubMenu(frameMenu, 0), ID_FILE_EXIT);
+	}
 
 	/* Open the file. */
 	Map_LoadFile(ofn.lpstrFile);
@@ -401,7 +409,10 @@ void ProjectDialog(void) {
 	}
 
 	// Refresh the File menu.
-	PlaceMenuMRUItem(g_qeglobals.d_lpMruMenu, GetSubMenu(GetMenu(g_pParentWnd->GetSafeHwnd()), 0), ID_FILE_EXIT);
+	HMENU frameMenu = GetMenu(g_pParentWnd->GetSafeHwnd());
+	if (frameMenu != NULL) {
+		PlaceMenuMRUItem(g_qeglobals.d_lpMruMenu, GetSubMenu(frameMenu, 0), ID_FILE_EXIT);
+	}
 
 	/* Open the file. */
 	if (!QE_LoadProject(ofn.lpstrFile)) {
@@ -438,7 +449,9 @@ void SaveAsDialog(bool bRegion) {
 	ofn.lpstrFileTitle = szFileTitle;
 	ofn.nMaxFileTitle = sizeof(szFileTitle);
 	ofn.lpstrInitialDir = strPath;
-	ofn.Flags = OFN_SHOWHELP | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_OVERWRITEPROMPT;
+	// A Save As dialog must allow a new filename. OFN_FILEMUSTEXIST made the
+	// legacy fallback silently reject the normal create-new-map case.
+	ofn.Flags = OFN_SHOWHELP | OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT;
 
 	/* Display the Open dialog box. */
 	if (!GetSaveFileName(&ofn)) {
@@ -455,14 +468,17 @@ void SaveAsDialog(bool bRegion) {
 	if (!bRegion) {
 		strcpy(currentmap, ofn.lpstrFile);
 		AddNewItem(g_qeglobals.d_lpMruMenu, ofn.lpstrFile);
-		PlaceMenuMRUItem(g_qeglobals.d_lpMruMenu, GetSubMenu(GetMenu(g_pParentWnd->GetSafeHwnd()), 0), ID_FILE_EXIT);
+		HMENU frameMenu = GetMenu(g_pParentWnd->GetSafeHwnd());
+		if (frameMenu != NULL) {
+			PlaceMenuMRUItem(g_qeglobals.d_lpMruMenu, GetSubMenu(frameMenu, 0), ID_FILE_EXIT);
+		}
 	}
 
 	Map_SaveFile(ofn.lpstrFile, bRegion);	// ignore region
 }
 
 /*
- * Menu modifications £
+ * Menu modifications Â£
  * FillBSPMenu
  */
 const char	*bsp_commands[256];

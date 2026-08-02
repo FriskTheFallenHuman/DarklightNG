@@ -99,6 +99,9 @@ public:
 	void ToggleSoundMode();
 	void SetProjectionMatrix();
 	void UpdateCameraView();
+	void DrawToCurrentContext( int width, int height );
+	void HandleMouseMove( int x, int y, UINT buttons );
+	void HandleMouseButton( int button, bool down, int x, int y, UINT buttons );
 
 	void BuildEntityRenderState( entity_t *ent, bool update );
 	bool GetRenderMode() {
@@ -172,6 +175,8 @@ protected:
 	idVec3 saveOrg;
 	idAngles saveAng;
 	bool saveValid;
+	bool m_externalInput;
+	bool m_externalMouseCapture;
 
 	// Generated message map functions
 protected:

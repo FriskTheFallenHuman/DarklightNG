@@ -501,8 +501,24 @@ void CDialogTextures::OnClickTreeTextures(NMHDR *pNMHDR, LRESULT *pResult) {
  =======================================================================================================================
  */
 void CDialogTextures::OnSelchangedTreeTextures(NMHDR *pNMHDR, LRESULT *pResult) {
-	NM_TREEVIEW *pNMTreeView = (NM_TREEVIEW *) pNMHDR;
 	*pResult = 0;
+	UpdateSelectedMedia();
+}
+
+void CDialogTextures::SelectMediaItem( HTREEITEM item ) {
+	if ( item != NULL ) {
+		// TVM_SELECTITEM synchronously sends TVN_SELCHANGED to this dialog.
+		// Calling UpdateSelectedMedia again applied the material twice (and could
+		// start nested selection/undo work while the ImGui frame was rendering).
+		if ( m_treeTextures.GetSelectedItem() == item ) {
+			UpdateSelectedMedia();
+		} else {
+			m_treeTextures.SelectItem( item );
+		}
+	}
+}
+
+void CDialogTextures::UpdateSelectedMedia() {
 
 	editMaterial = NULL;
 	editGui = "";
@@ -874,7 +890,13 @@ void CDialogTextures::OnDblclkTreeTextures(NMHDR *pNMHDR, LRESULT *pResult) {
 	GetCursorPos(&pt);
 	m_treeTextures.ScreenToClient(&pt);
 	HTREEITEM item = m_treeTextures.HitTest(pt);
-	if (item) {
+	ActivateMediaItem( item );
+
+	*pResult = 0;
+}
+
+void CDialogTextures::ActivateMediaItem( HTREEITEM item ) {
+	if ( item ) {
 		DWORD dw = m_treeTextures.GetItemData(item);
 		mode = dw;
 		if (mode == SOUNDS) {
@@ -895,8 +917,6 @@ void CDialogTextures::OnDblclkTreeTextures(NMHDR *pNMHDR, LRESULT *pResult) {
 			OnLoad();
 		}
 	}
-
-	*pResult = 0;
 }
 
 /*

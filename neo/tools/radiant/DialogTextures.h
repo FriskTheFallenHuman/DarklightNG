@@ -47,6 +47,10 @@ public:
 	void OnCancel();
 	void CollapseEditor();
 	void SelectCurrentItem(bool collapse, const char *name, int id);
+	void SelectMediaItem( HTREEITEM item );
+	void ActivateMediaItem( HTREEITEM item );
+	void RefreshMedia() { OnRefresh(); }
+	void LoadMedia() { OnLoad(); }
 // Dialog Data
 	//{{AFX_DATA(CDialogTextures)
 	enum { IDD = IDD_DIALOG_TEXTURELIST };
@@ -87,6 +91,7 @@ protected:
 	void addGuis(bool rootItems);
 	void addParticles(bool rootItems);
 	void BuildTree();
+	void UpdateSelectedMedia();
 	void CollapseChildren(HTREEITEM parent);
 	const char *buildItemName(HTREEITEM item, const char *rootName);
 	bool loadTree( HTREEITEM item, const idStr &name, CWaitDlg *dlg );

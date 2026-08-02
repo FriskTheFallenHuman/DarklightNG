@@ -362,14 +362,19 @@ static void Sys_DrawEditorCaption( HWND hWnd, bool active ) {
 	// GetMenu returns the control ID in the hMenu slot for WS_CHILD windows,
 	// so it cannot identify the frame by itself. Only the top-level Radiant
 	// frame owns a real menu; CAM, Z and XY panes must retain the blue caption.
-	const bool mainFrame = !( style & WS_CHILD ) && GetMenu( hWnd ) != NULL;
+	const bool imguiMainFrame = GetPropA( hWnd, "DarklightEditorMainFrame" ) != NULL;
+	const bool mainFrame = !( style & WS_CHILD ) && ( GetMenu( hWnd ) != NULL || imguiMainFrame );
 	const COLORREF gradientStart = mainFrame
-		? ( active
+		? ( imguiMainFrame
+			? RGB( 0, 0, 0 )
+			: active
 			? Sys_EditorThemeColor( win_editorMainTitleStart, RGB( 72, 72, 72 ) )
 			: Sys_EditorThemeColor( win_editorInactiveTitleStart, RGB( 64, 64, 64 ) ) )
 		: Sys_EditorThemeColor( win_editorTitleStart, RGB( 10, 36, 106 ) );
 	const COLORREF gradientEnd = mainFrame
-		? ( active
+		? ( imguiMainFrame
+			? RGB( 0, 0, 0 )
+			: active
 			? Sys_EditorThemeColor( win_editorMainTitleEnd, RGB( 24, 24, 24 ) )
 			: Sys_EditorThemeColor( win_editorInactiveTitleEnd, RGB( 32, 32, 32 ) ) )
 		: Sys_EditorThemeColor( win_editorTitleEnd, RGB( 166, 202, 240 ) );

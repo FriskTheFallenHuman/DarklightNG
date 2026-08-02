@@ -52,6 +52,7 @@ CInspectorDialog::CInspectorDialog(CWnd* pParent /*=NULL*/)
 {
 	initialized = false;
 	dockedTabs = W_CONSOLE | W_TEXTURE | W_MEDIA;
+	activeMode = W_CONSOLE;
 }
 
 CInspectorDialog::~CInspectorDialog()
@@ -75,7 +76,7 @@ BOOL CInspectorDialog::OnInitDialog()
 
 	ASSERT ( m_Tabs.GetSafeHwnd() );
 
-	LoadWindowPlacement(GetSafeHwnd() , "radiant_InspectorsWindow" );
+	LoadWindowPlacement(GetSafeHwnd() , "radiant_InspectorsWindow", false );
 
 	consoleWnd.Create(IDD_DIALOG_CONSOLE, this);
 	texWnd.Create(TEXTURE_WINDOW_CLASS, "", QE3_SPLITTER_STYLE, CRect(5, 5, 10, 10), this, 1299);
@@ -97,7 +98,10 @@ BOOL CInspectorDialog::OnInitDialog()
 }
 
 void CInspectorDialog::SetMode(int mode, bool updateTabs) {
-	FocusWindow ( mode );
+	activeMode = mode;
+	if ( updateTabs ) {
+		FocusWindow( mode );
+	}
 }
 
 void CInspectorDialog::UpdateEntitySel(eclass_t *ent) {

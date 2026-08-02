@@ -168,33 +168,53 @@ void idGLWidget::OnPaint()
 	if (!qwglMakeCurrent(dc.m_hDC, win32.hGLRC)) {
 	}
 
-	qglViewport(0, 0, rect.Width(), rect.Height());
-	qglScissor(0, 0, rect.Width(), rect.Height());
-	qglMatrixMode(GL_PROJECTION);
-	qglLoadIdentity();
-	qglClearColor (0.4f, 0.4f, 0.4f, 0.7f);
-	qglClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-
-	qglDisable(GL_DEPTH_TEST);
-	qglDisable(GL_BLEND);
-	qglOrtho(0, rect.Width(), 0, rect.Height(), -256, 256);
-
-	if (drawable) {
-		drawable->draw(1, 1, rect.Width()-1, rect.Height()-1);
-	} else {
-		qglViewport(0, 0, rect.Width(), rect.Height());
-		qglScissor(0, 0, rect.Width(), rect.Height());
-		qglMatrixMode(GL_PROJECTION);
-		qglLoadIdentity();
-		qglClearColor (0.4f, 0.4f, 0.4f, 0.7f);
-		qglClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	}
+	DrawToCurrentContext( rect.Width(), rect.Height() );
 
 	qwglSwapBuffers(dc);
 	qglFlush();
 	qwglMakeCurrent(win32.hDC, win32.hGLRC);
 
+}
+
+void idGLWidget::DrawToCurrentContext( int width, int height ) {
+	width = Max( 1, width );
+	height = Max( 1, height );
+	qglViewport( 0, 0, width, height );
+	qglScissor( 0, 0, width, height );
+	qglMatrixMode( GL_PROJECTION );
+	qglLoadIdentity();
+	qglClearColor( 0.4f, 0.4f, 0.4f, 0.7f );
+	qglClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+	qglDisable( GL_DEPTH_TEST );
+	qglDisable( GL_BLEND );
+	qglOrtho( 0, width, 0, height, -256, 256 );
+	if ( drawable != NULL ) {
+		drawable->draw( 1, 1, Max( 1, width - 1 ), Max( 1, height - 1 ) );
+	}
+	qglFlush();
+}
+
+void idGLWidget::HandleMouseMove( float x, float y ) {
+	if ( drawable != NULL ) {
+		drawable->mouseMove( x, y );
+	}
+}
+
+void idGLWidget::HandleMouseButton( int buttonIndex, bool down, float x, float y ) {
+	if ( drawable == NULL ) {
+		return;
+	}
+	const int buttonCode = buttonIndex == 0 ? MK_LBUTTON : buttonIndex == 1 ? MK_RBUTTON : MK_MBUTTON;
+	if ( down ) drawable->buttonDown( buttonCode, x, y ); else drawable->buttonUp( buttonCode, x, y );
+}
+
+void idGLWidget::HandleMouseWheel( short delta ) {
+	if ( drawable == NULL ) {
+		return;
+	}
+	float scale = drawable->getScale() + ( delta > 0 ? 0.1f : -0.1f );
+	drawable->setScale( idMath::ClampFloat( 0.1f, 5.0f, scale ) );
+	drawable->Update();
 }
 
 extern bool Sys_KeyDown(int key);

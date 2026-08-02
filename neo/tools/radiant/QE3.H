@@ -467,7 +467,7 @@ extern void Clamp(float& f, int nClamp);
 extern bool WriteFileString( FILE *fp, char *string, ... );
 extern void MemFile_fprintf(CMemFile* pMemFile, const char* pText, ...);
 extern void SaveWindowPlacement(HWND hwnd, const char* pName);
-extern bool LoadWindowPlacement(HWND hwnd, const char* pName);
+extern bool LoadWindowPlacement(HWND hwnd, const char* pName, bool restoreVisibility = true);
 extern bool ConfirmModified (void);
 extern void DoPatchInspector();
 void UpdatePatchInspector();

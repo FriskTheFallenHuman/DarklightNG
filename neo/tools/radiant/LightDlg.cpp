@@ -34,6 +34,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "../../game/game.h"
 #include "../comafx/DialogColorPicker.h"
 #include "LightDlg.h"
+#include "RadiantImGui.h"
 
 #ifdef ID_DEBUG_MEMORY
 #undef new
@@ -721,6 +722,72 @@ entity_t *SingleLightSelected() {
 	return NULL;
 }
 
+int LightInspector_LoadInfo( CLightInfo &info, CLightInfo &original ) {
+	info.Defaults();
+	original.Defaults();
+	entity_t *source = NULL;
+	idList<entity_t *> selectedLights;
+	for ( brush_t *brush = selected_brushes.next; brush != &selected_brushes; brush = brush->next ) {
+		if ( !( brush->owner->eclass->nShowFlags & ECLASS_LIGHT ) || brush->entityModel ) {
+			continue;
+		}
+		bool alreadyCounted = false;
+		for ( int index = 0; index < selectedLights.Num(); index++ ) {
+			if ( selectedLights[index] == brush->owner ) {
+				alreadyCounted = true;
+				break;
+			}
+		}
+		if ( !alreadyCounted ) {
+			selectedLights.Append( brush->owner );
+		}
+		if ( source == NULL ) {
+			source = brush->owner;
+		}
+	}
+	if ( source != NULL ) {
+		info.FromDict( &source->epairs );
+		original.FromDict( &source->epairs );
+	}
+	return selectedLights.Num();
+}
+
+void LightInspector_ApplyInfo( CLightInfo &info, CLightInfo *original, bool differencesOnly ) {
+	idDict differences;
+	const idDict *differencesPtr = NULL;
+	if ( differencesOnly && original != NULL ) {
+		idDict modified;
+		idDict originalValues;
+		info.ToDict( &modified );
+		original->ToDictWriteAllInfo( &originalValues );
+		differences = modified;
+		for ( int index = 0; index < modified.GetNumKeyVals(); index++ ) {
+			const idKeyValue *modifiedValue = modified.GetKeyVal( index );
+			const idKeyValue *originalValue = originalValues.FindKey( modifiedValue->GetKey() );
+			if ( originalValue == NULL || modifiedValue->GetValue() == originalValue->GetValue() ) {
+				differences.Delete( modifiedValue->GetKey() );
+			}
+		}
+		differencesPtr = &differences;
+	}
+
+	for ( brush_t *brush = selected_brushes.next; brush != &selected_brushes; brush = brush->next ) {
+		if ( !( brush->owner->eclass->nShowFlags & ECLASS_LIGHT ) || brush->entityModel ) {
+			continue;
+		}
+		if ( differencesPtr != NULL ) {
+			info.ToDictFromDifferences( &brush->owner->epairs, differencesPtr );
+		} else {
+			info.ToDict( &brush->owner->epairs );
+		}
+		Brush_Build( brush );
+	}
+	if ( original != NULL ) {
+		*original = info;
+	}
+	Sys_UpdateWindows( W_ALL );
+}
+
 void CLightDlg::UpdateDialog( bool updateChecks )
 {	
 	CString title;
@@ -780,6 +847,10 @@ void CLightDlg::UpdateDialog( bool updateChecks )
 }
 
 void LightEditorInit( const idDict *spawnArgs ) {
+	if ( RadiantImGuiEnabled() && RadiantImGuiWindow() != NULL ) {
+		RadiantImGuiShowLightEditor();
+		return;
+	}
 	if ( renderSystem->IsFullScreen() ) {
 		common->Printf( "Cannot run the light editor in fullscreen mode.\n"
 					"Set r_fullscreen to 0 and vid_restart.\n" );
@@ -831,6 +902,7 @@ void LightEditorShutdown( void ) {
 }
 
 void UpdateLightInspector() {
+	RadiantImGuiRefreshLightEditor();
 	if ( g_LightDialog && g_LightDialog->GetSafeHwnd() != NULL ) {
 		g_LightDialog->UpdateDialog(true);   //jhefty - update ALL info about the light, including check boxes
 	}

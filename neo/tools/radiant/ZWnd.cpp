@@ -149,13 +149,37 @@ void CZWnd::OnPaint()
   }
   else
   {
-	  QE_CheckOpenGLForErrors();
-
-    Z_Draw ();
+	  DrawToCurrentContext( z.width, z.height );
 	  //qwglSwapBuffers(m_dcZ);
 	  qwglSwapBuffers(dc.m_hDC);
     TRACE("Z Paint\n");
   }
+}
+
+void CZWnd::DrawToCurrentContext( int width, int height ) {
+	z.width = Max( 10, width );
+	z.height = Max( 10, height );
+	QE_CheckOpenGLForErrors();
+	Z_Draw();
+}
+
+void CZWnd::HandleMouseMove( int x, int y, UINT buttons ) {
+	const int invertedY = z.height - 1 - y;
+	float height = z.origin[2] + ( invertedY - z.height / 2 ) / z.scale;
+	height = floor( height / g_qeglobals.d_gridsize + 0.5f ) * g_qeglobals.d_gridsize;
+	CString status;
+	status.Format( "Z:: %.1f", height );
+	if ( g_pParentWnd != NULL ) g_pParentWnd->SetStatusText( 1, status );
+	Z_MouseMoved( x, invertedY, buttons );
+}
+
+void CZWnd::HandleMouseButton( int button, bool down, int x, int y, UINT buttons ) {
+	const int invertedY = z.height - 1 - y;
+	if ( down ) {
+		Z_MouseDown( x, invertedY, buttons );
+	} else {
+		Z_MouseUp( x, invertedY, buttons );
+	}
 }
 
 void CZWnd::OnGetMinMaxInfo(MINMAXINFO FAR* lpMMI) 

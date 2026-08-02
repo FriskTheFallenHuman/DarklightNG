@@ -45,7 +45,8 @@ class CSurfaceDlg : public CDialog
 	// Construction
 public:
 	CSurfaceDlg(CWnd* pParent = NULL);   // standard constructor
-  void SetTexMods();
+	void SetTexMods();
+	void BeginImGuiInspector();
 
 // Dialog Data
 	//{{AFX_DATA(CSurfaceDlg)
@@ -132,6 +133,8 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
+
+extern CSurfaceDlg g_dlgSurface;
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Developer Studio will insert additional declarations immediately before the previous line.

@@ -33,6 +33,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "radiant.h"
 #include "MainFrm.h"
 #include "lightdlg.h"
+#include "RadiantImGui.h"
 
 #include <process.h>    // for _beginthreadex and _endthreadex
 #include <ddeml.h>  // for MSGF_DDEMGR
@@ -84,6 +85,7 @@ void RadiantPrint( const char *text ) {
 }
 
 void RadiantShutdown( void ) {
+	RadiantImGuiDestroy();
 	theApp.ExitInstance();
 }
 
@@ -116,8 +118,12 @@ void RadiantInit( void ) {
 	if ( g_DoomInstance ) {
 		if ( ::IsWindowVisible( win32.hWnd ) ) {
 			::ShowWindow( win32.hWnd, SW_HIDE );
-			g_pParentWnd->ShowWindow( SW_SHOW );
-			g_pParentWnd->SetFocus();
+			if ( RadiantImGuiEnabled() && RadiantImGuiWindow() != NULL ) {
+				RadiantImGuiFocus();
+			} else {
+				g_pParentWnd->ShowWindow( SW_SHOW );
+				g_pParentWnd->SetFocus();
+			}
 		}
 	} else {
 		Sys_GrabMouseCursor( false );
@@ -133,6 +139,16 @@ void RadiantInit( void ) {
 
 		// Perform specific initializations
 		pThread->InitInstance();
+
+		if ( RadiantImGuiEnabled() ) {
+			if ( RadiantImGuiCreate() ) {
+				g_pParentWnd->EnableImGuiShell( RadiantImGuiWindow() );
+			} else {
+				common->Warning( "Could not create the Dear ImGui Radiant window; using the MFC shell.\n" );
+				g_pParentWnd->ShowWindow( SW_SHOW );
+				g_pParentWnd->UpdateWindow();
+			}
+		}
 
 		qglFinish();
 		//qwglMakeCurrent(0, 0);
@@ -173,6 +189,7 @@ void RadiantRun( void ) {
 			//qglPushAttrib(GL_ALL_ATTRIB_BITS);
 			qglDepthMask(true);
 			theApp.Run();
+			RadiantImGuiFrame();
 			//qglPopAttrib();
 			//qwglMakeCurrent(0, 0);
 			qwglMakeCurrent(win32.hDC, win32.hGLRC);
@@ -315,9 +332,15 @@ BOOL CRadiantApp::InitInstance()
 
 	m_pMainWnd = pMainFrame;
 
-	// The main window has been initialized, so show and update it.
-	pMainFrame->ShowWindow(m_nCmdShow);
-	pMainFrame->UpdateWindow();
+	// The MFC controls are initialized as the compatibility/controller layer,
+	// but keep the frame hidden until RadiantInit has created and embedded the
+	// ImGui client. This avoids flashing the legacy workspace during startup.
+	if ( RadiantImGuiEnabled() ) {
+		pMainFrame->ShowWindow( SW_HIDE );
+	} else {
+		pMainFrame->ShowWindow( m_nCmdShow );
+		pMainFrame->UpdateWindow();
+	}
 
 	return TRUE;
 }

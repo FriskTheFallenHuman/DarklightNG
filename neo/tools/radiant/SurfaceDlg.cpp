@@ -32,6 +32,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "qe3.h"
 #include "Radiant.h"
 #include "SurfaceDlg.h"
+#include "RadiantImGui.h"
 #include "mainfrm.h"
 
 #ifdef _DEBUG
@@ -162,11 +163,15 @@ if only patches selected, will read the patch texdef
 */
 extern void Face_GetScale_BrushPrimit(face_t *face, float *s, float *t, float *rot);
 void CSurfaceDlg::SetTexMods() {
-	UpdateData(TRUE);
+	if ( GetSafeHwnd() != NULL ) {
+		UpdateData(TRUE);
+	}
 	m_strMaterial = g_qeglobals.d_texturewin.texdef.name;
 	patchMesh_t *p = SinglePatchSelected();
 	if (p) {
 		m_subdivide = p->explicitSubdivisions;
+		m_nHorz = Max( 1, p->horzSubdivisions );
+		m_nVert = Max( 1, p->vertSubdivisions );
 		m_strMaterial = p->d_texture->GetName();
 	} else {
 		m_subdivide = false;
@@ -187,19 +192,36 @@ void CSurfaceDlg::SetTexMods() {
 
 	if (selFace) {
 		float rot;
-		Face_GetScale_BrushPrimit(selFace, &m_horzScale, &m_vertScale, &rot);	
+		Face_GetScale_BrushPrimit(selFace, &m_horzScale, &m_vertScale, &rot);
+		m_rotate = rot;
 	} else {
 		m_horzScale = 1.0f;
 		m_vertScale = 1.0f;
 	}
 
-	UpdateData(FALSE);
+	if ( GetSafeHwnd() != NULL ) {
+		UpdateData(FALSE);
+	}
 }
 
 
 bool g_bNewFace = false;
 bool g_bNewApplyHandling = false;
 bool g_bGatewayhack = false;
+
+void CSurfaceDlg::BeginImGuiInspector() {
+	g_bNewFace = ( g_PrefsDlg.m_bFace != FALSE );
+	g_bNewApplyHandling = ( g_PrefsDlg.m_bNewApplyHandling != FALSE );
+	g_bGatewayhack = ( g_PrefsDlg.m_bGatewayHack != FALSE );
+	g_old_texdef = g_qeglobals.d_texturewin.texdef;
+	g_changed_surface = false;
+	g_patch_texdef.scale[0] = 0.05f;
+	g_patch_texdef.scale[1] = 0.05f;
+	g_patch_texdef.shift[0] = 0.05f;
+	g_patch_texdef.shift[1] = 0.05f;
+	g_patch_texdef.rotate = g_PrefsDlg.m_nRotation;
+	SetTexMods();
+}
 
 
 /*
@@ -274,12 +296,17 @@ void UpdateSurfaceDialog() {
 	if (g_surfwin)  {
 		g_dlgSurface.SetTexMods();
 	}
+	RadiantImGuiRefreshSurfaceInspector();
 	g_pParentWnd->UpdateTextureBar();
 }
 
 bool ByeByeSurfaceDialog();
 
 void DoSurface (void) {
+	if ( RadiantImGuiEnabled() && RadiantImGuiWindow() != NULL ) {
+		RadiantImGuiShowSurfaceInspector();
+		return;
+	}
 
 	g_bNewFace = ( g_PrefsDlg.m_bFace != FALSE );
 	g_bNewApplyHandling = ( g_PrefsDlg.m_bNewApplyHandling != FALSE );

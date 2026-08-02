@@ -414,6 +414,28 @@ void CEntityDlg::UpdateEntitySel(eclass_t *ent) {
 	}
 }
 
+eclass_t *CEntityDlg::GetSelectedClass() {
+	const int index = comboClass.GetCurSel();
+	if ( index == LB_ERR ) {
+		return editEntity != NULL ? editEntity->eclass : NULL;
+	}
+	CString className;
+	comboClass.GetLBText( index, className );
+	return Eclass_ForName( className, false );
+}
+
+void CEntityDlg::SelectClass( eclass_t *entityClass ) {
+	if ( entityClass != NULL ) {
+		UpdateEntitySel( entityClass );
+	}
+}
+
+void CEntityDlg::ApplyAngle( const char *value ) {
+	if ( editEntity != NULL && value != NULL ) {
+		ApplyKeyValue( AngleKey(), value );
+	}
+}
+
 void CEntityDlg::OnLbnSelchangeListkeyval()
 {
 	int index = listKeyVal.GetCurSel();
@@ -470,6 +492,13 @@ void CEntityDlg::DelProp() {
 	}
 
 	editKey.GetWindowText(key);
+	DeleteKeyValue( key );
+}
+
+void CEntityDlg::DeleteKeyValue( const char *key ) {
+	if ( editEntity == NULL || key == NULL || key[0] == '\0' ) {
+		return;
+	}
 	if (multipleEntities) {
 		for (brush_t *b = selected_brushes.next; b != &selected_brushes; b = b->next) {
 			DeleteKey(b->owner, key);
@@ -602,6 +631,15 @@ void CEntityDlg::AddProp() {
 	CString Key, Value;
 	editKey.GetWindowText(Key);
 	editVal.GetWindowText(Value);
+	ApplyKeyValue( Key, Value );
+}
+
+void CEntityDlg::ApplyKeyValue( const char *key, const char *value ) {
+	if ( editEntity == NULL || key == NULL || value == NULL || key[0] == '\0' ) {
+		return;
+	}
+	CString Key( key );
+	CString Value( value );
 
 	bool isName = (stricmp(Key, "name") == 0);
 	bool isModel = static_cast<bool>((stricmp(Key, "model") == 0 && Value.GetLength() > 0));
@@ -946,12 +984,9 @@ void CEntityDlg::CreateEntity() {
 	// check to make sure we have a brush
 	CXYWnd	*pWnd = g_pParentWnd->ActiveXY();
 	if (pWnd) {
-		CRect	rctZ;
-		pWnd->GetClientRect(rctZ);
-
 		brush_t *pBrush;
 		if (selected_brushes.next == &selected_brushes) {
-			pBrush = CreateEntityBrush(g_nSmartX, rctZ.Height() - 1 - g_nSmartY, pWnd);
+			pBrush = CreateEntityBrush(g_nSmartX, pWnd->Height() - 1 - g_nSmartY, pWnd);
 			forceFixed = true;
 		}
 	}
@@ -1374,4 +1409,3 @@ void CEntityDlg::SelectCurvePointByRay(const idVec3 &org, const idVec3 &dir, int
 	assert ( besti < editEntity->curve->GetNumValues() );
 	g_qeglobals.d_move_points[ g_qeglobals.d_num_move_points++ ] = editEntity->curve->GetValueAddress( besti );
 }
-

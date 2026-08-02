@@ -1,0 +1,158 @@
+log file 'emptytexture_test.log' opened on Sun Aug  2 14:55:06 2026
+
+Current search path:
+E:\projects\Darklight2/base
+game DLL: 0x0 in pak: 0x0
+Addon pk4s:
+file system initialized.
+--------------------------------------
+----- Initializing Decls -----
+------------------------------
+------- Initializing renderSystem --------
+renderSystem initialized.
+--------------------------------------
+5150 strings read from strings/english.lang
+Couldn't open journal files
+execing editor.cfg
+execing default.cfg
+execing DoomConfig.cfg
+couldn't exec autoexec.cfg
+5150 strings read from strings/english.lang
+----- Initializing Sound System ------
+sound system initialized.
+--------------------------------------
+----- R_InitOpenGL -----
+Initializing OpenGL subsystem
+...registered window class
+...registered fake window class
+...initializing QGL
+...calling LoadLibrary( 'opengl32' ): succeeded
+...created window @ 1007,369 (2582x1496)
+Initializing OpenGL driver
+...getting DC: succeeded
+...PIXELFORMAT 12 selected
+...creating GL context: succeeded
+...making context current: succeeded
+
+------- Input Initialization -------
+Initializing DirectInput...
+mouse: DirectInput initialized.
+keyboard: DirectInput initialized.
+------------------------------------
+sound: STEREO
+...using GL_ARB_multitexture
+...using GL_ARB_texture_env_combine
+...using GL_ARB_texture_cube_map
+...using GL_ARB_texture_env_dot3
+...using GL_ARB_texture_env_add
+...using GL_ARB_texture_non_power_of_two
+...using GL_ARB_texture_compression
+...using GL_EXT_texture_compression_s3tc
+...using GL_EXT_texture_filter_anisotropic
+   maxTextureAnisotropy: 16.000000
+...using GL_1.4_texture_lod_bias
+X..GL_EXT_shared_texture_palette not found
+...using GL_EXT_texture3D
+...using GL_NV_register_combiners
+X..GL_ATI_fragment_shader not found
+X..GL_ATI_text_fragment_shader not found
+...using GL_ARB_vertex_buffer_object
+...using GPU skeletal animation (uniform blocks: 65536 bytes)
+...using named GPU debug groups
+...using asynchronous GPU timer queries
+---------- R_GLSL_Init ----------
+Available.
+---------------------------------
+----- R_ReloadGLSLPrograms -----
+glprogs/interaction.vert
+glprogs/interaction.frag
+glprogs/environment.vert
+glprogs/environment.frag
+glprogs/bumpyEnvironment.vert
+glprogs/bumpyEnvironment.frag
+glprogs/test.vert
+glprogs/test.frag
+glprogs/ambientLight.vert
+glprogs/ambientLight.frag
+glprogs/glassWarp.vert
+glprogs/glassWarp.frag
+glprogs/bakedLight.vert
+glprogs/bakedLight.frag
+glprogs/colorProcess.vert
+glprogs/colorProcess.frag
+glprogs/heatHaze.vert
+glprogs/heatHaze.frag
+glprogs/heatHazeWithMask.vert
+glprogs/heatHazeWithMask.frag
+glprogs/heatHazeWithMaskAndVertex.vert
+glprogs/heatHazeWithMaskAndVertex.frag
+glprogs/bakedShadow.vert
+glprogs/bakedShadow.frag
+glprogs/interactionShadow.vert
+glprogs/interactionShadow.frag
+glprogs/gpuSkinning.vert
+glprogs/fogTexgen.vert
+glprogs/blendLightTexgen.vert
+--------------------------------
+using GLSL forward renderSystem
+WARNING: SetDeviceGammaRamp failed.
+WARNING: SetDeviceGammaRamp failed.
+game using MMX & SSE & SSE2 & SSE3 for SIMD processing
+enabled Flush-To-Zero mode
+enabled Denormals-Are-Zero mode
+--------- Initializing Game ----------
+gamename: baseDOOM-1
+gamedate: Aug  2 2026
+Initializing event system
+...534 event definitions
+Initializing class hierarchy
+...153 classes, 237096 bytes for event callbacks
+Initializing scripts
+Compiled 'monster_zombie_base::archvile_minion': 738.5 ms
+---------- Compile stats ----------
+
+Memory usage:
+     Strings: 79, 9656 bytes
+  Statements: 67783, 1355660 bytes
+   Functions: 2185, 274584 bytes
+   Variables: 147628 bytes
+    Mem used: 2661176 bytes
+ Static data: 3530256 bytes
+   Allocated: 4621468 bytes
+ Thread size: 7076 bytes
+
+...6 aas types
+game initialized.
+--------------------------------------
+-------- Initializing Session --------
+session initialized
+--------------------------------------
+--- Common Initialization Complete ---
+material _emptyname:
+source: materials/editor_default.mtr:1
+----------
+_emptyName
+{
+	description	"Empty-name editor texture"
+	qer_editorimage	textures/_emptyname.tga
+	diffusemap	textures/_emptyname.tga
+}
+----------
+Unparsed.
+Never referenced.
+--------- Game Map Shutdown ----------
+--------------------------------------
+Shutting down sound hardware
+idRenderSystem::Shutdown()
+Shutting down OpenGL subsystem
+...wglMakeCurrent( NULL, NULL ): success
+...deleting GL context: success
+...releasing DC: success
+...destroying window
+...shutting down QGL
+...unloading OpenGL DLL
+------------ Game Shutdown -----------
+--------- Game Map Shutdown ----------
+--------------------------------------
+Shutdown event system
+--------------------------------------

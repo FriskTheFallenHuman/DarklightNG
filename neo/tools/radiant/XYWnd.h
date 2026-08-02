@@ -151,6 +151,13 @@ public:
 
 	virtual ~CXYWnd();
   void SetViewType(int n);
+	void DrawToCurrentContext( int width, int height );
+	void HandleMouseMove( int x, int y, UINT buttons );
+	void HandleMouseButton( int button, bool down, int x, int y, UINT buttons );
+	void HandleMouseWheel( short delta );
+	void SetExternalPanAnchor( int screenX, int screenY );
+	HMENU PrepareContextMenu( int x, int y );
+	void ExecuteContextCommand( UINT command );
   int GetViewType() {return  m_nViewType; };
   void SetScale(float f) {m_fScale = f;};
   float Scale() {return m_fScale;};
@@ -187,6 +194,8 @@ protected:
 	idVec3 m_vOrigin;
 	CPoint m_ptCursor;
   bool m_bRButtonDown;
+	bool m_externalInput;
+	bool m_externalMouseCapture;
 
   int	m_nButtonstate;
   int m_nPressx;

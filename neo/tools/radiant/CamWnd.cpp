@@ -33,6 +33,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "Radiant.h"
 #include "XYWnd.h"
 #include "CamWnd.h"
+#include "RadiantImGui.h"
 #include "splines.h"
 #include <GL/glu.h>
 
@@ -87,6 +88,8 @@ CCamWnd::CCamWnd() {
 	selectMode = false;
 	soundMode = false;
 	saveValid = false;
+	m_externalInput = false;
+	m_externalMouseCapture = false;
 	Cam_Init();
 }
 
@@ -196,25 +199,27 @@ brush_t *g_pSplitList = NULL;
  */
 void CCamWnd::OnPaint() {
 	CPaintDC	dc(this);	// device context for painting
-	bool		bPaint = true;
 
 	if (!qwglMakeCurrent(dc.m_hDC, win32.hGLRC)) {
 		common->Printf("ERROR: wglMakeCurrent failed..\n ");
 		common->Printf("Please restart " EDITOR_WINDOWTEXT " if the camera view is not working\n");
 	}
 	else {
-		QE_CheckOpenGLForErrors();
-		g_pSplitList = NULL;
-		if (g_bClipMode) {
-			if (g_Clip1.Set() && g_Clip2.Set()) {
-				g_pSplitList = ((g_pParentWnd->ActiveXY()->GetViewType() == XZ) ? !g_bSwitch : g_bSwitch) ? &g_brBackSplits : &g_brFrontSplits;
-			}
-		}
-
-		Cam_Draw();
-		QE_CheckOpenGLForErrors();
+		DrawToCurrentContext( m_Camera.width, m_Camera.height );
 		qwglSwapBuffers(dc.m_hDC);
 	}
+}
+
+void CCamWnd::DrawToCurrentContext( int width, int height ) {
+	m_Camera.width = Max( 1, width );
+	m_Camera.height = Max( 1, height );
+	QE_CheckOpenGLForErrors();
+	g_pSplitList = NULL;
+	if ( g_bClipMode && g_Clip1.Set() && g_Clip2.Set() && g_pParentWnd->ActiveXY() != NULL ) {
+		g_pSplitList = ((g_pParentWnd->ActiveXY()->GetViewType() == XZ) ? !g_bSwitch : g_bSwitch) ? &g_brBackSplits : &g_brFrontSplits;
+	}
+	Cam_Draw();
+	QE_CheckOpenGLForErrors();
 }
 
 /*
@@ -248,9 +253,13 @@ extern void Select_RotateTexture(float amt, bool absolute);
  =======================================================================================================================
  */
 void CCamWnd::OnMouseMove(UINT nFlags, CPoint point) {
-	CRect	r;
-	GetClientRect(r);
-	if	(GetCapture() == this && (GetAsyncKeyState(VK_MENU) & 0x8000) && !((GetAsyncKeyState(VK_SHIFT) & 0x8000) || (GetAsyncKeyState(VK_CONTROL) & 0x8000))) {
+	int height = m_Camera.height;
+	if ( !m_externalInput ) {
+		CRect r;
+		GetClientRect( r );
+		height = r.bottom;
+	}
+	if	((m_externalMouseCapture || GetCapture() == this) && (GetAsyncKeyState(VK_MENU) & 0x8000) && !((GetAsyncKeyState(VK_SHIFT) & 0x8000) || (GetAsyncKeyState(VK_CONTROL) & 0x8000))) {
 		if (GetAsyncKeyState(VK_CONTROL) & 0x8000) {
 			Select_RotateTexture((float)point.y - m_ptLastCursor.y);
 		}
@@ -262,7 +271,7 @@ void CCamWnd::OnMouseMove(UINT nFlags, CPoint point) {
 		}
 	}
 	else {
-		Cam_MouseMoved(point.x, r.bottom - 1 - point.y, nFlags);
+		Cam_MouseMoved(point.x, height - 1 - point.y, nFlags);
 	}
 
 	m_ptLastCursor = point;
@@ -395,11 +404,19 @@ int CCamWnd::OnCreate(LPCREATESTRUCT lpCreateStruct) {
  =======================================================================================================================
  */
 void CCamWnd::OriginalMouseUp(UINT nFlags, CPoint point) {
-	CRect	r;
-	GetClientRect(r);
-	Cam_MouseUp(point.x, r.bottom - 1 - point.y, nFlags);
+	int height = m_Camera.height;
+	if ( !m_externalInput ) {
+		CRect r;
+		GetClientRect( r );
+		height = r.bottom;
+	}
+	Cam_MouseUp(point.x, height - 1 - point.y, nFlags);
 	if (!(nFlags & (MK_LBUTTON | MK_RBUTTON | MK_MBUTTON))) {
-		ReleaseCapture();
+		if ( m_externalInput ) {
+			m_externalMouseCapture = false;
+		} else {
+			ReleaseCapture();
+		}
 	}
 }
 
@@ -409,13 +426,38 @@ void CCamWnd::OriginalMouseUp(UINT nFlags, CPoint point) {
  */
 void CCamWnd::OriginalMouseDown(UINT nFlags, CPoint point) {
 	// if (GetTopWindow()->GetSafeHwnd() != GetSafeHwnd()) BringWindowToTop();
-	CRect	r;
-	GetClientRect(r);
-	SetFocus();
-	SetCapture();
+	int height = m_Camera.height;
+	if ( m_externalInput ) {
+		m_externalMouseCapture = true;
+	} else {
+		CRect r;
+		GetClientRect( r );
+		height = r.bottom;
+		SetFocus();
+		SetCapture();
+	}
 
 	// if (!(GetAsyncKeyState(VK_MENU) & 0x8000))
-	Cam_MouseDown(point.x, r.bottom - 1 - point.y, nFlags);
+	Cam_MouseDown(point.x, height - 1 - point.y, nFlags);
+}
+
+void CCamWnd::HandleMouseMove( int x, int y, UINT buttons ) {
+	m_externalInput = true;
+	OnMouseMove( buttons, CPoint( x, y ) );
+	m_externalInput = false;
+}
+
+void CCamWnd::HandleMouseButton( int button, bool down, int x, int y, UINT buttons ) {
+	m_externalInput = true;
+	CPoint point( x, y );
+	if ( button == 0 ) {
+		if ( down ) OnLButtonDown( buttons, point ); else OnLButtonUp( buttons, point );
+	} else if ( button == 1 ) {
+		if ( down ) OnRButtonDown( buttons, point ); else OnRButtonUp( buttons, point );
+	} else if ( button == 2 ) {
+		if ( down ) OnMButtonDown( buttons, point ); else OnMButtonUp( buttons, point );
+	}
+	m_externalInput = false;
 }
 
 /*
@@ -423,7 +465,11 @@ void CCamWnd::OriginalMouseDown(UINT nFlags, CPoint point) {
  =======================================================================================================================
  */
 void CCamWnd::Cam_Init() {
-	// m_Camera.draw_mode = cd_texture;
+	// A zero-initialized camera is cd_wire.  That used to be corrected later by
+	// the visible MFC texture menu, but the ImGui shell has no native menu state
+	// to perform that initialization.  Start new camera views in the normal
+	// textured mode so newly-created brushes draw their material faces.
+	m_Camera.draw_mode = cd_texture;
 	m_Camera.origin[0] = 0.0f;
 	m_Camera.origin[1] = 20.0f;
 	m_Camera.origin[2] = 72.0f;
@@ -1717,6 +1763,7 @@ void CCamWnd::BuildRendererState() {
 	// create the raw model for all the brushes
 	int numBrushes = 0;
 	int numSurfaces = 0;
+	DWORD lastMessagePump = GetTickCount();
 
 	// the renderModel for the world holds all the geometry that isn't in an entity
 	worldModel = renderModelManager->AllocModel();
@@ -1755,6 +1802,10 @@ void CCamWnd::BuildRendererState() {
 			}
 
 			numBrushes++;
+			if ( RadiantImGuiEnabled() && GetTickCount() - lastMessagePump >= 50 ) {
+				RadiantImGuiPumpMessages();
+				lastMessagePump = GetTickCount();
+			}
 		}
 	}
 
@@ -1787,6 +1838,10 @@ void CCamWnd::BuildRendererState() {
 		}
 
 		BuildEntityRenderState( ent, false );
+		if ( RadiantImGuiEnabled() && GetTickCount() - lastMessagePump >= 50 ) {
+			RadiantImGuiPumpMessages();
+			lastMessagePump = GetTickCount();
+		}
 	}
 
 	//common->Printf("Render data used %d brushes\n", numBrushes);
@@ -2055,17 +2110,9 @@ void CCamWnd::DrawEntityData() {
 void CCamWnd::Cam_Render() {
 
 	renderView_t	refdef;
-	CPaintDC	dc(this);	// device context for painting
-
 
 	if (!active_brushes.next) {
 		return;					// not valid yet
-	}
-
-	if (!qwglMakeCurrent(dc.m_hDC, win32.hGLRC)) {
-		common->Printf("ERROR: wglMakeCurrent failed..\n ");
-		common->Printf("Please restart " EDITOR_WINDOWTEXT " if the camera view is not working\n");
-		return;
 	}
 
 	// save the editor state

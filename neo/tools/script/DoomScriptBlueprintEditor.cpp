@@ -2,6 +2,7 @@
 #pragma hdrstop
 
 #include "../radiant/qe3.h"
+#include "../radiant/RadiantImGui.h"
 #include "DoomScriptBlueprint.h"
 #include "DoomScriptBlueprintEditor.h"
 
@@ -286,6 +287,7 @@ private:
 	HWND hwnd;
 	HDC dc;
 	HGLRC glrc;
+	ImGuiContext *imguiContext;
 	bool rendererReady;
 	bool rendering;
 	bool deleteOnDestroy;
@@ -328,7 +330,7 @@ private:
 static DoomScriptBlueprintImGuiEditor *blueprintEditor = NULL;
 
 DoomScriptBlueprintImGuiEditor::DoomScriptBlueprintImGuiEditor() :
-	hwnd( NULL ), dc( NULL ), glrc( NULL ), rendererReady( false ), rendering( false ), deleteOnDestroy( false ), selectedScript( -1 ),
+	hwnd( NULL ), dc( NULL ), glrc( NULL ), imguiContext( NULL ), rendererReady( false ), rendering( false ), deleteOnDestroy( false ), selectedScript( -1 ),
 	selectedFunction( -1 ), selectedNode( -1 ), selectedPalette( -1 ), selectedGlobal( -1 ), selectedLocal( -1 ),
 	selectedShared( -1 ), variableType( 0 ), pan( 30.0f, 30.0f ), zoom( 1.0f ), uiScale( 1.0f ), graphPanning( false ), frameRequested( true ),
 	editNode( -1 ), editConditionBuilder( false ), editVariable( 0 ), editOperation( 0 ), editValueSource( -1 ), openEditPopup( false ) {
@@ -392,7 +394,9 @@ bool DoomScriptBlueprintImGuiEditor::InitializeRenderer() {
 	if ( win32.hGLRC != NULL ) wglShareLists( win32.hGLRC, glrc );
 
 	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
+	ImGuiContext *previousContext = ImGui::GetCurrentContext();
+	imguiContext = ImGui::CreateContext();
+	ImGui::SetCurrentContext( imguiContext );
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.IniFilename = NULL;
@@ -413,19 +417,31 @@ bool DoomScriptBlueprintImGuiEditor::InitializeRenderer() {
 	style.Colors[ImGuiCol_Button] = ImVec4( 0.16f, 0.31f, 0.43f, 1.0f );
 	style.ScaleAllSizes( uiScale );
 	pan = ImVec2( 30.0f * uiScale, 30.0f * uiScale );
-	if ( !ImGui_ImplWin32_InitForOpenGL( hwnd ) || !ImGui_ImplOpenGL2_Init() ) return false;
+	if ( !ImGui_ImplWin32_InitForOpenGL( hwnd ) || !ImGui_ImplOpenGL2_Init() ) {
+		ImGui::SetCurrentContext( previousContext );
+		return false;
+	}
 	rendererReady = true;
+	ImGui::SetCurrentContext( previousContext );
 	RestoreEngineContext();
 	return true;
 }
 
 void DoomScriptBlueprintImGuiEditor::ShutdownRenderer() {
 	if ( hwnd != NULL ) KillTimer( hwnd, 1 );
-	if ( rendererReady ) {
+	if ( rendererReady || imguiContext != NULL ) {
+		ImGuiContext *previousContext = ImGui::GetCurrentContext() == imguiContext ? NULL : ImGui::GetCurrentContext();
+		ImGui::SetCurrentContext( imguiContext );
 		wglMakeCurrent( dc, glrc );
-		ImGui_ImplOpenGL2_Shutdown();
-		ImGui_ImplWin32_Shutdown();
-		ImGui::DestroyContext();
+		if ( rendererReady ) {
+			ImGui_ImplOpenGL2_Shutdown();
+			ImGui_ImplWin32_Shutdown();
+		}
+		if ( imguiContext != NULL ) {
+			ImGui::DestroyContext( imguiContext );
+			imguiContext = NULL;
+		}
+		ImGui::SetCurrentContext( previousContext );
 		rendererReady = false;
 	}
 	if ( glrc != NULL ) {
@@ -446,9 +462,12 @@ void DoomScriptBlueprintImGuiEditor::RestoreEngineContext() {
 
 void DoomScriptBlueprintImGuiEditor::RenderFrame() {
 	if ( !rendererReady || rendering || IsIconic( hwnd ) ) return;
+	ImGuiContext *previousContext = ImGui::GetCurrentContext();
+	ImGui::SetCurrentContext( imguiContext );
 	rendering = true;
 	if ( !wglMakeCurrent( dc, glrc ) ) {
 		rendering = false;
+		ImGui::SetCurrentContext( previousContext );
 		return;
 	}
 	RECT client;
@@ -456,6 +475,7 @@ void DoomScriptBlueprintImGuiEditor::RenderFrame() {
 	if ( client.right <= 0 || client.bottom <= 0 ) {
 		RestoreEngineContext();
 		rendering = false;
+		ImGui::SetCurrentContext( previousContext );
 		return;
 	}
 	ImGui_ImplOpenGL2_NewFrame();
@@ -470,6 +490,7 @@ void DoomScriptBlueprintImGuiEditor::RenderFrame() {
 	SwapBuffers( dc );
 	RestoreEngineContext();
 	rendering = false;
+	ImGui::SetCurrentContext( previousContext );
 }
 
 void DoomScriptBlueprintImGuiEditor::RenderEditor() {
@@ -1295,7 +1316,13 @@ int DoomScriptBlueprintImGuiEditor::FindNodeByStableId( const idStr &stableId ) 
 }
 
 LRESULT DoomScriptBlueprintImGuiEditor::WindowProc( HWND window, UINT message, WPARAM wParam, LPARAM lParam ) {
-	if ( rendererReady && ImGui_ImplWin32_WndProcHandler( window, message, wParam, lParam ) ) return TRUE;
+	if ( rendererReady && imguiContext != NULL ) {
+		ImGuiContext *previousContext = ImGui::GetCurrentContext();
+		ImGui::SetCurrentContext( imguiContext );
+		bool handled = ImGui_ImplWin32_WndProcHandler( window, message, wParam, lParam );
+		ImGui::SetCurrentContext( previousContext );
+		if ( handled ) return TRUE;
+	}
 	switch ( message ) {
 		case WM_ERASEBKGND: return 1;
 		case WM_PAINT: {

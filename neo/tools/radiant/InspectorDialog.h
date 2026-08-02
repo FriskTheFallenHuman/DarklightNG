@@ -49,6 +49,7 @@ public:
 protected:
 	bool initialized;
 	unsigned int dockedTabs;
+	int activeMode;
 
 	DECLARE_MESSAGE_MAP()
 public:
@@ -61,6 +62,7 @@ public:
 	CDialogTextures mediaDlg;
 	CEntityDlg entityDlg;
 	void SetMode(int mode, bool updateTabs = true);
+	int GetMode() const { return activeMode; }
 	void UpdateEntitySel(eclass_t *ent);
 	void UpdateSelectedEntity();
 	void FillClassList();

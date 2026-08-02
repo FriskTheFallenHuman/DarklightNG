@@ -1,0 +1,329 @@
+log file 'emptytexture_image_test.log' opened on Sun Aug  2 14:55:27 2026
+
+Current search path:
+E:\projects\Darklight2/base
+game DLL: 0x0 in pak: 0x0
+Addon pk4s:
+file system initialized.
+--------------------------------------
+----- Initializing Decls -----
+------------------------------
+------- Initializing renderSystem --------
+renderSystem initialized.
+--------------------------------------
+5150 strings read from strings/english.lang
+Couldn't open journal files
+execing editor.cfg
+execing default.cfg
+execing DoomConfig.cfg
+couldn't exec autoexec.cfg
+5150 strings read from strings/english.lang
+----- Initializing Sound System ------
+sound system initialized.
+--------------------------------------
+----- R_InitOpenGL -----
+Initializing OpenGL subsystem
+...registered window class
+...registered fake window class
+...initializing QGL
+...calling LoadLibrary( 'opengl32' ): succeeded
+...created window @ 1007,369 (2582x1496)
+Initializing OpenGL driver
+...getting DC: succeeded
+...PIXELFORMAT 12 selected
+...creating GL context: succeeded
+...making context current: succeeded
+
+------- Input Initialization -------
+Initializing DirectInput...
+mouse: DirectInput initialized.
+keyboard: DirectInput initialized.
+------------------------------------
+sound: STEREO
+...using GL_ARB_multitexture
+...using GL_ARB_texture_env_combine
+...using GL_ARB_texture_cube_map
+...using GL_ARB_texture_env_dot3
+...using GL_ARB_texture_env_add
+...using GL_ARB_texture_non_power_of_two
+...using GL_ARB_texture_compression
+...using GL_EXT_texture_compression_s3tc
+...using GL_EXT_texture_filter_anisotropic
+   maxTextureAnisotropy: 16.000000
+...using GL_1.4_texture_lod_bias
+X..GL_EXT_shared_texture_palette not found
+...using GL_EXT_texture3D
+...using GL_NV_register_combiners
+X..GL_ATI_fragment_shader not found
+X..GL_ATI_text_fragment_shader not found
+...using GL_ARB_vertex_buffer_object
+...using GPU skeletal animation (uniform blocks: 65536 bytes)
+...using named GPU debug groups
+...using asynchronous GPU timer queries
+---------- R_GLSL_Init ----------
+Available.
+---------------------------------
+----- R_ReloadGLSLPrograms -----
+glprogs/interaction.vert
+glprogs/interaction.frag
+glprogs/environment.vert
+glprogs/environment.frag
+glprogs/bumpyEnvironment.vert
+glprogs/bumpyEnvironment.frag
+glprogs/test.vert
+glprogs/test.frag
+glprogs/ambientLight.vert
+glprogs/ambientLight.frag
+glprogs/glassWarp.vert
+glprogs/glassWarp.frag
+glprogs/bakedLight.vert
+glprogs/bakedLight.frag
+glprogs/colorProcess.vert
+glprogs/colorProcess.frag
+glprogs/heatHaze.vert
+glprogs/heatHaze.frag
+glprogs/heatHazeWithMask.vert
+glprogs/heatHazeWithMask.frag
+glprogs/heatHazeWithMaskAndVertex.vert
+glprogs/heatHazeWithMaskAndVertex.frag
+glprogs/bakedShadow.vert
+glprogs/bakedShadow.frag
+glprogs/interactionShadow.vert
+glprogs/interactionShadow.frag
+glprogs/gpuSkinning.vert
+glprogs/fogTexgen.vert
+glprogs/blendLightTexgen.vert
+--------------------------------
+using GLSL forward renderSystem
+WARNING: SetDeviceGammaRamp failed.
+WARNING: SetDeviceGammaRamp failed.
+game using MMX & SSE & SSE2 & SSE3 for SIMD processing
+enabled Flush-To-Zero mode
+enabled Denormals-Are-Zero mode
+--------- Initializing Game ----------
+gamename: baseDOOM-1
+gamedate: Aug  2 2026
+Initializing event system
+...534 event definitions
+Initializing class hierarchy
+...153 classes, 237096 bytes for event callbacks
+Initializing scripts
+Compiled 'monster_zombie_base::archvile_minion': 788.9 ms
+---------- Compile stats ----------
+
+Memory usage:
+     Strings: 79, 9656 bytes
+  Statements: 67783, 1355660 bytes
+   Functions: 2185, 274584 bytes
+   Variables: 147628 bytes
+    Mem used: 2661176 bytes
+ Static data: 3530256 bytes
+   Allocated: 4621468 bytes
+ Thread size: 7076 bytes
+
+...6 aas types
+game initialized.
+--------------------------------------
+-------- Initializing Session --------
+session initialized
+--------------------------------------
+--- Common Initialization Complete ---
+
+       -w-- -h-- filt -fmt-- wrap  size --name-------
+   0:F   16   16 dflt RGB8  rept    1k  _default
+   1:F   16   16 dflt RGB8  rept    1k  _white
+   2:F   16   16 dflt RGB8  rept    1k  _black
+   3:F   32   32 linr I     <BAD REPEAT:2>   1k  _borderClamp
+   4:F    2    2 dflt RGBA8 rept    0k  _flat
+   5:FC   2    2 dflt RGBA8 rept    0k  _ambient
+   6:F  256    1 linr I     clmp    0k  _specularTable
+   7:F  256  256 linr I     clmp   85k  _specular2DTable
+   8:F  256    1 nrst I     clmp    0k  _ramp
+   9:F  256    1 nrst I     clmp    0k  _alphaRamp
+  10:F    2    1 nrst RGBA8 clmp    0k  _alphaNotch
+  11:F  128  128 linr RGBA8 clmp   85k  _fog
+  12:F   64   64 linr RGBA8 clmp   21k  _fogEnter
+  13:FC  32   32 linr RGB8  rept   32k  _normalCubeMap
+  14:F   64   16 dflt I     zero    1k  _noFalloff
+  15:F   32    4 dflt RGB8  clmp    0k  _quadratic
+  16:F   16   16 dflt RGBA8 rept    1k  _cinematic
+  17:F   16   16 dflt RGBA8 rept    1k  _scratch
+  18:F   16   16 dflt RGBA8 rept    1k  _scratch2
+  19:F   16   16 dflt RGBA8 rept    1k  _accum
+  20:FC  32   32 linr RGB8  rept   32k  _scratchCubeMap
+  21:F   16   16 dflt RGBA8 rept    1k  _currentRender
+  22:    64    8 dflt I     clmp    0k  makeintensity( lights/squarelight1a)
+  23:   128  128 dflt RGB8  zero   85k  lights/squarelight1
+  24:   256  256 dflt RGB8  rept  341k  guis/assets/splash/launch
+  25:   256  256 linr RGBA8 rept  341k  textures/bigchars
+  26:     4    4 linr RGB8  rept    0k  textures/black
+  27:     4    4 dflt RGB8  clmp    0k  guis/assets/white
+  28:   256  256 dflt RGBA8 clmp  341k  fonts/english/fontimage_0_12
+  29:   256  256 dflt RGBA8 clmp  341k  fonts/english/fontimage_0_24
+  30:   256  256 dflt RGBA8 clmp  341k  fonts/english/fontimage_1_24
+  31:   256  256 dflt RGBA8 clmp  341k  fonts/english/fontimage_2_24
+  32:   256  256 dflt RGBA8 clmp  341k  fonts/english/fontimage_0_48
+  33:   256  256 dflt RGBA8 clmp  341k  fonts/english/fontimage_1_48
+  34:   256  256 dflt RGBA8 clmp  341k  fonts/english/fontimage_2_48
+  35:   256  256 dflt RGBA8 clmp  341k  fonts/english/fontimage_3_48
+  36:   256  256 dflt RGBA8 clmp  341k  fonts/english/fontimage_4_48
+  37:   256  256 dflt RGBA8 clmp  341k  fonts/english/fontimage_5_48
+  38:   256  256 dflt RGBA8 clmp  341k  fonts/english/fontimage_6_48
+  39:    32   32 dflt RGBA8 clmp    5k  ui/assets/guicursor_arrow
+  40:    32   32 dflt RGBA8 clmp    5k  ui/assets/guicursor_hand
+  41:    16   16 dflt RGBA8 clmp    1k  ui/assets/scrollbarh
+  42:    16   16 dflt RGBA8 clmp    1k  ui/assets/scrollbarv
+  43:    16   16 dflt RGB8  clmp    1k  ui/assets/scrollbar_thumb
+  44:    16   16 dflt RGBA8 clmp    1k  ui/assets/scrollbar_right
+  45:    16   16 dflt RGBA8 clmp    1k  ui/assets/scrollbar_left
+  46:    16   16 dflt RGBA8 clmp    1k  ui/assets/scrollbar_up
+  47:    16   16 dflt RGBA8 clmp    1k  ui/assets/scrollbar_down
+  48:   256  256 dflt RGB8  rept  341k  guis/assets/mainmenu/stars
+  49:   256  256 dflt RGB8  rept  341k  guis/assets/mainmenu/wink
+  50:   256  256 dflt RGBA8 rept  341k  guis/assets/mainmenu/winkmask
+  51:   128  128 dflt RGB8  rept   85k  guis/assets/mainmenu/winktest
+  52:   256  256 dflt RGBA8 rept  341k  guis/assets/pda/highlight_256
+  53:   256  256 dflt RGBA8 rept  341k  guis/assets/mainmenu/marshighlight
+  54:    16  128 dflt RGBA8 rept   10k  guis/assets/test/gui_scanline4a
+  55:     8  256 dflt RGBA8 clmp   10k  guis/assets/common/pulseline
+  56:   256  128 dflt RGBA8 clmp  170k  guis/assets/mainmenu/doom3
+  57:   256  128 dflt RGBA8 rept  170k  guis/assets/mainmenu/doom3
+  58:   128  128 dflt RGB8  rept   85k  guis/assets/caverns/testmat2
+  59:   256  256 dflt RGBA8 clmp  341k  fonts/english/micro/fontimage_0_12
+  60:   256  256 dflt RGBA8 clmp  341k  fonts/english/micro/fontimage_0_24
+  61:   256  256 dflt RGBA8 clmp  341k  fonts/english/micro/fontimage_1_24
+  62:   256  256 dflt RGBA8 clmp  341k  fonts/english/micro/fontimage_2_24
+  63:   256  256 dflt RGBA8 clmp  341k  fonts/english/micro/fontimage_0_48
+  64:   256  256 dflt RGBA8 clmp  341k  fonts/english/micro/fontimage_1_48
+  65:   256  256 dflt RGBA8 clmp  341k  fonts/english/micro/fontimage_2_48
+  66:   256  256 dflt RGBA8 clmp  341k  fonts/english/micro/fontimage_3_48
+  67:   256  256 dflt RGBA8 clmp  341k  fonts/english/micro/fontimage_4_48
+  68:   256  256 dflt RGBA8 clmp  341k  fonts/english/micro/fontimage_5_48
+  69:   256  256 dflt RGBA8 clmp  341k  fonts/english/micro/fontimage_6_48
+  70:   256  256 dflt RGBA8 clmp  341k  fonts/english/micro/fontimage_7_48
+  71:   256  256 dflt RGBA8 clmp  341k  fonts/english/micro/fontimage_8_48
+  72:    16   16 dflt RGBA8 rept    1k  guis/assets/mainmenu/textflare
+  73:    16   16 dflt RGBA8 clmp    1k  guis/assets/mainmenu/border_small
+  74:   128  128 dflt RGBA8 clmp   85k  guis/assets/mainmenu/border_corner
+  75:    32   32 dflt RGBA8 clmp    5k  guis/assets/mainmenu/borderb_corner2
+  76:    32   32 dflt RGBA8 clmp    5k  guis/assets/mainmenu/borderb_angle
+  77:    32   32 dflt RGBA8 clmp    5k  guis/assets/mainmenu/button_largeangle1
+  78:    32   32 dflt RGBA8 clmp    5k  guis/assets/mainmenu/borderb_angle2
+  79:    32   32 dflt RGBA8 clmp    5k  guis/assets/mainmenu/button_largeangle0
+  80:     8   16 dflt RGBA8 clmp    0k  guis/assets/mainmenu/button_smallangle1
+  81:    16   16 dflt RGBA8 clmp    1k  guis/assets/mainmenu/button_smallangle0
+  82:    16   32 dflt RGBA8 clmp    2k  guis/assets/mainmenu/button_cornerangle
+  83:    16   32 dflt RGBA8 clmp    2k  guis/assets/mainmenu/buttong_cornersquare
+  84:     8   32 dflt RGBA8 clmp    1k  guis/assets/mainmenu/buttong_middlesm
+  85:    16   32 dflt RGBA8 clmp    2k  guis/assets/mainmenu/buttong_cornerangle
+  86:    32   32 dflt RGBA8 clmp    5k  guis/assets/mainmenu/button_edge
+  87:    32   32 dflt RGBA8 clmp    5k  guis/assets/mainmenu/buttong_edge
+  88:     8   32 dflt RGBA8 clmp    1k  guis/assets/mainmenu/button_middle
+  89:     8   32 dflt RGBA8 clmp    1k  guis/assets/mainmenu/buttong_middle
+  90:   128  128 dflt RGBA8 clmp   85k  guis/assets/mainmenu/cframe_large
+  91:    64   64 dflt RGBA8 clmp   21k  guis/assets/mainmenu/cframe_medium
+  92:    16   16 dflt RGBA8 clmp    1k  guis/assets/mainmenu/cframe_small
+  93:    16   16 dflt RGBA8 clmp    1k  guis/assets/mainmenu/cframe_small2
+  94:    32   32 dflt RGBA8 clmp    5k  guis/assets/mainmenu/content_smallcorner
+  95:    32   32 dflt RGBA8 clmp    5k  guis/assets/mainmenu/content_corner
+  96:    32   32 dflt RGBA8 clmp    5k  guis/assets/mainmenu/content_angle
+  97:   256  256 dflt RGBA8 clmp  341k  guis/assets/mainmenu/content_glow
+  98:   256  256 dflt RGBA8 clmp  341k  fonts/english/bank/fontimage_0_12
+  99:   256  256 dflt RGBA8 clmp  341k  fonts/english/bank/fontimage_0_24
+ 100:   256  256 dflt RGBA8 clmp  341k  fonts/english/bank/fontimage_1_24
+ 101:   256  256 dflt RGBA8 clmp  341k  fonts/english/bank/fontimage_2_24
+ 102:   256  256 dflt RGBA8 clmp  341k  fonts/english/bank/fontimage_0_48
+ 103:   256  256 dflt RGBA8 clmp  341k  fonts/english/bank/fontimage_1_48
+ 104:   256  256 dflt RGBA8 clmp  341k  fonts/english/bank/fontimage_2_48
+ 105:   256  256 dflt RGBA8 clmp  341k  fonts/english/bank/fontimage_3_48
+ 106:   256  256 dflt RGBA8 clmp  341k  fonts/english/bank/fontimage_4_48
+ 107:   256  256 dflt RGBA8 clmp  341k  fonts/english/bank/fontimage_5_48
+ 108:   256  256 dflt RGBA8 clmp  341k  fonts/english/bank/fontimage_6_48
+ 109:   256  256 dflt RGBA8 clmp  341k  fonts/english/bank/fontimage_7_48
+ 110:     8   16 dflt RGBA8 clmp    0k  guis/assets/mainmenu/select_edge
+ 111:     8   16 dflt RGBA8 clmp    0k  guis/assets/mainmenu/select_border
+ 112:     8   16 dflt RGBA8 clmp    0k  guis/assets/mainmenu/select_angle
+ 113:    16   16 dflt RGBA8 clmp    1k  guis/assets/scrollbarv
+ 114:    16   16 dflt RGBA8 clmp    1k  guis/assets/scrollbar_thumb
+ 115:   128   16 dflt RGBA8 clmp   10k  guis/assets/mainmenu/slider_bg
+ 116:     4    8 dflt RGBA8 clmp    0k  guis/assets/mainmenu/slider_bar
+ 117:    16   32 dflt RGBA8 clmp    2k  guis/assets/mainmenu/buttong_cornersquare2
+ 118:     8   32 dflt RGBA8 clmp    1k  guis/assets/mainmenu/buttong_middlesm2
+ 119:    16   32 dflt RGBA8 clmp    2k  guis/assets/mainmenu/buttong_cornerangle2
+ 120:     8    8 dflt RGBA8 clmp    0k  guis/assets/mainmenu/select_boxborderh
+ 121:     8    8 dflt RGBA8 clmp    0k  guis/assets/mainmenu/select_boxangle
+ 122:     8    8 dflt RGBA8 clmp    0k  guis/assets/mainmenu/select_boxborderv
+ 123:     8    8 dflt RGBA8 clmp    0k  guis/assets/mainmenu/select_boxcorner
+ 124:     8    8 dflt RGBA8 clmp    0k  guis/assets/mainmenu/select_boxcorner2
+ 125:   256  256 dflt RGBA8 clmp  341k  fonts/english/an/fontimage_0_12
+ 126:   256  256 dflt RGBA8 clmp  341k  fonts/english/an/fontimage_0_24
+ 127:   256  256 dflt RGBA8 clmp  341k  fonts/english/an/fontimage_1_24
+ 128:   256  256 dflt RGBA8 clmp  341k  fonts/english/an/fontimage_0_48
+ 129:   256  256 dflt RGBA8 clmp  341k  fonts/english/an/fontimage_1_48
+ 130:   256  256 dflt RGBA8 clmp  341k  fonts/english/an/fontimage_2_48
+ 131:   256  256 dflt RGBA8 clmp  341k  fonts/english/an/fontimage_3_48
+ 132:   256  256 dflt RGBA8 clmp  341k  fonts/english/an/fontimage_4_48
+ 133:    32   64 dflt RGBA8 clmp   10k  guis/assets/mainmenu/bg3
+ 134:    32   64 dflt RGBA8 clmp   10k  guis/assets/mainmenu/bg2
+ 135:    32   64 dflt RGBA8 clmp   10k  guis/assets/mainmenu/bg1
+ 136:   256  256 dflt RGBA8 clmp  341k  guis/assets/mainmenu/boxframe
+ 137:   256  256 dflt RGBA8 clmp  341k  guis/assets/mainmenu/content_glow2
+ 138:   128  128 dflt RGBA8 rept   85k  guis/assets/common/outerglowbar
+ 139:   256  256 dflt RGB8  clmp  341k  guis/assets/mainmenu/demo/demo_load1
+ 140:   256  256 dflt RGB8  clmp  341k  guis/assets/mainmenu/demo/demo_load2
+ 141:   128  256 dflt RGB8  clmp  170k  guis/assets/mainmenu/demo/demo_load3
+ 142:   256  256 dflt RGB8  clmp  341k  guis/assets/mainmenu/demo/demo_load4
+ 143:   256  256 dflt RGB8  clmp  341k  guis/assets/mainmenu/demo/demo_load5
+ 144:   128  256 dflt RGB8  clmp  170k  guis/assets/mainmenu/demo/demo_load6
+ 145:   256  256 dflt RGB8  clmp  341k  guis/assets/mainmenu/demo/demo_end1
+ 146:   256  256 dflt RGB8  clmp  341k  guis/assets/mainmenu/demo/demo_end2
+ 147:   128  256 dflt RGB8  clmp  170k  guis/assets/mainmenu/demo/demo_end3
+ 148:   256  256 dflt RGB8  clmp  341k  guis/assets/mainmenu/demo/demo_end4
+ 149:   256  256 dflt RGB8  clmp  341k  guis/assets/mainmenu/demo/demo_end5
+ 150:   128  256 dflt RGB8  clmp  170k  guis/assets/mainmenu/demo/demo_end6
+ 151:   256  256 dflt RGB8  clmp  341k  guis/assets/mainmenu/demo/demo_exit1
+ 152:   256  256 dflt RGB8  clmp  341k  guis/assets/mainmenu/demo/demo_exit2
+ 153:   128  256 dflt RGB8  clmp  170k  guis/assets/mainmenu/demo/demo_exit3
+ 154:   256  256 dflt RGB8  clmp  341k  guis/assets/mainmenu/demo/demo_exit4
+ 155:   256  256 dflt RGB8  clmp  341k  guis/assets/mainmenu/demo/demo_exit5
+ 156:   128  256 dflt RGB8  clmp  170k  guis/assets/mainmenu/demo/demo_exit6
+ 157:   256  256 dflt RGB8  rept  341k  guis/assets/test/faces
+ 158:   256  256 dflt RGBA8 rept  341k  guis/assets/common/blood
+ 159:   256  256 dflt RGBA8 rept  341k  guis/assets/test/facesov3
+ 160:   256  256 dflt RGB8  rept  341k  guis/assets/common/pentagramfx
+ 161:    16  128 dflt RGB8  rept   10k  guis/assets/test/gui_scanline4
+ 162:   128  128 dflt RGBA8 clmp   85k  guis/assets/common/addhighlight2
+ 163:    64   64 dflt RGBA8 rept   21k  textures/sfx/monitor_glass2
+ 164:   128  128 dflt RGB8  clmp   85k  guis/assets/common/addhighlight
+ 165:    64   64 dflt RGBA8 clmp   21k  guis/assets/test/mask
+ 166:   128  128 dflt RGBA8 clmp   85k  guis/assets/common/outershadow
+ 167:   128  128 dflt RGBA8 clmp   85k  guis/assets/common/dirt3
+ 168:   256  128 dflt RGBA8 clmp  170k  guis/assets/mainmenu/doom3_3
+ 169:   256  128 dflt RGBA8 clmp  170k  guis/assets/mainmenu/doom3_2
+ 170:   256  128 dflt RGBA8 clmp  170k  guis/assets/mainmenu/doom3_1
+ 171:   128  128 dflt RGBA8 clmp   85k  guis/assets/common/mlogo
+ 172:   256  256 dflt RGB8  rept  341k  guis/assets/marscity/textblur
+ 173:    16   16 dflt RGBA8 clmp    1k  guis/assets/marscity/cursor
+ 174:   256   32 dflt RGBA8 clmp   42k  guis/assets/marscity/bar
+ 175:   512  512 dflt RGB8  rept 1365k  textures/_emptyname
+       -w-- -h-- filt -fmt-- wrap  size --name-------
+ 176 images (176 total)
+  28.3 total megabytes of images
+
+
+--------- Game Map Shutdown ----------
+--------------------------------------
+Shutting down sound hardware
+idRenderSystem::Shutdown()
+Shutting down OpenGL subsystem
+...wglMakeCurrent( NULL, NULL ): success
+...deleting GL context: success
+...releasing DC: success
+...destroying window
+...shutting down QGL
+...unloading OpenGL DLL
+------------ Game Shutdown -----------
+--------- Game Map Shutdown ----------
+--------------------------------------
+Shutdown event system
+--------------------------------------

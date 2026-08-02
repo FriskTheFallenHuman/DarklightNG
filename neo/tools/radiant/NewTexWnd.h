@@ -69,6 +69,10 @@ public:
 public:
 	void EnsureTextureIsVisible(const char *name);
 	void LoadMaterials();
+	void DrawToCurrentContext( int width, int height );
+	void HandleMouseMove( int x, int y, UINT buttons );
+	void HandleMouseButton( int button, bool down, int x, int y, UINT buttons );
+	void HandleMouseWheel( short delta );
 	virtual ~CNewTexWnd();
 	BOOL OnToolTipNotify( UINT id, NMHDR * pNMHDR, LRESULT * pResult );
 	int CNewTexWnd::OnToolHitTest(CPoint point, TOOLINFO * pTI);
@@ -89,6 +93,7 @@ protected:
 	int currentRow;
 	int currentIndex;
 	idList<const idMaterial*> materialList;
+	bool externalInput;
 
 	// Generated message map functions
 protected:

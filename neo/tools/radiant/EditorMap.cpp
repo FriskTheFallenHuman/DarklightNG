@@ -30,6 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 #pragma hdrstop
 
 #include "qe3.h"
+#include "RadiantImGui.h"
 
 int			mapModified;			// for quit confirmation (0 = clean, 1 = unsaved,
 
@@ -128,12 +129,17 @@ void Map_BuildBrushData(void) {
 	Sys_BeginWait();	// this could take a while
 
 	int n = 0;
+	DWORD lastMessagePump = GetTickCount();
 	for (b = active_brushes.next; b != NULL && b != &active_brushes; b = next) {
 		next = b->next;
 		Brush_Build(b, true, false, false);
 		if (!b->brush_faces || (g_PrefsDlg.m_bCleanTiny && CheckForTinyBrush(b, n++, g_PrefsDlg.m_fTinySize))) {
 			Brush_Free(b);
 			common->Printf("Removed degenerate brush\n");
+		}
+		if ( RadiantImGuiEnabled() && GetTickCount() - lastMessagePump >= 50 ) {
+			RadiantImGuiPumpMessages();
+			lastMessagePump = GetTickCount();
 		}
 	}
 
@@ -443,6 +449,11 @@ void Map_LoadFile(const char *filename) {
 
 	common->Printf( "Map_LoadFile: %s\n", fileStr.c_str() );
 
+	// The ImGui entity inspector keeps the legacy inspector as its logic
+	// backend. Never let that backend retain an entity pointer across Map_Free.
+	if ( g_Inspectors != NULL ) {
+		g_Inspectors->entityDlg.SetEditEntity( NULL );
+	}
 	Map_Free();
 
 	g_qeglobals.d_parsed_brushes = 0;
@@ -503,10 +514,12 @@ void Map_LoadFile(const char *filename) {
 
 	dlg.SetText("Restoring Between");
 	Map_RestoreBetween();
+	RadiantImGuiPumpMessages();
 
 	dlg.SetText("Building Brush Data");
 	common->Printf("Map_BuildAllDisplayLists\n");
 	Map_BuildBrushData();
+	RadiantImGuiPumpMessages();
 
 	//
 	// reset the "need conversion" flag conversion to the good format done in
@@ -540,13 +553,16 @@ void Map_LoadFile(const char *filename) {
 	Sys_SetTitle(fileStr);
 
 	Texture_ShowInuse();
+	RadiantImGuiPumpMessages();
 
 	if (g_pParentWnd->GetCamera()->GetRenderMode()) {
 		g_pParentWnd->GetCamera()->BuildRendererState();
+		RadiantImGuiPumpMessages();
 	}
 
 	Sys_EndWait();
 	Sys_UpdateWindows(W_ALL);
+	common->Printf( "Map_LoadFile complete: %s\n", fileStr.c_str() );
 }
 
 

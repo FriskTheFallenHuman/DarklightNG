@@ -74,6 +74,10 @@ public:
     void		ToDictWriteAllInfo( idDict *e );
 };
 
+// Shared non-window backend used by both the legacy dialog and the ImGui shell.
+int LightInspector_LoadInfo( CLightInfo &info, CLightInfo &original );
+void LightInspector_ApplyInfo( CLightInfo &info, CLightInfo *original, bool differencesOnly );
+
 /////////////////////////////////////////////////////////////////////////////
 // CLightDlg dialog
 

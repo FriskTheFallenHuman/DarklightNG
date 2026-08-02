@@ -142,7 +142,13 @@ public:
 	void RoutineProcessing();
 	CXYWnd* ActiveXY();
 	void UpdateWindows(int nBits);
+	void EnableImGuiShell( HWND hostWindow );
+	void ResizeImGuiShell();
+	int GetToolbarButtonCount();
+	bool GetToolbarButton( int index, TBBUTTON &button );
+	HIMAGELIST GetToolbarImageList();
 	void SetStatusText(int nPane, const char* pText);
+	const char *GetStatusText( int nPane ) const { return nPane >= 0 && nPane < 6 ? (const char *)m_strStatus[nPane] : ""; }
 	void UpdateStatusText();
 	void SetWindowStyle(int nStyle);
 	bool GetNurbMode() {
@@ -194,6 +200,7 @@ protected:  // control bar embedded members
 	bool m_bCamPreview;
 	bool busy;
 	bool nurbMode;
+	HWND m_imguiHost;
 	idCurve_NURBS<idVec2> nurb;
 	// Generated message map functions
 protected:

@@ -58,20 +58,46 @@ void CConsoleDlg::DoDataExchange(CDataExchange* pDX)
 
 void CConsoleDlg::AddText( const char *msg ) {
 	idStr work;
-	CString work2;
 
 	work = msg;
 	work.RemoveColors();
 	work = CEntityDlg::TranslateString( work.c_str() );
-	editConsole.GetWindowText( work2 );
-	int len = work2.GetLength();
-	if ( len + work.Length() > (int)editConsole.GetLimitText() ) {
-		work2 = work2.Right( editConsole.GetLimitText() * 0.75 );
-		len = work2.GetLength();
-		editConsole.SetWindowText(work2);
+	consoleStr += work;
+	const int textLimit = editConsole.GetSafeHwnd() != NULL ? (int)editConsole.GetLimitText() : 1024 * 1024;
+	if ( consoleStr.Length() > textLimit ) {
+		consoleStr = consoleStr.Right( (int)( textLimit * 0.75f ) );
 	}
-	editConsole.SetSel( len, len );
-	editConsole.ReplaceSel( work );
+	if ( editConsole.GetSafeHwnd() != NULL ) {
+		editConsole.SetWindowText( consoleStr.c_str() );
+		editConsole.SetSel( consoleStr.Length(), consoleStr.Length() );
+	}
+}
+
+idStr CConsoleDlg::NavigateHistory( int direction, const char *inProgress ) {
+	if ( direction < 0 ) {
+		if ( saveCurrentCommand ) {
+			currentCommand = inProgress != NULL ? inProgress : "";
+			saveCurrentCommand = false;
+		}
+		if ( consoleHistory.Num() == 0 ) {
+			return currentCommand;
+		}
+		currentHistoryPosition = idMath::ClampInt( 0, consoleHistory.Num() - 1, currentHistoryPosition );
+		idStr result = consoleHistory[currentHistoryPosition];
+		if ( currentHistoryPosition > 0 ) {
+			currentHistoryPosition--;
+		}
+		return result;
+	}
+
+	if ( currentHistoryPosition < consoleHistory.Num() - 1 ) {
+		currentHistoryPosition++;
+		return consoleHistory[currentHistoryPosition];
+	}
+	saveCurrentCommand = true;
+	idStr result = currentCommand;
+	currentCommand.Clear();
+	return result;
 }
 
 
@@ -236,8 +262,10 @@ void CConsoleDlg::ExecuteCommand ( const idStr& cmd ) {
 
 		//process some of our own special commands
 		if ( str.CompareNoCase ( "clear" ) == 0) {
-			editConsole.SetSel ( 0 , -1 );
-			editConsole.Clear ();
+			consoleStr.Clear();
+			if ( editConsole.GetSafeHwnd() != NULL ) {
+				editConsole.SetWindowText( "" );
+			}
 		}
 		else if ( str.CompareNoCase ( "edit" ) == 0) {
 			propogateCommand = false;

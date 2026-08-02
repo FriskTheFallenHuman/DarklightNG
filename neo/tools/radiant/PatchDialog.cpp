@@ -32,6 +32,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "qe3.h"
 #include "Radiant.h"
 #include "PatchDialog.h"
+#include "RadiantImGui.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -223,6 +224,10 @@ void CPatchDialog::SetPatchInfo()
 
 void DoPatchInspector()
 {
+	if ( RadiantImGuiEnabled() && RadiantImGuiWindow() != NULL ) {
+		RadiantImGuiShowPatchInspector();
+		return;
+	}
   if (g_PatchDialog.GetSafeHwnd() == NULL)
   {
     g_PatchDialog.Create(IDD_DIALOG_PATCH);
@@ -239,6 +244,7 @@ void DoPatchInspector()
 
 void UpdatePatchInspector()
 {
+	RadiantImGuiRefreshPatchInspector();
   if (g_PatchDialog.GetSafeHwnd() != NULL)
   {
     g_PatchDialog.UpdateInfo();
@@ -354,5 +360,4 @@ void CPatchDialog::UpdateSpinners(bool bUp, int nID)
   Patch_SetTextureInfo(&td);
   Sys_UpdateWindows(W_CAMERA);
 }
-
 

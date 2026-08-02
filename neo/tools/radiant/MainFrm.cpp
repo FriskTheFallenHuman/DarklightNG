@@ -57,6 +57,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "EntKeyFindReplace.h"
 #include "InspectorDialog.h"
 #include "autocaulk.h"
+#include "RadiantImGui.h"
 
 #include "../../sys/win32/rc/common_resource.h"
 #include "../comafx/DialogName.h"
@@ -833,6 +834,7 @@ CMainFrame::CMainFrame() {
 	m_pActiveXY = NULL;
 	m_bCamPreview = true;
 	nurbMode = 0;
+	m_imguiHost = NULL;
 }
 
 /*
@@ -1510,12 +1512,15 @@ struct SplitInfo {
  =======================================================================================================================
  =======================================================================================================================
  */
-bool LoadWindowPlacement(HWND hwnd, const char *pName) {
+bool LoadWindowPlacement(HWND hwnd, const char *pName, bool restoreVisibility) {
 	WINDOWPLACEMENT wp;
 	wp.length = sizeof(WINDOWPLACEMENT);
 
 	LONG lSize = sizeof(wp);
 	if (LoadRegistryInfo(pName, &wp, &lSize)) {
+		if ( !restoreVisibility ) {
+			wp.showCmd = SW_HIDE;
+		}
 		::SetWindowPlacement(hwnd, &wp);
 		return true;
 	}
@@ -1785,8 +1790,8 @@ BOOL CMainFrame::OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext *pContext) {
 	g_Inspectors = new CInspectorDialog( this );
 	g_Inspectors->Create(IDD_DIALOG_INSPECTORS, this);
 
-	LoadWindowPlacement(g_Inspectors->GetSafeHwnd(), "radiant_InspectorsWindow");
-	g_Inspectors->ShowWindow(SW_SHOW);
+	LoadWindowPlacement(g_Inspectors->GetSafeHwnd(), "radiant_InspectorsWindow", false);
+	g_Inspectors->ShowWindow( RadiantImGuiEnabled() ? SW_HIDE : SW_SHOW );
 
 	CRect r;
 	g_Inspectors->GetWindowRect ( r );
@@ -1798,7 +1803,7 @@ BOOL CMainFrame::OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext *pContext) {
 	g_Inspectors->MoveWindow(r);
 
 
-	if (!LoadWindowPlacement(GetSafeHwnd(), "radiant_MainWindowPlace")) {
+	if (!LoadWindowPlacement(GetSafeHwnd(), "radiant_MainWindowPlace", !RadiantImGuiEnabled())) {
 	}
 
 	CRect rect(5, 25, 100, 100);
@@ -1851,7 +1856,23 @@ BOOL CMainFrame::OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext *pContext) {
 		m_pXYWnd->SetActive(true);
 	}
 
-	Texture_SetMode(g_qeglobals.d_savedinfo.iTexMenu);
+	// The legacy registry can leave Radiant in wireframe/flat-shaded mode.  In
+	// the old UI that state was visible as a checked MFC menu item; after moving
+	// the shell to ImGui it instead looks like every new brush has a black or
+	// missing material.  Make textured rendering the ImGui startup default.
+	Texture_SetMode( RadiantImGuiEnabled() ? ID_VIEW_BILINEARMIPMAP : g_qeglobals.d_savedinfo.iTexMenu );
+
+	// There is no meaningful user selection to restore in a newly-created
+	// Radiant instance.  Select the brush-creation material unconditionally and
+	// do it after every legacy editor control has finished initializing.  This
+	// follows the same path as clicking a texture thumbnail, instead of leaving
+	// the current texdef dependent on whether the browser has been visited.
+	const idMaterial *defaultMaterial = Texture_ForName( "textures/default" );
+	texdef_t defaultTexdef;
+	defaultTexdef.SetName( defaultMaterial->GetName() );
+	defaultTexdef.scale[0] = g_PrefsDlg.m_bHiColorTextures ? 0.5f : 1.0f;
+	defaultTexdef.scale[1] = g_PrefsDlg.m_bHiColorTextures ? 0.5f : 1.0f;
+	Texture_SetTexture( &defaultTexdef, &g_qeglobals.d_texturewin.brushprimit_texdef, false, false );
 
 	g_Inspectors->SetMode(W_CONSOLE);
 	return TRUE;
@@ -1865,6 +1886,10 @@ CRect	g_rctOld(0, 0, 0, 0);
  */
 void CMainFrame::OnSize(UINT nType, int cx, int cy) {
 	CFrameWnd::OnSize(nType, cx, cy);
+	if ( m_imguiHost != NULL ) {
+		ResizeImGuiShell();
+		return;
+	}
 
 	CRect	rctParent;
 	GetClientRect(rctParent);
@@ -1886,6 +1911,77 @@ void CMainFrame::OnSize(UINT nType, int cx, int cy) {
 		m_wndStatusBar.GetPaneInfo( 5, nID, nStyle, nWidth);
 		m_wndStatusBar.SetPaneInfo( 5, nID, nStyle, rctParent.Width() * 0.01f );
 	}
+}
+
+void CMainFrame::EnableImGuiShell( HWND hostWindow ) {
+	m_imguiHost = hostWindow;
+	SetPropA( GetSafeHwnd(), "DarklightEditorMainFrame", reinterpret_cast<HANDLE>( 1 ) );
+	SetMenu( NULL );
+	if ( m_wndToolBar.GetSafeHwnd() != NULL ) {
+		ShowControlBar( &m_wndToolBar, FALSE, FALSE );
+		m_wndToolBar.ShowWindow( SW_HIDE );
+	}
+	if ( m_wndTextureBar.GetSafeHwnd() != NULL ) {
+		ShowControlBar( &m_wndTextureBar, FALSE, FALSE );
+		m_wndTextureBar.ShowWindow( SW_HIDE );
+	}
+	if ( m_wndStatusBar.GetSafeHwnd() != NULL ) {
+		ShowControlBar( &m_wndStatusBar, FALSE, FALSE );
+		m_wndStatusBar.ShowWindow( SW_HIDE );
+	}
+	// Keep these controls alive as the compatibility/controller layer for the
+	// existing renderer, but remove the entire legacy MFC workspace from the
+	// visible frame. The ImGui child below is now the only client-area UI.
+	if ( m_wndSplit.GetSafeHwnd() != NULL ) m_wndSplit.ShowWindow( SW_HIDE );
+	if ( m_wndSplit2.GetSafeHwnd() != NULL ) m_wndSplit2.ShowWindow( SW_HIDE );
+	if ( m_wndSplit3.GetSafeHwnd() != NULL ) m_wndSplit3.ShowWindow( SW_HIDE );
+	if ( m_pCamWnd != NULL ) m_pCamWnd->ShowWindow( SW_HIDE );
+	if ( m_pXYWnd != NULL ) m_pXYWnd->ShowWindow( SW_HIDE );
+	if ( m_pXZWnd != NULL ) m_pXZWnd->ShowWindow( SW_HIDE );
+	if ( m_pYZWnd != NULL ) m_pYZWnd->ShowWindow( SW_HIDE );
+	if ( m_pZWnd != NULL ) m_pZWnd->ShowWindow( SW_HIDE );
+	if ( g_Inspectors != NULL ) g_Inspectors->ShowWindow( SW_HIDE );
+	// MFC also creates four dock-bar wrapper windows which are not represented
+	// by the member controls above. Remove every pre-existing direct child from
+	// the visible client area and leave only the embedded ImGui host.
+	for ( HWND child = ::GetWindow( GetSafeHwnd(), GW_CHILD ); child != NULL; ) {
+		HWND next = ::GetWindow( child, GW_HWNDNEXT );
+		if ( child != m_imguiHost ) {
+			::ShowWindow( child, SW_HIDE );
+		}
+		child = next;
+	}
+	RecalcLayout();
+	ResizeImGuiShell();
+	ShowWindow( SW_SHOW );
+	SetForegroundWindow();
+}
+
+void CMainFrame::ResizeImGuiShell() {
+	if ( m_imguiHost == NULL || !::IsWindow( m_imguiHost ) ) {
+		return;
+	}
+	CRect client;
+	GetClientRect( &client );
+	::SetWindowPos( m_imguiHost, HWND_TOP, 0, 0, Max( 1, client.Width() ), Max( 1, client.Height() ),
+		SWP_SHOWWINDOW | SWP_NOACTIVATE );
+}
+
+int CMainFrame::GetToolbarButtonCount() {
+	return m_wndToolBar.GetSafeHwnd() != NULL ? m_wndToolBar.GetToolBarCtrl().GetButtonCount() : 0;
+}
+
+bool CMainFrame::GetToolbarButton( int index, TBBUTTON &button ) {
+	ZeroMemory( &button, sizeof( button ) );
+	return m_wndToolBar.GetSafeHwnd() != NULL && m_wndToolBar.GetToolBarCtrl().GetButton( index, &button ) != FALSE;
+}
+
+HIMAGELIST CMainFrame::GetToolbarImageList() {
+	if ( m_wndToolBar.GetSafeHwnd() == NULL ) {
+		return NULL;
+	}
+	CImageList *images = m_wndToolBar.GetToolBarCtrl().GetImageList();
+	return images != NULL ? images->GetSafeHandle() : NULL;
 }
 
 void	OpenDialog(void);
@@ -2093,6 +2189,10 @@ void CMainFrame::OnViewCenter() {
  =======================================================================================================================
  */
 void CMainFrame::OnViewConsole() {
+	if ( RadiantImGuiEnabled() && RadiantImGuiWindow() != NULL ) {
+		RadiantImGuiShowInspector( W_CONSOLE );
+		return;
+	}
 	g_Inspectors->SetMode(W_CONSOLE);
 }
 
@@ -2109,10 +2209,18 @@ void CMainFrame::OnViewDownfloor() {
  =======================================================================================================================
  */
 void CMainFrame::OnViewEntity() {
+	if ( RadiantImGuiEnabled() && RadiantImGuiWindow() != NULL ) {
+		RadiantImGuiShowInspector( W_ENTITY );
+		return;
+	}
 	g_Inspectors->SetMode(W_ENTITY);
 }
 
 void CMainFrame::OnViewMediaBrowser() {
+	if ( RadiantImGuiEnabled() && RadiantImGuiWindow() != NULL ) {
+		RadiantImGuiShowInspector( W_MEDIA );
+		return;
+	}
 	g_Inspectors->SetMode(W_MEDIA);
 }
 
@@ -2458,6 +2566,10 @@ void CMainFrame::OnViewShowworld() {
  =======================================================================================================================
  */
 void CMainFrame::OnViewTexture() {
+	if ( RadiantImGuiEnabled() && RadiantImGuiWindow() != NULL ) {
+		RadiantImGuiShowInspector( W_TEXTURE );
+		return;
+	}
 	g_Inspectors->SetMode(W_TEXTURE);
 }
 
@@ -2665,6 +2777,10 @@ void CMainFrame::OnUpdateTexturesShowinuse(CCmdUI *pCmdUI) {
  =======================================================================================================================
  */
 void CMainFrame::OnTexturesInspector() {
+	if ( RadiantImGuiEnabled() && RadiantImGuiWindow() != NULL ) {
+		RadiantImGuiShowSurfaceInspector();
+		return;
+	}
 	DoSurface();
 }
 
@@ -4015,6 +4131,10 @@ void CMainFrame::SetStatusText(int nPane, const char *pText) {
 void CMainFrame::UpdateWindows(int nBits) {
 
 	if (!g_bScreenUpdates) {
+		return;
+	}
+	if ( RadiantImGuiEnabled() && RadiantImGuiWindow() != NULL ) {
+		::InvalidateRect( RadiantImGuiWindow(), NULL, FALSE );
 		return;
 	}
 
@@ -6118,6 +6238,10 @@ void CMainFrame::OnTexturesHideall() {
  =======================================================================================================================
  */
 void CMainFrame::OnPatchInspector() {
+	if ( RadiantImGuiEnabled() && RadiantImGuiWindow() != NULL ) {
+		RadiantImGuiShowPatchInspector();
+		return;
+	}
 	DoPatchInspector();
 }
 
@@ -6366,6 +6490,10 @@ void CMainFrame::OnSelectionInvert() {
  =======================================================================================================================
  */
 void CMainFrame::OnProjectedLight() {
+	if ( RadiantImGuiEnabled() && RadiantImGuiWindow() != NULL ) {
+		RadiantImGuiShowLightEditor();
+		return;
+	}
 	LightEditorInit( NULL );
 }
 
