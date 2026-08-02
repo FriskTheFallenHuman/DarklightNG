@@ -1438,7 +1438,7 @@ void Tris_ToOBJ(const char *outFile, idTriList *tris, idMatList *mats) {
 		if (f) {
 			for (k = 0; k < matNames.Num(); k++) {
 				// This presumes the diffuse tga name matches the material name
-				f->Printf( "newmtl %s\n\tNs 0\n\td 1\n\tillum 2\n\tKd 0 0 0 \n\tKs 0.22 0.22 0.22 \n\tKa 0 0 0 \n\tmap_Kd %s/base/%s.tga\n\n\n", matNames[k]->c_str(), "z:/d3xp", matNames[k]->c_str() );
+				f->Printf( "newmtl %s\n\tNs 0\n\td 1\n\tillum 2\n\tKd 0 0 0 \n\tKs 0.22 0.22 0.22 \n\tKa 0 0 0 \n\tmap_Kd %s.tga\n\n\n", matNames[k]->c_str(), matNames[k]->c_str() );
 			}
 			fileSystem->CloseFile( f );
 		}
@@ -2165,4 +2165,3 @@ void CCamWnd::UpdateCameraView() {
 		saveValid = false;
 	}
 }
-

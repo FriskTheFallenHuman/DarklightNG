@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(DarklightDoom3 LANGUAGES C CXX)
+project(DarklightDoom3 LANGUAGES C CXX RC)
 
 if(NOT WIN32 OR NOT MSVC)
 	message(FATAL_ERROR "This source tree currently supports the 32-bit MSVC Windows build only.")
@@ -101,12 +101,34 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
 	"tools/compilers/*.cpp"
 	"ui/*.cpp"
 )
+file(GLOB_RECURSE EDITOR_SOURCES CONFIGURE_DEPENDS
+	"tools/af/*.cpp"
+	"tools/comafx/*.cpp"
+	"tools/common/*.cpp"
+	"tools/debugger/*.cpp"
+	"tools/decl/*.cpp"
+	"tools/guied/*.cpp"
+	"tools/materialeditor/*.cpp"
+	"tools/particle/*.cpp"
+	"tools/pda/*.cpp"
+	"tools/radiant/*.cpp"
+	"tools/script/*.cpp"
+	"tools/sound/*.cpp"
+)
+list(REMOVE_ITEM EDITOR_SOURCES
+	"${CMAKE_CURRENT_SOURCE_DIR}/tools/common/RenderBumpFlatDialog.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tools/decl/DialogEntityDefEditor.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tools/guied/GEWindowWrapper_stub.cpp"
+)
+list(FILTER EDITOR_SOURCES EXCLUDE REGEX "/tools/debugger/")
 file(GLOB WIN32_SOURCES CONFIGURE_DEPENDS "sys/win32/*.cpp")
 list(APPEND ENGINE_SOURCES
+	${EDITOR_SOURCES}
 	${WIN32_SOURCES}
 	"${CMAKE_CURRENT_SOURCE_DIR}/libbink/bink.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/sys/sys_local.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/sys/win32/rc/CreateResourceIDs.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/sys/win32/rc/doom.rc"
 )
 list(REMOVE_ITEM ENGINE_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/jpeg-6/jcapistd.c"
@@ -142,7 +164,6 @@ target_compile_definitions(doom3 PRIVATE
 	__DOOM__
 	__DOOM_DLL__
 	_D3XP
-	ID_DISABLE_TOOLS
 	ID_ENABLE_CURL=0
 )
 target_include_directories(doom3 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/sound/OggVorbis")
@@ -154,10 +175,13 @@ target_link_libraries(doom3 PRIVATE
 	dsound
 	dxguid
 	glu32
+	comctl32
 	iphlpapi
 	odbc32
 	odbccp32
 	opengl32
+	shell32
+	shlwapi
 	winmm
 	wsock32
 )
@@ -166,6 +190,7 @@ darklight_target_defaults(doom3)
 set_target_properties(doom3 PROPERTIES
 	OUTPUT_NAME Doom3
 	FOLDER "Engine"
+	VS_GLOBAL_UseOfMfc Static
 	VS_DEBUGGER_WORKING_DIRECTORY "${DARKLIGHT_ROOT}"
 	VS_DEBUGGER_COMMAND_ARGUMENTS "+set fs_game d3xp"
 )

@@ -103,7 +103,7 @@ splineTest
 ================
 */
 void splineTest() {
-	//g_splineList->load("p:/doom/base/maps/test_base1.camera");
+	//g_splineList->load("base/maps/test_base1.camera");
 }
 
 /*

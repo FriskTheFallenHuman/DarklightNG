@@ -4424,7 +4424,7 @@ const char * Patch_GetKeyValue( patchMesh_t *p,const char *pKey ) {
 Feature addition.
 When reading in textures, please check for the presence of a file called "textures.link" or something, which contains one line such as;
 
-g:\quake3\baseq3\textures\common
+textures/common
 
  So that, when I'm reading in, lets say, my \eerie directory, it goes through and adds my textures to the palette, along with everything in common.
 
@@ -4456,6 +4456,5 @@ g:\quake3\baseq3\textures\common
 
   Feature Addition: View/Hide Hint Brushes -- This should be a specific case.
 */
-
 
 

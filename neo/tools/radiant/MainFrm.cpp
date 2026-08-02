@@ -1169,7 +1169,9 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 	SetGridStatus();
 	SetTexValStatus();
 	SetButtonMenuStates();
-	LoadBarState("RadiantToolBars2");
+	// Start with a clean toolbar layout after the standalone project-file removal.
+	// The previous profile may have persisted the main toolbar as hidden.
+	LoadBarState("RadiantToolBars3");
 
 	SetActiveXY(m_pXYWnd);
 	m_pXYWnd->SetFocus();
@@ -1287,28 +1289,7 @@ void CMainFrame::Dump(CDumpContext &dc) const {
 // =======================================================================================================================
 //
 void CMainFrame::CreateQEChildren() {
-	//
-	// the project file can be specified on the command line, or implicitly found in
-	// the basedir directory
-	//
-	bool bProjectLoaded = false;
-	if (g_PrefsDlg.m_bLoadLast && g_PrefsDlg.m_strLastProject.GetLength() > 0) {
-		bProjectLoaded = QE_LoadProject(g_PrefsDlg.m_strLastProject.GetBuffer(0));
-	}
-	if (!bProjectLoaded) {
-		bProjectLoaded = QE_LoadProject( EDITOR_DEFAULT_PROJECT );
-	}
-
-	if (!bProjectLoaded) {
-		CFileDialog dlgFile( true, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, EDITOR_WINDOWTEXT " Project files (*.qe4, *.prj)|*.qe4|*.prj||",	this );
-		if (dlgFile.DoModal() == IDOK) {
-			bProjectLoaded = QE_LoadProject(dlgFile.GetPathName().GetBuffer(0));
-		}
-	}
-
-	if (!bProjectLoaded) {
-		Error("Unable to load project file. It was unavailable in the scripts path and the default could not be found");
-	}
+	QE_LoadDefaultProject();
 
 	QE_Init();
 
@@ -1460,7 +1441,7 @@ void SaveWindowPlacement(HWND hwnd, const char *pName) {
 void CMainFrame::OnDestroy() {
 	KillTimer(QE_TIMER0);
 
-	SaveBarState("RadiantToolBars2");
+	SaveBarState("RadiantToolBars3");
 
 	// FIXME original mru stuff needs replaced with mfc stuff
 	SaveMruInReg(g_qeglobals.d_lpMruMenu, "Software\\" EDITOR_REGISTRY_KEY "\\MRU");

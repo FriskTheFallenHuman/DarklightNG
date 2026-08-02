@@ -12,17 +12,24 @@
       "generator": "Visual Studio 17 2022",
       "architecture": "Win32",
       "binaryDir": "${sourceDir}/../build"
+    },
+    {
+      "name": "vs2026-x86",
+      "displayName": "Visual Studio 2026 - Win32 with MFC",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "Win32",
+      "binaryDir": "${sourceDir}/../out/tools-build"
     }
   ],
   "buildPresets": [
     {
       "name": "debug",
-      "configurePreset": "vs2022-x86",
+      "configurePreset": "vs2026-x86",
       "configuration": "Debug"
     },
     {
       "name": "release",
-      "configurePreset": "vs2022-x86",
+      "configurePreset": "vs2026-x86",
       "configuration": "Release"
     }
   ]

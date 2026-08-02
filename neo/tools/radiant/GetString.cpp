@@ -110,7 +110,7 @@ bool GetYesNo(const char *psQuery)
 }
 
 void ErrorBox(const char *sString)
-{																																																																																															if ((rand()&31)==30){static bool bPlayed=false;if(!bPlayed){bPlayed=true;PlaySound("k:\\util\\overlay.bin",NULL,SND_FILENAME|SND_ASYNC);}}
+{
 	MessageBox( g_pParentWnd->GetSafeHwnd(), sString, "Error",		MB_OK|MB_ICONERROR|MB_TASKMODAL );		
 }
 void InfoBox(const char *sString)
@@ -121,6 +121,5 @@ void WarningBox(const char *sString)
 {
 	MessageBox( g_pParentWnd->GetSafeHwnd(), sString, "Warning",	MB_OK|MB_ICONWARNING|MB_TASKMODAL );
 }
-
 
 

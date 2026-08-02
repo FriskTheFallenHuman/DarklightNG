@@ -237,7 +237,9 @@ BOOL CALLBACK ProjectDlgProc (
 				SetKeyValue ( g_qeglobals.d_project_entity, "brush_primit", ( g_qeglobals.m_bBrushPrimitMode ? "1" : "0" ) );
 
 				EndDialog(hwndDlg, 1);
-				QE_SaveProject(g_strProject);
+				if (!g_strProject.IsEmpty()) {
+					QE_SaveProject(g_strProject);
+				}
 				return TRUE;
 
 			case IDCANCEL:
@@ -631,5 +633,4 @@ void DoAbout(void)
 {
 	DialogBox( g_qeglobals.d_hInstance, ( char * ) IDD_ABOUT, g_pParentWnd->GetSafeHwnd(), AboutDlgProc );
 }
-
 

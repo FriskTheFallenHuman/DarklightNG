@@ -23,6 +23,7 @@ LANGUAGE 9, 1
 #include "AFEditor.rc"
 #include "SoundEditor.rc"
 #include "ParticleEditor.rc"
+#include "PDAEditor.rc"
 #include "DeclEditor.rc"
 
 #include "ScriptEditor.rc"
@@ -119,4 +120,3 @@ IDI_ICON1               ICON                    "res\\doom.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
-

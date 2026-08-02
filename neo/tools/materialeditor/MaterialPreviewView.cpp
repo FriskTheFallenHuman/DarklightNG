@@ -27,7 +27,7 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 
-#include "../../../idlib/precompiled.h"
+#include "../../idlib/precompiled.h"
 #pragma hdrstop
 
 #include "../radiant/QE3.H"
@@ -652,4 +652,3 @@ void idGLDrawableView::setCustomModel( const idStr modelName ) {
 void idGLDrawableView::setShowLights( bool _showLights ) {
 	showLights = _showLights;
 }
-

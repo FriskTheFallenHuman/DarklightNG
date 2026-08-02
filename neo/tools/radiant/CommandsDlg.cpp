@@ -77,7 +77,7 @@ BOOL CCommandsDlg::OnInitDialog()
 	int nCount = g_nCommandCount;
 
 	CFile fileout;
-	fileout.Open("c:/commandlist.txt", CFile::modeCreate | CFile::modeWrite);
+	fileout.Open("commandlist.txt", CFile::modeCreate | CFile::modeWrite);
 	for (int n = 0; n < nCount; n++)
 	{
 		CString strLine;
@@ -113,4 +113,3 @@ BOOL CCommandsDlg::OnInitDialog()
 	fileout.Close();
 	return TRUE;
 }
-

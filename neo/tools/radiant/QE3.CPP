@@ -209,6 +209,74 @@ const int	g_nPathFixupCount = sizeof(g_pPathFixups) / sizeof (const char *);
 
 /*
  =======================================================================================================================
+    QE_ActivateProject
+ =======================================================================================================================
+ */
+static void QE_ActivateProject(void) {
+	// set here some default project settings you need
+	if (strlen(ValueForKey(g_qeglobals.d_project_entity, "brush_primit")) == 0) {
+		SetKeyValue(g_qeglobals.d_project_entity, "brush_primit", "0");
+	}
+
+	g_qeglobals.m_bBrushPrimitMode = IntForKey(g_qeglobals.d_project_entity, "brush_primit");
+
+	Eclass_InitForSourceDirectory(ValueForKey(g_qeglobals.d_project_entity, "entitypath"));
+	g_Inspectors->FillClassList();	// list in entity window
+
+	Map_New();
+
+	// FillTextureMenu();
+	FillBSPMenu();
+}
+
+/*
+ =======================================================================================================================
+    QE_LoadDefaultProject
+
+    Builds the editor project in memory. All paths stay relative to the engine working directory, so an external .qe4
+    file and machine-specific installation paths are not required.
+ =======================================================================================================================
+ */
+void QE_LoadDefaultProject(void) {
+	idStr gamePath = cvarSystem->GetCVarString("fs_game");
+	if (gamePath.IsEmpty()) {
+		gamePath = BASE_GAMEDIR;
+	}
+	gamePath.BackSlashesToSlashes();
+	if (gamePath.Find(':') >= 0 || gamePath[0] == '/') {
+		gamePath.StripPath();
+	}
+	gamePath.StripTrailing('/');
+
+	idStr mapsPath = gamePath + "/maps";
+	idStr entityPath = gamePath + "/def/*.def";
+	idStr texturePath = gamePath + "/textures";
+
+	g_strProject.Empty();
+	g_qeglobals.d_project_entity = Entity_New();
+	g_qeglobals.d_project_entity->epairs.Set("mapspath", mapsPath);
+	g_qeglobals.d_project_entity->epairs.Set("bsp", "");
+	g_qeglobals.d_project_entity->epairs.Set("bsp noflood", "");
+	g_qeglobals.d_project_entity->epairs.Set("bsp shadowOpt 2", "");
+	g_qeglobals.d_project_entity->epairs.Set("bsp noaas", "");
+	g_qeglobals.d_project_entity->epairs.Set("bspext", "");
+	g_qeglobals.d_project_entity->epairs.Set("bspext noflood", "");
+	g_qeglobals.d_project_entity->epairs.Set("autosave", mapsPath + "/autosave.map");
+	g_qeglobals.d_project_entity->epairs.Set("autosave1", mapsPath + "/autosave1.map");
+	g_qeglobals.d_project_entity->epairs.Set("autosave2", mapsPath + "/autosave2.map");
+	g_qeglobals.d_project_entity->epairs.Set("texturepath", texturePath);
+	g_qeglobals.d_project_entity->epairs.Set("entitypath", entityPath);
+	g_qeglobals.d_project_entity->epairs.Set("remotebasepath", gamePath);
+	g_qeglobals.d_project_entity->epairs.Set("rshcmd", "");
+	g_qeglobals.d_project_entity->epairs.Set("basepath", gamePath);
+	g_qeglobals.d_project_entity->epairs.Set("brush_primit", "1");
+
+	common->Printf("Using built-in Radiant project for %s\n", gamePath.c_str());
+	QE_ActivateProject();
+}
+
+/*
+ =======================================================================================================================
     QE_LoadProject
  =======================================================================================================================
  */
@@ -236,20 +304,7 @@ bool QE_LoadProject(char *projectfile) {
 		Error("Couldn't parse %s", projectfile);
 	}
 
-	// set here some default project settings you need
-	if (strlen(ValueForKey(g_qeglobals.d_project_entity, "brush_primit")) == 0) {
-		SetKeyValue(g_qeglobals.d_project_entity, "brush_primit", "0");
-	}
-
-	g_qeglobals.m_bBrushPrimitMode = IntForKey(g_qeglobals.d_project_entity, "brush_primit");
-
-	Eclass_InitForSourceDirectory(ValueForKey(g_qeglobals.d_project_entity, "entitypath"));
-	g_Inspectors->FillClassList();	// list in entity window
-
-	Map_New();
-
-	// FillTextureMenu();
-	FillBSPMenu();
+	QE_ActivateProject();
 
 	return true;
 }
@@ -437,4 +492,3 @@ void QE_CountBrushesAndUpdateStatusBar(void) {
 		s_didonce = true;
 	}
 }
-

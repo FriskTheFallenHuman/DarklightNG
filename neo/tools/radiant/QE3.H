@@ -318,6 +318,7 @@ void	WINAPI QE_CheckOpenGLForErrors(void);
 void	QE_ExpandBspString (char *bspaction, char *out, char *mapname, bool useTemps);
 void	QE_Init (void);
 bool	QE_KeyDown (int key, int nFlags = 0);
+void	QE_LoadDefaultProject (void);
 bool	QE_LoadProject (char *projectfile);
 bool	QE_SingleBrush (bool bQuiet = false, bool entityOK = false);
 
