@@ -50,3 +50,18 @@ void monster_zombie_base::state_Killed() {
 	waitAction( "dead" );
 	stopThinking();
 }
+
+//@doomscript-blueprint begin 6
+//@source FCBDFC2F
+//@catalog 0C260740
+//@node 6D84BFA1-0 40 40
+//@node AABF555A-0 330 40
+//@node 0E1E0F8E-0 40 40
+//@node 4630A3EC-0 330 40
+//@node 4AEDBCAF-0 40 40
+//@node 9A720E1A-0 330 40
+//@node 9B8BCD3D-0 610 40
+//@node 61CC67C3-0 890 40
+//@node EFD4E132-0 1170 40
+//@node 2FF08DA9-0 1450 40
+//@doomscript-blueprint end

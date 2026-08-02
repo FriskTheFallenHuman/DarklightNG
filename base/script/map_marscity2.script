@@ -59,3 +59,42 @@ namespace map_marscity2
 		//init_world();
 	}
 }
+
+//@doomscript-blueprint begin 6
+//@source 1A5E42C9
+//@catalog 0C260740
+//@node 48FCF1D3-0 40 40
+//@node 23B0E85D-0 330 40
+//@node 038F67AE-0 610 40
+//@node F7544C53-0 890 40
+//@node AE5D6838-0 40 40
+//@node D9022478-0 330 40
+//@node BBB89963-0 125 145
+//@node 4BAA0A17-0 -80 145
+//@node 739253BD-0 610 200
+//@node 2DF59CC9-0 385 305
+//@node D2940BC2-0 890 200
+//@node 9509E506-0 685 300
+//@node D5831457-0 1170 200
+//@node 04658346-0 40 40
+//@node B3E19406-0 330 40
+//@node 65F1BF78-0 125 145
+//@node A92E6752-0 610 40
+//@node 2F64C60C-0 890 40
+//@node 95C6FD18-0 1170 40
+//@node 463A9457-0 1450 40
+//@node CC6EBABF-0 1730 40
+//@node 2F64C60C-1 2010 40
+//@node B7426C31-0 2290 40
+//@node 4CEA613D-0 40 40
+//@node E5B8C1C2-0 330 40
+//@node C8F52637-0 125 145
+//@node 4CF776BE-0 610 200
+//@node CCAA9D32-0 890 200
+//@node D2181ED3-0 1170 200
+//@node 4CF776BE-1 1450 200
+//@node CCAA9D32-1 1730 200
+//@node E8C507A6-0 2010 200
+//@node 32687650-0 40 40
+//@node FAB0B29B-0 330 40
+//@doomscript-blueprint end

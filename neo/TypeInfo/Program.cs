@@ -9,6 +9,11 @@ internal static class Program
     {
         try
         {
+            if (args.Length != 0 && args[0] == "migrate-blueprints")
+            {
+                return DoomScriptBlueprintMetadata.Migrate(args.Skip(1).ToArray());
+            }
+
             ToolOptions options = ToolOptions.Parse(args);
 
             SourceModel model = SourceScanner.Scan(options);
@@ -19,6 +24,7 @@ internal static class Program
                 List<string> stale = new();
                 GeneratedFileWriter.Verify(options.HeaderPath!, generated.Header, stale);
                 GeneratedFileWriter.Verify(options.ScriptPath!, generated.Script, stale);
+                GeneratedFileWriter.Verify(options.NodesPath!, generated.Nodes, stale);
 
                 if (stale.Count != 0)
                 {
@@ -36,6 +42,7 @@ internal static class Program
                 int changed = 0;
                 changed += GeneratedFileWriter.WriteIfChanged(options.HeaderPath!, generated.Header) ? 1 : 0;
                 changed += GeneratedFileWriter.WriteIfChanged(options.ScriptPath!, generated.Script) ? 1 : 0;
+                changed += GeneratedFileWriter.WriteIfChanged(options.NodesPath!, generated.Nodes) ? 1 : 0;
 
                 if (options.StampPath is not null)
                 {
@@ -43,7 +50,7 @@ internal static class Program
                 }
 
                 Console.WriteLine(
-                    $"TypeInfo: {model.Events.Count} events, {model.Classes.Count} classes, " +
+                    $"TypeInfo: {model.Events.Count} events, {model.Classes.Count} classes, {model.Enums.Count} enums, " +
                     $"{model.Classes.Sum(type => type.Bindings.Count)} bindings; {changed} output file(s) changed.");
             }
 
@@ -74,6 +81,7 @@ internal sealed class ToolOptions
     public required string SourceRoot { get; init; }
     public string? HeaderPath { get; init; }
     public string? ScriptPath { get; init; }
+    public string? NodesPath { get; init; }
     public string? StampPath { get; init; }
     public required IReadOnlySet<string> Excludes { get; init; }
 
@@ -83,7 +91,8 @@ internal sealed class ToolOptions
         {
             throw new ToolException(
                 "usage: DoomTypeInfo <generate|verify> --source <game-dir> " +
-                "--header <file> --script <file> [--stamp <file>] [--exclude <relative-file>]");
+                "--header <file> --script <file> --nodes <file> " +
+                "[--stamp <file>] [--exclude <relative-file>]");
         }
 
         ToolCommand command = args[0] switch
@@ -96,6 +105,7 @@ internal sealed class ToolOptions
         string? source = null;
         string? header = null;
         string? script = null;
+        string? nodes = null;
         string? stamp = null;
         HashSet<string> excludes = new(StringComparer.OrdinalIgnoreCase);
 
@@ -123,6 +133,9 @@ internal sealed class ToolOptions
                 case "--script":
                     script = Value();
                     break;
+                case "--nodes":
+                    nodes = Value();
+                    break;
                 case "--stamp":
                     stamp = Value();
                     break;
@@ -146,9 +159,9 @@ internal sealed class ToolOptions
         }
 
         if (command is ToolCommand.Generate or ToolCommand.Verify &&
-            (header is null || script is null))
+            (header is null || script is null || nodes is null))
         {
-            throw new ToolException("generate and verify require --header and --script");
+            throw new ToolException("generate and verify require --header, --script, and --nodes");
         }
 
         return new ToolOptions
@@ -157,6 +170,7 @@ internal sealed class ToolOptions
             SourceRoot = source,
             HeaderPath = header is null ? null : Path.GetFullPath(header),
             ScriptPath = script is null ? null : Path.GetFullPath(script),
+            NodesPath = nodes is null ? null : Path.GetFullPath(nodes),
             StampPath = stamp is null ? null : Path.GetFullPath(stamp),
             Excludes = excludes,
         };
@@ -196,8 +210,36 @@ internal sealed record EventDefinition(
     string Symbol,
     IReadOnlyList<string> ConstructorArguments,
     IReadOnlyList<string> ParameterNames,
+    IReadOnlyList<string> ParameterEnums,
+    SourceLocation Location,
+    ConditionalContext Condition,
+    NodeMetadata Node);
+
+internal sealed record EnumValueDefinition(
+    string Name,
+    bool Hidden,
+    SourceLocation Location);
+
+internal sealed record EnumDefinition(
+    string Name,
+    IReadOnlyList<EnumValueDefinition> Values,
     SourceLocation Location,
     ConditionalContext Condition);
+
+internal sealed record NodeMetadata(
+    string Title,
+    string Category,
+    string Description,
+    string Keywords,
+    string Receiver,
+    bool Pure,
+    bool Latent,
+    bool Hidden,
+    bool Deprecated)
+{
+    public static NodeMetadata Default(string description = "") =>
+        new("", "", description, "", "auto", false, false, false, false);
+}
 
 internal sealed record EventBinding(
     string EventSymbol,
@@ -221,6 +263,7 @@ internal sealed class SourceModel
 {
     public required IReadOnlyList<EventDefinition> Events { get; init; }
     public required IReadOnlyList<ClassDefinition> Classes { get; init; }
+    public required IReadOnlyList<EnumDefinition> Enums { get; init; }
 }
 
 internal sealed record MacroInvocation(
@@ -256,9 +299,11 @@ internal static class TypeInfoGenerator
 
     public static GeneratedFiles Generate(SourceModel model)
     {
+        string nodeCatalog = GenerateNodeCatalog(model);
         return new GeneratedFiles(
             GenerateHeader(model),
-            GenerateScript(model));
+            DoomScriptBlueprintMetadata.Append(GenerateScript(model), DoomScriptBlueprintMetadata.Checksum(nodeCatalog)),
+            nodeCatalog);
     }
 
     private static string GenerateHeader(SourceModel model)
@@ -474,6 +519,144 @@ internal static class TypeInfoGenerator
         return output.ToString();
     }
 
+    private static string GenerateNodeCatalog(SourceModel model)
+    {
+        Dictionary<string, List<(ClassDefinition Owner, EventBinding Binding)>> owners = new(StringComparer.Ordinal);
+        foreach (ClassDefinition classDefinition in model.Classes)
+        {
+            foreach (EventBinding binding in classDefinition.Bindings)
+            {
+                if (!owners.TryGetValue(binding.EventSymbol, out List<(ClassDefinition, EventBinding)>? bindings))
+                {
+                    bindings = new List<(ClassDefinition, EventBinding)>();
+                    owners.Add(binding.EventSymbol, bindings);
+                }
+                bindings.Add((classDefinition, binding));
+            }
+        }
+
+        StringBuilder output = BeginGeneratedFile("DoomScript Blueprint native node catalog");
+        output.AppendLine("doomscript-blueprint-nodes\t2");
+        output.AppendLine("# enum<TAB>type-name<TAB>script-visible-values");
+        foreach (EnumDefinition definition in model.Enums.OrderBy(item => item.Name, StringComparer.Ordinal))
+        {
+            string values = string.Join(",", definition.Values
+                .Where(item => !item.Hidden)
+                .Select(item => item.Name));
+            output.Append("enum\t");
+            output.Append(EscapeCatalogField(definition.Name));
+            output.Append('\t');
+            output.Append(EscapeCatalogField(values));
+            output.AppendLine();
+        }
+        output.AppendLine("# node<TAB>stable-id<TAB>title<TAB>category<TAB>command<TAB>receiver<TAB>emit-kind<TAB>return-type<TAB>pure<TAB>owners<TAB>callback<TAB>source<TAB>pins<TAB>latent<TAB>deprecated<TAB>keywords<TAB>description");
+
+        foreach (EventDefinition definition in model.Events.OrderBy(item => item.Symbol, StringComparer.Ordinal))
+        {
+            EventSignature signature = EventSignature.From(definition);
+            if (!IsScriptVisible(signature) || definition.Node.Hidden)
+            {
+                continue;
+            }
+
+            owners.TryGetValue(definition.Symbol, out List<(ClassDefinition Owner, EventBinding Binding)>? eventOwners);
+            eventOwners ??= new List<(ClassDefinition, EventBinding)>();
+            string ownerNames = string.Join(",", eventOwners
+                .Select(item => item.Owner.Name)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(item => item, StringComparer.Ordinal));
+            string callbacks = string.Join(",", eventOwners
+                .Select(item => item.Binding.Callback)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(item => item, StringComparer.Ordinal));
+            string inferredReceiver = eventOwners.Any(item => item.Owner.Name == "idThread")
+                ? "sys"
+                : eventOwners.Count == 0 ? "global" : "object";
+            string receiver = definition.Node.Receiver == "auto" ? inferredReceiver : definition.Node.Receiver;
+            string category = receiver == "sys"
+                ? "System"
+                : eventOwners.Count == 0 ? "Global" : TrimIdPrefix(eventOwners[0].Owner.Name);
+            if (definition.Node.Category.Length != 0)
+            {
+                category = definition.Node.Category;
+            }
+            string pins = string.Join(",", signature.Format.Select((format, index) =>
+            {
+                string enumName = index < definition.ParameterEnums.Count
+                    ? definition.ParameterEnums[index]
+                    : string.Empty;
+                string pinType = enumName.Length != 0
+                    ? $"enum({enumName})"
+                    : MapScriptType(format.ToString());
+                string pinName = SanitizeScriptName(
+                    index < definition.ParameterNames.Count ? definition.ParameterNames[index] : string.Empty,
+                    index);
+                return $"{pinType}:{pinName}";
+            }));
+
+            output.Append("node\t");
+            output.Append(EscapeCatalogField($"event:{definition.Symbol}"));
+            output.Append('\t');
+            output.Append(EscapeCatalogField(definition.Node.Title.Length == 0 ? Humanize(signature.Command) : definition.Node.Title));
+            output.Append('\t');
+            output.Append(EscapeCatalogField(category));
+            output.Append('\t');
+            output.Append(EscapeCatalogField(signature.Command));
+            output.Append('\t');
+            output.Append(receiver);
+            output.Append("\teventCall\t");
+            output.Append(MapScriptType(signature.ReturnType));
+            output.Append(definition.Node.Pure ? "\t1\t" : "\t0\t");
+            output.Append(EscapeCatalogField(ownerNames));
+            output.Append('\t');
+            output.Append(EscapeCatalogField(callbacks));
+            output.Append('\t');
+            output.Append(EscapeCatalogField(definition.Location.ToString()));
+            output.Append('\t');
+            output.Append(EscapeCatalogField(pins));
+            output.Append(definition.Node.Latent ? "\t1\t" : "\t0\t");
+            output.Append(definition.Node.Deprecated ? "1\t" : "0\t");
+            output.Append(EscapeCatalogField(definition.Node.Keywords));
+            output.Append('\t');
+            output.Append(EscapeCatalogField(definition.Node.Description));
+            output.AppendLine();
+        }
+
+        return output.ToString();
+    }
+
+    private static string Humanize(string value)
+    {
+        if (value.Length == 0)
+        {
+            return value;
+        }
+
+        StringBuilder result = new();
+        result.Append(char.ToUpperInvariant(value[0]));
+        for (int index = 1; index < value.Length; index++)
+        {
+            char current = value[index];
+            if (char.IsUpper(current) && !char.IsUpper(value[index - 1]))
+            {
+                result.Append(' ');
+            }
+            result.Append(current);
+        }
+        return result.ToString();
+    }
+
+    private static string TrimIdPrefix(string value) =>
+        value.StartsWith("id", StringComparison.Ordinal) && value.Length > 2
+            ? value[2..]
+            : value;
+
+    private static string EscapeCatalogField(string value) => value
+        .Replace("\\", "\\\\", StringComparison.Ordinal)
+        .Replace("\t", "\\t", StringComparison.Ordinal)
+        .Replace("\r", "\\r", StringComparison.Ordinal)
+        .Replace("\n", "\\n", StringComparison.Ordinal);
+
     private static bool IsScriptVisible(EventSignature signature)
     {
         return signature.Command.Length != 0 &&
@@ -608,7 +791,7 @@ internal static class TypeInfoGenerator
     }
 }
 
-internal sealed record GeneratedFiles(string Header, string Script);
+internal sealed record GeneratedFiles(string Header, string Script, string Nodes);
 
 internal static class GeneratedFileWriter
 {

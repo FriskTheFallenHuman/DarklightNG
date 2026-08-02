@@ -77,3 +77,51 @@ string weapon_fists::GetFireAnim() {
 		return "punch_right";
 	}
 }
+
+//@doomscript-blueprint begin 6
+//@source 0CA7AB2C
+//@catalog 0C260740
+//@node 82BF2517-0 40 40
+//@node C0B7DE7C-0 330 40
+//@node 9A59E117-0 40 40
+//@node CBF317DB-0 330 40
+//@node C46D0634-0 610 40
+//@node 9B4F9DA1-0 890 40
+//@node DD6F21FF-0 1170 40
+//@node E8B847F6-0 40 40
+//@node FCC258B5-0 330 40
+//@node 8D07A72E-0 610 40
+//@node 2625C63B-0 890 40
+//@node 2FF01496-0 1170 40
+//@node 87CD8F00-0 1450 40
+//@node FA68A427-0 1245 140
+//@node 7A02F32F-0 1730 40
+//@node A218F6BF-0 40 40
+//@node E3D5D342-0 330 40
+//@node 01F25FB7-0 610 40
+//@node 14239A36-0 890 40
+//@node A01F5945-0 685 145
+//@node E6A4E14D-0 1170 200
+//@node 3CF2198B-0 965 305
+//@node 23190C17-0 1450 360
+//@node D1A12AB2-0 1730 200
+//@node 0AC44A8E-0 1525 305
+//@node 19E3DBF7-0 2010 360
+//@node B90CED11-0 2290 200
+//@node DC72624F-0 40 40
+//@node 60F19C9E-0 330 40
+//@node 1DD62384-0 610 40
+//@node BBEA9AEF-0 890 40
+//@node 16EDA659-0 1170 40
+//@node 063A4471-0 1450 40
+//@node B42D51A6-0 1245 145
+//@node 2BC44C66-0 1040 145
+//@node F43686EF-0 1730 40
+//@node 799B1D5A-0 40 40
+//@node D8CB6983-0 330 40
+//@node FC65D7BE-0 40 40
+//@node 5D6DD389-0 330 40
+//@node BD24EC86-0 125 145
+//@node BE503AD1-0 610 200
+//@node 394469B4-0 1170 200
+//@doomscript-blueprint end

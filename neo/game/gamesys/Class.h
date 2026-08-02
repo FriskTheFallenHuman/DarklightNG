@@ -57,7 +57,10 @@ struct idEventFunc {
 // tool parses the C++ declaration following each tag, so the tags have no
 // runtime expansion and require no matching end marker.
 #define D3_CLASS( ... )
+#define D3_ENUM( ... )
+#define D3_ENUM_VALUE( ... )
 #define D3_EVENT( ... )
+#define D3_NODE( ... )
 #define D3_NULLABLE
 
 

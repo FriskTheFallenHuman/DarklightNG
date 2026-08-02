@@ -375,15 +375,15 @@ private:
 	D3_EVENT( EV_Weapon_ClipSize, "clipSize", float )
 	void					Event_ClipSize( void );
 	D3_EVENT( AI_PlayAnim )
-	void					Event_PlayAnim( int channel, const char *animname );
+	void					Event_PlayAnim( animChannel_t channel, const char *animname );
 	D3_EVENT( AI_PlayCycle )
-	void					Event_PlayCycle( int channel, const char *animname );
+	void					Event_PlayCycle( animChannel_t channel, const char *animname );
 	D3_EVENT( AI_AnimDone )
-	void					Event_AnimDone( int channel, int blendFrames );
+	void					Event_AnimDone( animChannel_t channel, int blendFrames );
 	D3_EVENT( AI_SetBlendFrames )
-	void					Event_SetBlendFrames( int channel, int blendFrames );
+	void					Event_SetBlendFrames( animChannel_t channel, int blendFrames );
 	D3_EVENT( AI_GetBlendFrames )
-	void					Event_GetBlendFrames( int channel );
+	void					Event_GetBlendFrames( animChannel_t channel );
 	D3_EVENT( EV_Weapon_Next, "nextWeapon", void )
 	void					Event_Next( void );
 	D3_EVENT( EV_SetSkin )

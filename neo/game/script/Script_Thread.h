@@ -122,6 +122,7 @@ private:
 	void						Event_WaitFor( idEntity *ent );
 	D3_EVENT( EV_Thread_WaitForThread, "waitForThread", void )
 	void						Event_WaitForThread( int num );
+	D3_NODE( Title = "Print", Category = "System|Debug", Description = "Writes text to the developer console.", Keywords = "log console debug" )
 	D3_EVENT( EV_Thread_Print, "print", void )
 	void						Event_Print( const char *text );
 	D3_EVENT( EV_Thread_PrintLn, "println", void )

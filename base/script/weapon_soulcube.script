@@ -99,3 +99,78 @@ void weapon_soulcube::Launch() {
 void weapon_soulcube::ExitCinematic() {
 	weaponState( "Idle", 0 );
 }
+
+//@doomscript-blueprint begin 6
+//@source 11D25700
+//@catalog 0C260740
+//@node F59E5C46-0 40 40
+//@node 19621AAB-0 330 40
+//@node B3CC1063-0 40 40
+//@node 4918D6D3-0 330 40
+//@node 093FDB94-0 40 40
+//@node 2180C68C-0 330 40
+//@node 58308983-0 610 40
+//@node C54E3E79-0 890 40
+//@node EC0826CC-0 450 145
+//@node D3AB943C-0 680 145
+//@node C8668F37-0 1170 200
+//@node 1F4C6730-0 1450 200
+//@node 6C06C8D1-0 1730 40
+//@node 0732B331-0 40 40
+//@node BB568E56-0 330 40
+//@node 6B32111D-0 610 40
+//@node 4875C022-0 890 40
+//@node CECFEE79-0 450 145
+//@node B1807EE9-0 680 145
+//@node 936693E0-0 1170 200
+//@node E753E897-0 1450 200
+//@node E2970CEF-0 1730 40
+//@node AFA528E9-0 2010 40
+//@node 8A88A715-0 1805 140
+//@node 8377439A-0 2290 40
+//@node 08CFF14E-0 40 40
+//@node 22118871-0 330 40
+//@node 5694F3B2-0 610 40
+//@node B4582308-0 385 145
+//@node 6C8A89A1-0 890 40
+//@node F50B4830-0 685 145
+//@node EABD88ED-0 1170 200
+//@node 07320F75-0 965 305
+//@node C959A56C-0 760 305
+//@node 44032290-0 1450 200
+//@node 75A4567B-0 1245 305
+//@node 42A4BC65-0 1040 305
+//@node EBF538CB-0 1730 360
+//@node 5694F3B2-1 2010 360
+//@node 012103F1-0 1785 465
+//@node 95F5DAFD-0 2570 360
+//@node 336070A3-0 2850 200
+//@node 45F313A8-0 2410 305
+//@node CD3A7D38-0 2640 305
+//@node 5CAABA35-0 3130 360
+//@node 2760E420-0 3410 360
+//@node F1CF404E-0 3205 465
+//@node 75521983-0 3690 520
+//@node 0434A5B5-0 3970 360
+//@node 25B10B1F-0 3765 465
+//@node 3442E8C9-0 4250 520
+//@node BB2DEA12-0 4530 360
+//@node 007F6948-0 40 40
+//@node 289EA192-0 330 40
+//@node 82ED745F-0 125 145
+//@node FE41196D-0 610 40
+//@node 430612EA-0 405 232
+//@node 62DBDA45-0 200 232
+//@node E715ED75-0 890 40
+//@node E4CAC5AA-0 450 145
+//@node EF84AC1A-0 680 145
+//@node C42BBCD7-0 1170 200
+//@node 99EF8450-0 1450 200
+//@node 8797E3D1-0 1730 40
+//@node 612D8CA1-0 1525 145
+//@node 5F57EEB0-0 2010 40
+//@node 89F0532F-0 40 40
+//@node D78A6C83-0 330 40
+//@node B150ED21-0 40 40
+//@node 37AF9588-0 330 40
+//@doomscript-blueprint end

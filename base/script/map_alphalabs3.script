@@ -117,3 +117,63 @@ namespace map_alphalabs3 {
 		init_crane();
 	}
 }
+
+//@doomscript-blueprint begin 6
+//@source DF71984D
+//@catalog 0C260740
+//@node 94F513E6-0 40 40
+//@node 0A75B8A4-0 330 40
+//@node 06B5FEF7-0 610 40
+//@node 37F214B5-0 40 40
+//@node 041CF890-0 330 40
+//@node FBADA9CD-0 610 40
+//@node 4BA6EEE3-0 890 40
+//@node 3C48B42E-0 1170 40
+//@node 44E11696-0 1450 40
+//@node 87C7B484-0 1730 40
+//@node 31ADCC48-0 2010 40
+//@node CEAADD61-0 40 40
+//@node AAA0832E-0 330 40
+//@node B048714E-0 610 40
+//@node 5961237C-0 890 40
+//@node 97F71B5C-0 1170 40
+//@node 716568CF-0 1450 40
+//@node 6B488DAF-0 1730 40
+//@node F3A2D88F-0 2010 40
+//@node F2080D19-0 2290 40
+//@node 30F1EE90-0 2570 40
+//@node 6CC4B6B8-0 2850 40
+//@node 5EBA3524-0 3130 40
+//@node 3206415F-0 3410 40
+//@node 29347C7E-0 3690 40
+//@node 24B37D9C-0 3970 40
+//@node F3A2D88F-1 4250 40
+//@node 9F5D0461-0 4530 40
+//@node 5EBA3524-1 4810 40
+//@node 29347C7E-1 5090 40
+//@node 0118B864-0 5370 40
+//@node BFDA9ADD-0 5650 40
+//@node 056CB84E-0 5930 40
+//@node 5F9A5752-0 6210 40
+//@node 34A0D008-0 6490 40
+//@node F3A2D88F-2 6770 40
+//@node 8E3295D1-0 7050 40
+//@node 41D7AC11-0 7330 40
+//@node 5EBA3524-2 7610 40
+//@node 6EDC09F1-0 7890 40
+//@node CB5A5893-0 8170 40
+//@node F3A2D88F-3 8450 40
+//@node 18D0DFF4-0 8730 40
+//@node 847CEDE8-0 9010 40
+//@node 5EBA3524-3 9290 40
+//@node C7EDFE89-0 9570 40
+//@node B832CE32-0 40 40
+//@node 38E9278C-0 330 40
+//@node 18351587-0 610 40
+//@node 51EEEDD4-0 890 40
+//@node EBB59E31-0 40 40
+//@node 972D6424-0 330 40
+//@node 32687650-0 40 40
+//@node 6DADACF7-0 330 40
+//@node 3E9D370A-0 610 40
+//@doomscript-blueprint end

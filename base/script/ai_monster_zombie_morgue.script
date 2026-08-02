@@ -183,3 +183,87 @@ void monster_zombie_morgue::combat_melee() {
 	waitAction( "melee_attack" );
 	lookAtEnemy( 8 );
 }
+
+//@doomscript-blueprint begin 6
+//@source 53458C1C
+//@catalog 0C260740
+//@node 9DFA3C0E-0 40 40
+//@node A67B8909-0 330 40
+//@node 927D1746-0 610 40
+//@node 52952081-0 405 145
+//@node 27475BE7-0 200 145
+//@node 10B4E7BE-0 890 200
+//@node 0837C360-0 1170 40
+//@node A98F826C-0 40 40
+//@node C6FA5C7B-0 330 40
+//@node 7999E4B2-0 105 145
+//@node 15B17C23-0 610 40
+//@node EE5EDCC3-0 405 232
+//@node BFD14343-0 890 40
+//@node 28EFE1D5-0 685 145
+//@node 31FD622D-0 1170 40
+//@node 6789DCB3-0 730 145
+//@node DAB367A3-0 960 145
+//@node 8C2C33CD-0 1450 200
+//@node FC97BF74-0 1245 305
+//@node 68AD02E2-0 1730 360
+//@node 172AD36D-0 1505 465
+//@node D5D19EB7-0 2010 360
+//@node AF5C7AD3-0 1805 465
+//@node 59FF14C2-0 1600 465
+//@node 0AD33739-0 1600 549
+//@node 1E65A53C-0 2290 520
+//@node 16234374-0 2570 200
+//@node DD21F031-0 2850 40
+//@node 25E4E7DA-0 3130 40
+//@node 3535E3CC-0 40 40
+//@node 08B7E8A4-0 330 40
+//@node 6F22580D-0 610 40
+//@node A7F66C56-0 170 145
+//@node 1E4F8826-0 400 145
+//@node 8526F5B4-0 890 200
+//@node FEA7BD6C-0 1170 40
+//@node 850CF43E-0 1450 40
+//@node FB0DAC88-0 40 40
+//@node 61D49AC1-0 330 40
+//@node 874C0521-0 610 40
+//@node 70864BC1-0 890 200
+//@node 8B553295-0 685 305
+//@node 89667AEF-0 480 305
+//@node 3CFE01D7-0 40 40
+//@node 9AAECC8C-0 330 40
+//@node 6339B2A5-0 125 232
+//@node 511F33E6-0 -80 232
+//@node E14B80C8-0 610 40
+//@node 9DE6A93A-0 890 200
+//@node 9EB15BCF-0 685 305
+//@node E1E0587F-0 480 305
+//@node 11D4963A-0 40 40
+//@node 6869AAFA-0 330 40
+//@node EA116D0B-0 40 40
+//@node 927D7A23-0 330 40
+//@node FCDEC41D-0 610 40
+//@node 829D3853-0 890 40
+//@node 545CB041-0 1170 40
+//@node 8AE2197A-0 1450 40
+//@node CE616CE0-0 40 40
+//@node 115042F8-0 330 40
+//@node 7D5D5C43-0 610 40
+//@node F3F430A6-0 40 40
+//@node 38FDBD79-0 330 40
+//@node ACB3DCA9-0 125 145
+//@node 2A51FF65-0 610 200
+//@node ABAAA582-0 40 40
+//@node F583D66F-0 330 40
+//@node 86A64A16-0 125 145
+//@node 5581AA0B-0 610 40
+//@node E891D907-0 385 145
+//@node 7694A836-0 890 200
+//@node 8420B539-0 1170 40
+//@node AF89505B-0 40 40
+//@node CE20F0C2-0 330 40
+//@node D9ECAF8A-0 610 40
+//@node CB8F9EE3-0 890 40
+//@node D338285D-0 1170 40
+//@node 6E3AEF73-0 1450 40
+//@doomscript-blueprint end

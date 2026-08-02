@@ -62,6 +62,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "../comafx/DialogName.h"
 #include "../comafx/DialogColorPicker.h"
 #include "../common/EditorTheme.h"
+#include "../script/DoomScriptBlueprintEditor.h"
 
 #ifdef _DEBUG
 	#define new DEBUG_NEW
@@ -755,6 +756,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
     ON_COMMAND(ID_SELECT_COMPLETE_ENTITY, OnSelectCompleteEntity)
 	ON_COMMAND(ID_PRECISION_CURSOR_CYCLE , OnPrecisionCursorCycle)
 	ON_COMMAND(ID_MATERIALS_GENERATEMATERIALSLIST,OnGenerateMaterialsList)
+	ON_COMMAND(ID_EDITORS_DOOMSCRIPT_BLUEPRINT, OnDoomScriptBlueprintEditor)
 	ON_COMMAND(ID_SELECTION_VIEW_WIREFRAMEON, OnSelectionWireFrameOn)
 	ON_COMMAND(ID_SELECTION_VIEW_WIREFRAMEOFF, OnSelectionWireFrameOff)
 	ON_COMMAND(ID_SELECTION_VIEW_VISIBLEON, OnSelectionVisibleOn)
@@ -1223,6 +1225,13 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 	LoadCommandMap();
 
 	CMenu *pMenu = GetMenu();
+	if ( pMenu != NULL ) {
+		HMENU editorsMenu = ::CreatePopupMenu();
+		::AppendMenu( editorsMenu, MF_STRING, ID_EDITORS_DOOMSCRIPT_BLUEPRINT, "DoomScript Blueprint Editor..." );
+		int editorsPosition = Max( 0, pMenu->GetMenuItemCount() - 2 );
+		pMenu->InsertMenu( editorsPosition, MF_BYPOSITION | MF_POPUP, (UINT_PTR)editorsMenu, "&Editors" );
+		DrawMenuBar();
+	}
 	ShowMenuItemKeyBindings(pMenu);
 
 	CFont	*pFont = new CFont();
@@ -6950,6 +6959,10 @@ void CMainFrame::OnGenerateMaterialsList()
 	g_Inspectors->consoleWnd.SetConsoleText ( va ( "condump %s" , mtrFileName.c_str()) );
 
 	Sys_EndWait ();
+}
+
+void CMainFrame::OnDoomScriptBlueprintEditor() {
+	ShowDoomScriptBlueprintEditor();
 }
 
 /*

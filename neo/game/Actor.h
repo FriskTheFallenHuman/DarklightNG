@@ -309,43 +309,43 @@ private:
 	D3_EVENT( AI_GetPainAnim, "getPainAnim", string )
 	void					Event_GetPainAnim( void );
 	D3_EVENT( AI_StopAnim, "stopAnim", void )
-	void					Event_StopAnim( int channel, int frames );
+	void					Event_StopAnim( animChannel_t channel, int frames );
 	D3_EVENT( AI_PlayAnim, "playAnim", integer )
-	void					Event_PlayAnim( int channel, const char *name );
+	void					Event_PlayAnim( animChannel_t channel, const char *name );
 	D3_EVENT( AI_PlayCycle, "playCycle", integer )
-	void					Event_PlayCycle( int channel, const char *name );
+	void					Event_PlayCycle( animChannel_t channel, const char *name );
 	D3_EVENT( AI_IdleAnim, "idleAnim", integer )
-	void					Event_IdleAnim( int channel, const char *name );
+	void					Event_IdleAnim( animChannel_t channel, const char *name );
 	D3_EVENT( AI_SetSyncedAnimWeight, "setSyncedAnimWeight", void )
-	void					Event_SetSyncedAnimWeight( int channel, int anim, float weight );
+	void					Event_SetSyncedAnimWeight( animChannel_t channel, int anim, float weight );
 	D3_EVENT( AI_OverrideAnim, "overrideAnim", void )
-	void					Event_OverrideAnim( int channel );
+	void					Event_OverrideAnim( animChannel_t channel );
 	D3_EVENT( AI_EnableAnim, "enableAnim", void )
-	void					Event_EnableAnim( int channel, int blendFrames );
+	void					Event_EnableAnim( animChannel_t channel, int blendFrames );
 	D3_EVENT( AI_SetBlendFrames, "setBlendFrames", void )
-	void					Event_SetBlendFrames( int channel, int blendFrames );
+	void					Event_SetBlendFrames( animChannel_t channel, int blendFrames );
 	D3_EVENT( AI_GetBlendFrames, "getBlendFrames", integer )
-	void					Event_GetBlendFrames( int channel );
+	void					Event_GetBlendFrames( animChannel_t channel );
 	D3_EVENT( AI_AnimState, "animState", void )
-	void					Event_AnimState( int channel, const char *name, int blendFrames );
+	void					Event_AnimState( animChannel_t channel, const char *name, int blendFrames );
 	D3_EVENT( AI_GetAnimState, "getAnimState", string )
-	void					Event_GetAnimState( int channel );
+	void					Event_GetAnimState( animChannel_t channel );
 	D3_EVENT( AI_InAnimState, "inAnimState", integer )
-	void					Event_InAnimState( int channel, const char *name );
+	void					Event_InAnimState( animChannel_t channel, const char *name );
 	D3_EVENT( AI_FinishAction, "finishAction", void )
 	void					Event_FinishAction( const char *name );
 	D3_EVENT( AI_AnimDone, "animDone", integer )
-	void					Event_AnimDone( int channel, int blendFrames );
+	void					Event_AnimDone( animChannel_t channel, int blendFrames );
 	D3_EVENT( AI_HasAnim, "hasAnim", float )
-	void					Event_HasAnim( int channel, const char *name );
+	void					Event_HasAnim( animChannel_t channel, const char *name );
 	D3_EVENT( AI_CheckAnim, "checkAnim", void )
-	void					Event_CheckAnim( int channel, const char *animname );
+	void					Event_CheckAnim( animChannel_t channel, const char *animname );
 	D3_EVENT( AI_ChooseAnim, "chooseAnim", string )
-	void					Event_ChooseAnim( int channel, const char *animname );
+	void					Event_ChooseAnim( animChannel_t channel, const char *animname );
 	D3_EVENT( AI_AnimLength, "animLength", float )
-	void					Event_AnimLength( int channel, const char *animname );
+	void					Event_AnimLength( animChannel_t channel, const char *animname );
 	D3_EVENT( AI_AnimDistance, "animDistance", float )
-	void					Event_AnimDistance( int channel, const char *animname );
+	void					Event_AnimDistance( animChannel_t channel, const char *animname );
 	D3_EVENT( AI_HasEnemies, "hasEnemies", integer )
 	void					Event_HasEnemies( void );
 	D3_EVENT( AI_NextEnemy, "nextEnemy", entity )
@@ -353,7 +353,7 @@ private:
 	D3_EVENT( AI_ClosestEnemyToPoint, "closestEnemyToPoint", entity )
 	void					Event_ClosestEnemyToPoint( const idVec3 &pos );
 	D3_EVENT( EV_StopSound, "stopSound", void )
-	void					Event_StopSound( int channel, int netsync );
+	void					Event_StopSound( gameSoundChannel_t channel, int netsync );
 	D3_EVENT( AI_SetNextState, "setNextState", void )
 	void					Event_SetNextState( const char *name );
 	D3_EVENT( AI_SetState, "setState", void )

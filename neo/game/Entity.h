@@ -471,13 +471,13 @@ private:
 	D3_EVENT( EV_CacheSoundShader, "cacheSoundShader", void )
 	void					Event_CacheSoundShader( const char *soundName );
 	D3_EVENT( EV_StartSoundShader, "startSoundShader", float )
-	void					Event_StartSoundShader( const char *soundName, int channel );
+	void					Event_StartSoundShader( const char *soundName, gameSoundChannel_t channel );
 	D3_EVENT( EV_StopSound )
-	void					Event_StopSound( int channel, int netSync );
+	void					Event_StopSound( gameSoundChannel_t channel, int netSync );
 	D3_EVENT( EV_StartSound, "startSound", float )
-	void					Event_StartSound( const char *soundName, int channel, int netSync );
+	void					Event_StartSound( const char *soundName, gameSoundChannel_t channel, int netSync );
 	D3_EVENT( EV_FadeSound, "fadeSound", void )
-	void					Event_FadeSound( int channel, float to, float over );
+	void					Event_FadeSound( gameSoundChannel_t channel, float to, float over );
 	D3_EVENT( EV_GetWorldOrigin, "getWorldOrigin", vector )
 	void					Event_GetWorldOrigin( void );
 	D3_EVENT( EV_SetWorldOrigin, "setWorldOrigin", void )

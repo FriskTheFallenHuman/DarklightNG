@@ -12,7 +12,9 @@ internal static class SourceScanner
     private static readonly HashSet<string> TagNames = new(StringComparer.Ordinal)
     {
         "D3_CLASS",
+        "D3_ENUM",
         "D3_EVENT",
+        "D3_NODE",
     };
 
     private static readonly Regex ClassAfterTag = new(
@@ -28,7 +30,11 @@ internal static class SourceScanner
         RegexOptions.CultureInvariant);
 
     private static readonly Regex ImplementationTag = new(
-        @"\bD3_(?:CLASS|EVENT)\s*\(",
+        @"\bD3_(?:CLASS|ENUM(?:_VALUE)?|EVENT|NODE)\s*\(",
+        RegexOptions.CultureInvariant);
+
+    private static readonly Regex EnumAfterTag = new(
+        @"\G\s*(?:(?<typedef>typedef)\s+)?enum\s*(?<name>[A-Za-z_]\w*)?\s*(?:\:\s*[^\{]+)?\s*\{",
         RegexOptions.CultureInvariant);
 
     private sealed record ParsedClass(
@@ -40,7 +46,8 @@ internal static class SourceScanner
     private sealed record ParsedFunction(
         string Name,
         string Format,
-        IReadOnlyList<string> ParameterNames);
+        IReadOnlyList<string> ParameterNames,
+        IReadOnlyList<string> ParameterEnums);
 
     public static SourceModel Scan(ToolOptions options)
     {
@@ -53,10 +60,26 @@ internal static class SourceScanner
 
         List<EventDefinition> eventDefinitions = new();
         List<ParsedClass> parsedClasses = new();
+        List<EnumDefinition> enums = new();
 
         foreach (SourceDocument header in documents.Where(IsHeader))
         {
-            ParseHeader(header, eventDefinitions, parsedClasses);
+            ParseEnums(header, enums);
+        }
+
+        Dictionary<string, EnumDefinition> enumsByName = new(StringComparer.Ordinal);
+        foreach (EnumDefinition definition in enums)
+        {
+            if (!enumsByName.TryAdd(definition.Name, definition))
+            {
+                throw new ToolException(
+                    $"{definition.Location}: duplicate D3_ENUM annotation for '{definition.Name}'");
+            }
+        }
+
+        foreach (SourceDocument header in documents.Where(IsHeader))
+        {
+            ParseHeader(header, eventDefinitions, parsedClasses, enumsByName);
         }
 
         IReadOnlyList<EventDefinition> events = CoalesceEventDefinitions(eventDefinitions);
@@ -67,7 +90,102 @@ internal static class SourceScanner
         {
             Events = events,
             Classes = classes,
+            Enums = enums,
         };
+    }
+
+    private static void ParseEnums(SourceDocument document, ICollection<EnumDefinition> definitions)
+    {
+        IReadOnlyDictionary<int, ConditionalContext> conditions =
+            CppText.BuildConditionalContexts(document.Text);
+        string? includeGuard = FindIncludeGuard(document.MaskedText);
+        List<MacroInvocation> macros = CppText.FindMacros(document.Text, TagNames)
+            .Where(macro => !IsPreprocessorDirective(document.Text, macro.Start))
+            .ToList();
+
+        foreach (MacroInvocation tag in macros.Where(macro => macro.Name == "D3_ENUM"))
+        {
+            if (tag.Arguments.Count > 1 ||
+                (tag.Arguments.Count == 1 && tag.Arguments[0] != "BlueprintType"))
+            {
+                throw ErrorAt(document, tag.Start, "D3_ENUM accepts only the optional marker 'BlueprintType'");
+            }
+
+            Match declaration = EnumAfterTag.Match(document.MaskedText, tag.End);
+            if (!declaration.Success)
+            {
+                throw ErrorAt(document, tag.Start, "D3_ENUM must immediately precede an enum declaration");
+            }
+
+            int openBrace = declaration.Index + declaration.Length - 1;
+            int closeBrace = CppText.FindMatchingDelimiter(document.Text, openBrace, '{', '}');
+            if (closeBrace < 0)
+            {
+                throw ErrorAt(document, openBrace, "reflected enum has no closing brace");
+            }
+
+            bool isTypedef = declaration.Groups["typedef"].Success;
+            string name = declaration.Groups["name"].Value;
+            if (isTypedef)
+            {
+                Match alias = Regex.Match(
+                    document.MaskedText[(closeBrace + 1)..],
+                    @"^\s*(?<name>[A-Za-z_]\w*)\s*;",
+                    RegexOptions.CultureInvariant);
+                if (!alias.Success)
+                {
+                    throw ErrorAt(document, closeBrace, "a reflected typedef enum must end with its type name");
+                }
+                name = alias.Groups["name"].Value;
+            }
+            else if (name.Length == 0)
+            {
+                throw ErrorAt(document, tag.Start, "a reflected enum must have a type name");
+            }
+
+            string body = document.MaskedText[(openBrace + 1)..closeBrace];
+            List<EnumValueDefinition> values = new();
+            foreach (string rawValue in CppText.SplitTopLevel(body, ','))
+            {
+                string value = rawValue.Trim();
+                if (value.Length == 0)
+                {
+                    continue;
+                }
+                Match identifier = Regex.Match(value, @"^(?<name>[A-Za-z_]\w*)\b", RegexOptions.CultureInvariant);
+                if (!identifier.Success)
+                {
+                    throw ErrorAt(document, openBrace, $"cannot parse reflected enum value '{value}'");
+                }
+                bool hidden = Regex.IsMatch(
+                    value,
+                    @"\bD3_ENUM_VALUE\s*\(\s*Hidden\s*\)",
+                    RegexOptions.CultureInvariant);
+                int valueOffset = openBrace + 1 + body.IndexOf(rawValue, StringComparison.Ordinal);
+                values.Add(new EnumValueDefinition(
+                    identifier.Groups["name"].Value,
+                    hidden,
+                    new SourceLocation(document.RelativePath, CppText.GetLineNumber(document.Text, valueOffset))));
+            }
+            if (values.Count == 0 || values.All(value => value.Hidden))
+            {
+                throw ErrorAt(document, tag.Start, $"reflected enum '{name}' has no script-visible values");
+            }
+            HashSet<string> valueNames = new(StringComparer.Ordinal);
+            foreach (EnumValueDefinition value in values)
+            {
+                if (!valueNames.Add(value.Name))
+                {
+                    throw new ToolException($"{value.Location}: duplicate value '{value.Name}' in enum '{name}'");
+                }
+            }
+
+            definitions.Add(new EnumDefinition(
+                name,
+                values,
+                new SourceLocation(document.RelativePath, tag.Line),
+                ConditionAt(conditions, tag.Line, includeGuard)));
+        }
     }
 
     private static List<SourceDocument> LoadDocuments(ToolOptions options)
@@ -124,7 +242,8 @@ internal static class SourceScanner
     private static void ParseHeader(
         SourceDocument document,
         ICollection<EventDefinition> eventDefinitions,
-        ICollection<ParsedClass> parsedClasses)
+        ICollection<ParsedClass> parsedClasses,
+        IReadOnlyDictionary<string, EnumDefinition> enums)
     {
         IReadOnlyDictionary<int, ConditionalContext> conditions =
             CppText.BuildConditionalContexts(document.Text);
@@ -187,6 +306,24 @@ internal static class SourceScanner
             parsedClasses.Add(parsed);
         }
 
+        Dictionary<int, NodeMetadata> nodeMetadata = new();
+        foreach (MacroInvocation tag in macros.Where(macro => macro.Name == "D3_NODE"))
+        {
+            MacroInvocation? eventTag = macros
+                .Where(item => item.Start >= tag.End)
+                .OrderBy(item => item.Start)
+                .FirstOrDefault();
+            if (eventTag is null || eventTag.Name != "D3_EVENT" ||
+                !CppText.ContainsOnlyTrivia(document.Text, (tag.End, eventTag.Start)))
+            {
+                throw ErrorAt(document, tag.Start, "D3_NODE must immediately precede D3_EVENT");
+            }
+            if (!nodeMetadata.TryAdd(eventTag.Start, ParseNodeMetadata(document, tag)))
+            {
+                throw ErrorAt(document, tag.Start, "only one D3_NODE may annotate an event");
+            }
+        }
+
         foreach (MacroInvocation tag in macros.Where(macro => macro.Name == "D3_EVENT"))
         {
             if (tag.Arguments.Count == 0)
@@ -221,7 +358,7 @@ internal static class SourceScanner
             ConditionalContext condition = ConditionAt(conditions, tag.Line, includeGuard);
             ParsedFunction? attached = explicitCallback
                 ? null
-                : FindAttachedFunction(document, tag, macros, owner?.BodyEnd ?? document.Text.Length);
+                : FindAttachedFunction(document, tag, macros, owner?.BodyEnd ?? document.Text.Length, enums);
             if (definesEvent)
             {
                 string returnType = ParseReturnType(tag.Arguments[2], location);
@@ -235,12 +372,17 @@ internal static class SourceScanner
                     constructorArguments.Add($"'{returnType}'");
                 }
 
+                NodeMetadata metadata = nodeMetadata.TryGetValue(tag.Start, out NodeMetadata? annotated)
+                    ? annotated
+                    : NodeMetadata.Default(ExtractLeadingComment(document.Text, tag.Start));
                 eventDefinitions.Add(new EventDefinition(
                     tag.Arguments[0],
                     constructorArguments,
                     attached.ParameterNames,
+                    attached.ParameterEnums,
                     location,
-                    condition));
+                    condition,
+                    metadata));
             }
 
             if (owner is null)
@@ -259,15 +401,91 @@ internal static class SourceScanner
         }
     }
 
+    private static NodeMetadata ParseNodeMetadata(SourceDocument document, MacroInvocation tag)
+    {
+        string title = "";
+        string category = "";
+        string description = ExtractLeadingComment(document.Text, tag.Start);
+        string keywords = "";
+        string receiver = "auto";
+        bool pure = false;
+        bool latent = false;
+        bool hidden = false;
+        bool deprecated = false;
+
+        foreach (string raw in tag.Arguments)
+        {
+            string argument = raw.Trim();
+            switch (argument)
+            {
+                case "Pure": pure = true; continue;
+                case "Latent": latent = true; continue;
+                case "Hidden": hidden = true; continue;
+                case "Deprecated": deprecated = true; continue;
+            }
+
+            Match named = Regex.Match(argument, @"^(Title|Category|Description|Keywords|Receiver)\s*=\s*(.+)$", RegexOptions.CultureInvariant);
+            if (!named.Success)
+            {
+                throw ErrorAt(document, tag.Start, $"unknown D3_NODE option '{argument}'");
+            }
+            string value = CppText.ParseCppString(named.Groups[2].Value, new SourceLocation(document.RelativePath, tag.Line));
+            switch (named.Groups[1].Value)
+            {
+                case "Title": title = value; break;
+                case "Category": category = value; break;
+                case "Description": description = value; break;
+                case "Keywords": keywords = value; break;
+                case "Receiver": receiver = value; break;
+            }
+        }
+
+        if (receiver is not ("auto" or "sys" or "global" or "object"))
+        {
+            throw ErrorAt(document, tag.Start, "D3_NODE Receiver must be auto, sys, global, or object");
+        }
+        if (pure && latent)
+        {
+            throw ErrorAt(document, tag.Start, "a D3_NODE cannot be both Pure and Latent");
+        }
+        return new NodeMetadata(title, category, description, keywords, receiver, pure, latent, hidden, deprecated);
+    }
+
+    private static string ExtractLeadingComment(string text, int position)
+    {
+        int lineStart = text.LastIndexOf('\n', Math.Max(0, position - 1));
+        int cursor = lineStart < 0 ? 0 : lineStart;
+        List<string> lines = new();
+        while (cursor > 0)
+        {
+            int previousEnd = cursor;
+            int previousStart = text.LastIndexOf('\n', Math.Max(0, previousEnd - 1));
+            previousStart = previousStart < 0 ? 0 : previousStart + 1;
+            string line = text[previousStart..previousEnd].Trim();
+            if (!line.StartsWith("//", StringComparison.Ordinal))
+            {
+                break;
+            }
+            string value = line[2..].Trim();
+            if (value.Length != 0)
+            {
+                lines.Insert(0, value);
+            }
+            cursor = previousStart - 1;
+        }
+        return string.Join(" ", lines);
+    }
+
     private static ParsedFunction FindAttachedFunction(
         SourceDocument document,
         MacroInvocation tag,
         IReadOnlyList<MacroInvocation> macros,
-        int classEnd)
+        int classEnd,
+        IReadOnlyDictionary<string, EnumDefinition> enums)
     {
         int cursor = tag.End;
         foreach (MacroInvocation following in macros
-                     .Where(item => item.Name == "D3_EVENT" && item.Start >= cursor && item.Start < classEnd)
+                     .Where(item => (item.Name is "D3_EVENT" or "D3_NODE") && item.Start >= cursor && item.Start < classEnd)
                      .OrderBy(item => item.Start))
         {
             if (!CppText.ContainsOnlyTrivia(document.Text, (cursor, following.Start)))
@@ -304,22 +522,33 @@ internal static class SourceScanner
         IReadOnlyList<string> rawParameters = string.IsNullOrWhiteSpace(parameters) || parameters.Trim() == "void"
             ? Array.Empty<string>()
             : CppText.SplitTopLevel(parameters, ',').Select(item => item.Trim()).ToArray();
-        string format = string.Concat(rawParameters.Select(parameter => InferParameterType(parameter, document, tag)));
+        string format = string.Concat(rawParameters.Select(parameter => InferParameterType(parameter, document, tag, enums)));
         return new ParsedFunction(
             member.Groups["name"].Value,
             format,
-            CppText.ExtractParameterNames(parameters));
+            CppText.ExtractParameterNames(parameters),
+            rawParameters.Select(parameter => InferParameterEnum(parameter, enums)).ToArray());
     }
 
     private static char InferParameterType(
         string parameter,
         SourceDocument document,
-        MacroInvocation tag)
+        MacroInvocation tag,
+        IReadOnlyDictionary<string, EnumDefinition> enums)
     {
         string type = CppText.SplitTopLevel(parameter, '=')[0];
         bool nullable = Regex.IsMatch(type, @"\bD3_NULLABLE\b", RegexOptions.CultureInvariant);
         type = Regex.Replace(type, @"\bD3_NULLABLE\b", string.Empty, RegexOptions.CultureInvariant);
         type = Regex.Replace(type, @"\s+", " ", RegexOptions.CultureInvariant).Trim();
+
+        if (InferParameterEnum(type, enums).Length != 0)
+        {
+            if (nullable)
+            {
+                throw ErrorAt(document, tag.Start, "D3_NULLABLE is valid only on entity pointer parameters");
+            }
+            return 'd';
+        }
 
         if (Regex.IsMatch(type, @"\btrace_t\s*\*", RegexOptions.CultureInvariant))
         {
@@ -356,6 +585,21 @@ internal static class SourceScanner
         throw ErrorAt(document, tag.Start, $"cannot infer a Doom event type for parameter '{parameter.Trim()}'");
     }
 
+    private static string InferParameterEnum(
+        string parameter,
+        IReadOnlyDictionary<string, EnumDefinition> enums)
+    {
+        string type = CppText.SplitTopLevel(parameter, '=')[0];
+        foreach (string enumName in enums.Keys.OrderByDescending(name => name.Length))
+        {
+            if (Regex.IsMatch(type, $@"\b{Regex.Escape(enumName)}\b", RegexOptions.CultureInvariant))
+            {
+                return enumName;
+            }
+        }
+        return string.Empty;
+    }
+
     private static string ParseReturnType(string expression, SourceLocation location) =>
         expression.Trim() switch
         {
@@ -387,6 +631,11 @@ internal static class SourceScanner
             {
                 throw new ToolException(
                     $"{definition.Location}: event symbol '{definition.Symbol}' conflicts with {previous.Location}");
+            }
+            if (!previous.ParameterEnums.SequenceEqual(definition.ParameterEnums, StringComparer.Ordinal))
+            {
+                throw new ToolException(
+                    $"{definition.Location}: enum metadata for event symbol '{definition.Symbol}' conflicts with {previous.Location}");
             }
         }
         return unique;

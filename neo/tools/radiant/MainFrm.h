@@ -575,6 +575,7 @@ public:
 	afx_msg	void OnNurbEditor();
 	afx_msg void OnSelectCompleteEntity();
 	afx_msg void OnGenerateMaterialsList();
+	afx_msg void OnDoomScriptBlueprintEditor();
 	afx_msg void OnMru(unsigned int nID);
 	afx_msg void OnViewNearest(unsigned int nID);
 	afx_msg void OnTextureWad(unsigned int nID);

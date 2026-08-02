@@ -109,3 +109,23 @@ viewmodel with the player model.
 string weapon_base::GetFireAnim() {
 	return "fire";
 }
+
+//@doomscript-blueprint begin 6
+//@source DE557F19
+//@catalog 0C260740
+//@node 16C1E574-0 40 40
+//@node E368BA60-0 40 40
+//@node 38083890-0 40 40
+//@node 342B2929-0 330 40
+//@node EE5193D4-0 40 40
+//@node 39BA8FA0-0 40 40
+//@node 7A77158B-0 40 40
+//@node 192D3AC7-0 330 40
+//@node FE4AD4AE-0 105 145
+//@node 00378501-0 610 200
+//@node CF46672B-0 405 300
+//@node 497DCD12-0 200 300
+//@node 78006F48-0 1170 200
+//@node B2995838-0 40 40
+//@node 497C493B-0 330 40
+//@doomscript-blueprint end

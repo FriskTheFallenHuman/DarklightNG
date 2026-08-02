@@ -105,3 +105,11 @@ void doom_main() {
 
 	sys.print( "Exiting doom_main()\n" );
 }
+
+//@doomscript-blueprint begin 6
+//@source 7483BB7A
+//@catalog 0C260740
+//@node A8F4E6FC-0 40 40
+//@node C40B6D0A-0 330 40
+//@node 04E81F58-0 610 40
+//@doomscript-blueprint end

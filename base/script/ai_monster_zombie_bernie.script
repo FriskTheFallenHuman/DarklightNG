@@ -181,3 +181,85 @@ void monster_zombie_bernie::combat_melee() {
 	waitAction( "melee_attack" );
 	lookAtEnemy( 1 );
 }
+
+//@doomscript-blueprint begin 6
+//@source 1BD6CB74
+//@catalog 0C260740
+//@node 0BC024E0-0 40 40
+//@node E681E02B-0 330 40
+//@node 2BC13194-0 610 40
+//@node 39B12EF6-0 405 145
+//@node D0CFDBB2-0 200 145
+//@node A2DDE884-0 890 200
+//@node 38461FDB-0 1170 40
+//@node B488ADCA-0 40 40
+//@node B9C9FC61-0 330 40
+//@node C8D763D2-0 105 145
+//@node DC0C0BC1-0 610 40
+//@node 27A74105-0 405 232
+//@node 11AB13ED-0 890 40
+//@node 660005AA-0 685 145
+//@node 29F995F2-0 1170 40
+//@node 992AEF57-0 730 145
+//@node AB49E107-0 960 145
+//@node A1FB5623-0 1450 200
+//@node EFB3D8C3-0 1245 305
+//@node 5EDC32B0-0 1730 360
+//@node 6CB24F81-0 1505 465
+//@node D5F2966D-0 2010 360
+//@node 60714D14-0 1805 465
+//@node 44A1E44D-0 1600 465
+//@node 0ACB57D8-0 1600 549
+//@node 11477C79-0 2290 520
+//@node 68616CA6-0 2570 200
+//@node A5326A37-0 2850 40
+//@node 761DCDF6-0 3130 40
+//@node 16D4512A-0 40 40
+//@node 77B660CE-0 330 40
+//@node 72829A97-0 610 40
+//@node 42BA03C0-0 170 145
+//@node 19BD0E10-0 400 145
+//@node 496B225E-0 890 200
+//@node 2F1425A2-0 1170 40
+//@node 5509C72C-0 1450 40
+//@node 211FB536-0 40 40
+//@node 45558E83-0 330 40
+//@node 6053B103-0 610 40
+//@node DF8028BD-0 890 200
+//@node 83DC8060-0 685 305
+//@node 2EA9A6EE-0 480 305
+//@node DF85AC3D-0 40 40
+//@node 2D1960C0-0 330 40
+//@node C28B6DD4-0 610 40
+//@node F6C51FF0-0 890 200
+//@node B6E8E178-0 685 305
+//@node A236F12C-0 480 305
+//@node 8E4A2564-0 40 40
+//@node 56852E20-0 330 40
+//@node CFCC4AA9-0 40 40
+//@node C82B9699-0 330 40
+//@node E6AD469B-0 610 40
+//@node 619370D1-0 890 40
+//@node 0604AE6F-0 1170 40
+//@node 78358CE4-0 1450 40
+//@node D6FA595E-0 40 40
+//@node D3296706-0 330 40
+//@node E9ED1481-0 610 40
+//@node EDE39130-0 40 40
+//@node C49A13F3-0 330 40
+//@node 18A3DB5E-0 125 145
+//@node AE01CF3B-0 610 200
+//@node B2C6C318-0 40 40
+//@node 1F34AAB9-0 330 40
+//@node 833910C5-0 125 145
+//@node 9A1D0915-0 610 40
+//@node 0294D486-0 385 145
+//@node CC238A7C-0 890 200
+//@node B72B4653-0 1170 40
+//@node 03AEB949-0 40 40
+//@node 510BABB4-0 330 40
+//@node 5025913C-0 610 40
+//@node 5BEECEED-0 890 40
+//@node 741E2B3B-0 1170 40
+//@node 99F19734-0 1450 40
+//@doomscript-blueprint end

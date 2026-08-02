@@ -324,6 +324,7 @@ private:
 ===============================================================================
 */
 
+D3_ENUM( BlueprintType )
 typedef enum {
 	MOVER_POS1,
 	MOVER_POS2,

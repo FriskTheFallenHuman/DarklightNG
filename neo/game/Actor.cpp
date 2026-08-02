@@ -2494,7 +2494,7 @@ void idActor::Event_SetAnimPrefix( const char *prefix ) {
 idActor::Event_StopAnim
 ===============
 */
-void idActor::Event_StopAnim( int channel, int frames ) {
+void idActor::Event_StopAnim( animChannel_t channel, int frames ) {
 	switch( channel ) {
 	case ANIMCHANNEL_HEAD :
 		headAnim.StopAnim( frames );
@@ -2519,7 +2519,7 @@ void idActor::Event_StopAnim( int channel, int frames ) {
 idActor::Event_PlayAnim
 ===============
 */
-void idActor::Event_PlayAnim( int channel, const char *animname ) {
+void idActor::Event_PlayAnim( animChannel_t channel, const char *animname ) {
 	animFlags_t	flags;
 	idEntity *headEnt;
 	int	anim;
@@ -2599,7 +2599,7 @@ void idActor::Event_PlayAnim( int channel, const char *animname ) {
 idActor::Event_PlayCycle
 ===============
 */
-void idActor::Event_PlayCycle( int channel, const char *animname ) {
+void idActor::Event_PlayCycle( animChannel_t channel, const char *animname ) {
 	animFlags_t	flags;
 	int			anim;
 	
@@ -2673,7 +2673,7 @@ void idActor::Event_PlayCycle( int channel, const char *animname ) {
 idActor::Event_IdleAnim
 ===============
 */
-void idActor::Event_IdleAnim( int channel, const char *animname ) {
+void idActor::Event_IdleAnim( animChannel_t channel, const char *animname ) {
 	int anim;
 	
 	anim = GetAnim( channel, animname );	
@@ -2780,7 +2780,7 @@ void idActor::Event_IdleAnim( int channel, const char *animname ) {
 idActor::Event_SetSyncedAnimWeight
 ================
 */
-void idActor::Event_SetSyncedAnimWeight( int channel, int anim, float weight ) {
+void idActor::Event_SetSyncedAnimWeight( animChannel_t channel, int anim, float weight ) {
 	idEntity *headEnt;
 
 	headEnt = head.GetEntity();
@@ -2829,7 +2829,7 @@ void idActor::Event_SetSyncedAnimWeight( int channel, int anim, float weight ) {
 idActor::Event_OverrideAnim
 ===============
 */
-void idActor::Event_OverrideAnim( int channel ) {
+void idActor::Event_OverrideAnim( animChannel_t channel ) {
 	switch( channel ) {
 	case ANIMCHANNEL_HEAD :
 		headAnim.Disable();
@@ -2864,7 +2864,7 @@ void idActor::Event_OverrideAnim( int channel ) {
 idActor::Event_EnableAnim
 ===============
 */
-void idActor::Event_EnableAnim( int channel, int blendFrames ) {
+void idActor::Event_EnableAnim( animChannel_t channel, int blendFrames ) {
 	switch( channel ) {
 	case ANIMCHANNEL_HEAD :
 		headAnim.Enable( blendFrames );
@@ -2889,7 +2889,7 @@ void idActor::Event_EnableAnim( int channel, int blendFrames ) {
 idActor::Event_SetBlendFrames
 ===============
 */
-void idActor::Event_SetBlendFrames( int channel, int blendFrames ) {
+void idActor::Event_SetBlendFrames( animChannel_t channel, int blendFrames ) {
 	switch( channel ) {
 	case ANIMCHANNEL_HEAD :
 		headAnim.animBlendFrames = blendFrames;
@@ -2917,7 +2917,7 @@ void idActor::Event_SetBlendFrames( int channel, int blendFrames ) {
 idActor::Event_GetBlendFrames
 ===============
 */
-void idActor::Event_GetBlendFrames( int channel ) {
+void idActor::Event_GetBlendFrames( animChannel_t channel ) {
 	switch( channel ) {
 	case ANIMCHANNEL_HEAD :
 		idThread::ReturnInt( headAnim.animBlendFrames );
@@ -2942,7 +2942,7 @@ void idActor::Event_GetBlendFrames( int channel ) {
 idActor::Event_AnimState
 ===============
 */
-void idActor::Event_AnimState( int channel, const char *statename, int blendFrames ) {
+void idActor::Event_AnimState( animChannel_t channel, const char *statename, int blendFrames ) {
 	SetAnimState( channel, statename, blendFrames );
 }
 
@@ -2951,7 +2951,7 @@ void idActor::Event_AnimState( int channel, const char *statename, int blendFram
 idActor::Event_GetAnimState
 ===============
 */
-void idActor::Event_GetAnimState( int channel ) {
+void idActor::Event_GetAnimState( animChannel_t channel ) {
 	const char *state;
 
 	state = GetAnimState( channel );
@@ -2963,7 +2963,7 @@ void idActor::Event_GetAnimState( int channel ) {
 idActor::Event_InAnimState
 ===============
 */
-void idActor::Event_InAnimState( int channel, const char *statename ) {
+void idActor::Event_InAnimState( animChannel_t channel, const char *statename ) {
 	bool instate;
 
 	instate = InAnimState( channel, statename );
@@ -2986,7 +2986,7 @@ void idActor::Event_FinishAction( const char *actionname ) {
 idActor::Event_AnimDone
 ===============
 */
-void idActor::Event_AnimDone( int channel, int blendFrames ) {
+void idActor::Event_AnimDone( animChannel_t channel, int blendFrames ) {
 	bool result;
 
 	switch( channel ) {
@@ -3015,7 +3015,7 @@ void idActor::Event_AnimDone( int channel, int blendFrames ) {
 idActor::Event_HasAnim
 ================
 */
-void idActor::Event_HasAnim( int channel, const char *animname ) {
+void idActor::Event_HasAnim( animChannel_t channel, const char *animname ) {
 	if ( GetAnim( channel, animname ) != NULL ) {
 		idThread::ReturnFloat( 1.0f );
 	} else {
@@ -3028,7 +3028,7 @@ void idActor::Event_HasAnim( int channel, const char *animname ) {
 idActor::Event_CheckAnim
 ================
 */
-void idActor::Event_CheckAnim( int channel, const char *animname ) {
+void idActor::Event_CheckAnim( animChannel_t channel, const char *animname ) {
 	if ( !GetAnim( channel, animname ) ) {
 		if ( animPrefix.Length() ) {
 			gameLocal.Error( "Can't find anim '%s_%s' for '%s'", animPrefix.c_str(), animname, name.c_str() );
@@ -3043,7 +3043,7 @@ void idActor::Event_CheckAnim( int channel, const char *animname ) {
 idActor::Event_ChooseAnim
 ================
 */
-void idActor::Event_ChooseAnim( int channel, const char *animname ) {
+void idActor::Event_ChooseAnim( animChannel_t channel, const char *animname ) {
 	int anim;
 
 	anim = GetAnim( channel, animname );
@@ -3067,7 +3067,7 @@ void idActor::Event_ChooseAnim( int channel, const char *animname ) {
 idActor::Event_AnimLength
 ================
 */
-void idActor::Event_AnimLength( int channel, const char *animname ) {
+void idActor::Event_AnimLength( animChannel_t channel, const char *animname ) {
 	int anim;
 
 	anim = GetAnim( channel, animname );
@@ -3091,7 +3091,7 @@ void idActor::Event_AnimLength( int channel, const char *animname ) {
 idActor::Event_AnimDistance
 ================
 */
-void idActor::Event_AnimDistance( int channel, const char *animname ) {
+void idActor::Event_AnimDistance( animChannel_t channel, const char *animname ) {
 	int anim;
 
 	anim = GetAnim( channel, animname );
@@ -3168,7 +3168,7 @@ void idActor::Event_ClosestEnemyToPoint( const idVec3 &pos ) {
 idActor::Event_StopSound
 ================
 */
-void idActor::Event_StopSound( int channel, int netSync ) {
+void idActor::Event_StopSound( gameSoundChannel_t channel, int netSync ) {
 	if ( channel == SND_CHANNEL_VOICE ) {
 		idEntity *headEnt = head.GetEntity();
 		if ( headEnt ) {

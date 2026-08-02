@@ -173,3 +173,8 @@ This defines some variables needed by the game script.
 #define waitUntil( x )	while( !( x ) ) { waitFrame(); }
 
 #endif
+
+//@doomscript-blueprint begin 6
+//@source 73A8C856
+//@catalog 0C260740
+//@doomscript-blueprint end

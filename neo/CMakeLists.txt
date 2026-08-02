@@ -23,6 +23,7 @@ find_program(DOTNET_EXECUTABLE dotnet REQUIRED)
 set(DARKLIGHT_TYPEINFO_PROJECT "${CMAKE_CURRENT_SOURCE_DIR}/TypeInfo/DoomTypeInfo.csproj")
 set(DARKLIGHT_TYPEINFO_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/game/generated/DoomTypeInfo.generated.h")
 set(DARKLIGHT_TYPEINFO_SCRIPT "${DARKLIGHT_ROOT}/base/script/doom_events.script")
+set(DARKLIGHT_TYPEINFO_NODES "${DARKLIGHT_ROOT}/base/editors/doomscript_nodes.def")
 set(DARKLIGHT_TYPEINFO_STAMP "${DARKLIGHT_OUT}/typeinfo/typeinfo.stamp")
 
 file(GLOB_RECURSE DARKLIGHT_TYPEINFO_TOOL_SOURCES CONFIGURE_DEPENDS
@@ -41,6 +42,7 @@ add_custom_command(
 	BYPRODUCTS
 		"${DARKLIGHT_TYPEINFO_HEADER}"
 		"${DARKLIGHT_TYPEINFO_SCRIPT}"
+		"${DARKLIGHT_TYPEINFO_NODES}"
 	COMMAND "${CMAKE_COMMAND}" -E make_directory "${DARKLIGHT_OUT}/typeinfo"
 	# MSBuild's native VC environment carries a legacy LIB entry that Roslyn
 	# reports as CS1668. The C# tool has no native library dependencies.
@@ -53,6 +55,7 @@ add_custom_command(
 		--source "${CMAKE_CURRENT_SOURCE_DIR}/game"
 		--header "${DARKLIGHT_TYPEINFO_HEADER}"
 		--script "${DARKLIGHT_TYPEINFO_SCRIPT}"
+		--nodes "${DARKLIGHT_TYPEINFO_NODES}"
 		--stamp "${DARKLIGHT_TYPEINFO_STAMP}"
 		--exclude EndLevel.cpp
 	DEPENDS ${DARKLIGHT_TYPEINFO_TOOL_SOURCES} ${DARKLIGHT_TYPEINFO_INPUTS}
@@ -195,6 +198,16 @@ list(APPEND ENGINE_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/sys/win32/rc/CreateResourceIDs.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/sys/win32/rc/doom.rc"
 )
+set(DARKLIGHT_IMGUI_SOURCES
+	"${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_draw.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_tables.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_widgets.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends/imgui_impl_win32.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends/imgui_impl_opengl2.cpp"
+)
+list(APPEND ENGINE_SOURCES ${DARKLIGHT_IMGUI_SOURCES})
+set_source_files_properties(${DARKLIGHT_IMGUI_SOURCES} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 list(REMOVE_ITEM ENGINE_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/jpeg-6/jcapistd.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/jpeg-6/jctrans.c"
@@ -231,7 +244,11 @@ target_compile_definitions(doom3 PRIVATE
 	_D3XP
 	ID_ENABLE_CURL=0
 )
-target_include_directories(doom3 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/sound/OggVorbis")
+target_include_directories(doom3 PRIVATE
+	"${CMAKE_CURRENT_SOURCE_DIR}/sound/OggVorbis"
+	"${CMAKE_CURRENT_SOURCE_DIR}/imgui"
+	"${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends"
+)
 target_link_libraries(doom3 PRIVATE
 	idlib
 	"${CMAKE_CURRENT_SOURCE_DIR}/openal/lib/eaxguid.lib"
@@ -260,4 +277,8 @@ set_target_properties(doom3 PROPERTIES
 	VS_DEBUGGER_COMMAND_ARGUMENTS "+set fs_game d3xp"
 )
 
+# Doom3 loads gamex86.dll dynamically, so it must not link against the game
+# import library.  Keep an explicit target dependency instead: building the
+# Doom3 executable (from CMake or by building Doom3.vcxproj in Visual Studio)
+# always builds the matching-config game DLL first.
 add_dependencies(doom3 game)

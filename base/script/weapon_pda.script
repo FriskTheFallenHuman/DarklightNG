@@ -57,3 +57,40 @@ void item_pda::Idle() {
 void item_pda::ExitCinematic() {
 	weaponState( "Idle", 0 );
 }
+
+//@doomscript-blueprint begin 6
+//@source 7E1679BD
+//@catalog 0C260740
+//@node B3D514BC-0 40 40
+//@node 0790C701-0 330 40
+//@node F9C39CDA-0 40 40
+//@node 0322F872-0 330 40
+//@node FC71F04D-0 610 40
+//@node 43A746E3-0 890 40
+//@node 5699DBDF-0 1170 40
+//@node F080B30B-0 40 40
+//@node CAF8659D-0 330 40
+//@node 8051240C-0 105 145
+//@node 757E95EA-0 610 40
+//@node 64DB94C2-0 385 145
+//@node 2A5DC384-0 890 40
+//@node 59FB8E7F-0 1170 40
+//@node B5014D30-0 1450 40
+//@node A9718E4B-0 1730 40
+//@node 567A1129-0 1525 140
+//@node 46F361F1-0 2010 40
+//@node AA5FD567-0 2290 40
+//@node E5E44949-0 2085 140
+//@node D249B7BC-0 2570 40
+//@node E98E1F50-0 40 40
+//@node 742F3C6B-0 330 40
+//@node 43063E4C-0 610 40
+//@node C90D63D5-0 385 145
+//@node 2DA58C7C-0 890 40
+//@node 70B4E8A8-0 1170 40
+//@node C60A96F7-0 945 145
+//@node C48591D0-0 1450 200
+//@node 09657436-0 1730 40
+//@node CF79D55B-0 40 40
+//@node 4DA2195E-0 330 40
+//@doomscript-blueprint end

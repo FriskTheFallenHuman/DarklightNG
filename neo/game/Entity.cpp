@@ -4042,7 +4042,7 @@ void idEntity::Event_CacheSoundShader( const char *soundName ) {
 idEntity::Event_StartSoundShader
 ================
 */
-void idEntity::Event_StartSoundShader( const char *soundName, int channel ) {
+void idEntity::Event_StartSoundShader( const char *soundName, gameSoundChannel_t channel ) {
 	int length;
 
 	StartSoundShader( declManager->FindSound( soundName ), (s_channelType)channel, 0, false, &length );
@@ -4054,7 +4054,7 @@ void idEntity::Event_StartSoundShader( const char *soundName, int channel ) {
 idEntity::Event_StopSound
 ================
 */
-void idEntity::Event_StopSound( int channel, int netSync ) {
+void idEntity::Event_StopSound( gameSoundChannel_t channel, int netSync ) {
 	StopSound( channel, ( netSync != 0 ) );
 }
 
@@ -4063,7 +4063,7 @@ void idEntity::Event_StopSound( int channel, int netSync ) {
 idEntity::Event_StartSound 
 ================
 */
-void idEntity::Event_StartSound( const char *soundName, int channel, int netSync ) {
+void idEntity::Event_StartSound( const char *soundName, gameSoundChannel_t channel, int netSync ) {
 	int time;
 	
 	StartSound( soundName, ( s_channelType )channel, 0, ( netSync != 0 ), &time );
@@ -4075,7 +4075,7 @@ void idEntity::Event_StartSound( const char *soundName, int channel, int netSync
 idEntity::Event_FadeSound
 ================
 */
-void idEntity::Event_FadeSound( int channel, float to, float over ) {
+void idEntity::Event_FadeSound( gameSoundChannel_t channel, float to, float over ) {
 	if ( refSound.referenceSound ) {
 		refSound.referenceSound->FadeSound( channel, to, over );
 	}

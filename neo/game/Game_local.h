@@ -710,6 +710,7 @@ ID_INLINE int idEntityPtr<type>::GetEntityNum( void ) const {
 // these defines work for all startsounds from all entity types
 // make sure to change script/doom_defs.script if you add any channels, or change their order
 //
+D3_ENUM( BlueprintType )
 typedef enum {
 	SND_CHANNEL_ANY = SCHANNEL_ANY,
 	SND_CHANNEL_VOICE = SCHANNEL_ONE,
@@ -725,8 +726,8 @@ typedef enum {
 	SND_CHANNEL_RADIO,
 
 	// internal use only.  not exposed to script or framecommands.
-	SND_CHANNEL_AMBIENT,
-	SND_CHANNEL_DAMAGE
+	SND_CHANNEL_AMBIENT D3_ENUM_VALUE( Hidden ),
+	SND_CHANNEL_DAMAGE D3_ENUM_VALUE( Hidden )
 } gameSoundChannel_t;
 
 // content masks

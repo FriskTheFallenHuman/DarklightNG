@@ -100,3 +100,78 @@ void weapon_chainsaw::ExitCinematic() {
 	next_attack = 0;
 	weaponState( "Idle", 0 );
 }
+
+//@doomscript-blueprint begin 6
+//@source 17AC1EBD
+//@catalog 0C260740
+//@node 75E315A6-0 40 40
+//@node EF391CAD-0 330 40
+//@node 8AE847D0-0 125 145
+//@node 620D0CCB-0 610 40
+//@node B17E6CD6-0 40 40
+//@node 83F70872-0 330 40
+//@node C91E0CB2-0 610 40
+//@node 1DBA1E34-0 40 40
+//@node 7154622C-0 330 40
+//@node 236042E3-0 610 40
+//@node E9BE882B-0 890 40
+//@node 5622409D-0 1170 40
+//@node 34F817D1-0 40 40
+//@node E6AB3476-0 330 40
+//@node 4EEA15FD-0 610 40
+//@node DB842756-0 890 40
+//@node 1130D58F-0 1170 40
+//@node C40D4109-0 1450 40
+//@node 4CACCC83-0 1245 140
+//@node A29359FA-0 1730 40
+//@node 88BC126E-0 40 40
+//@node BF740595-0 330 40
+//@node 7CA1ADF1-0 105 145
+//@node 2A540711-0 610 40
+//@node ED20D716-0 890 40
+//@node 5157DD51-0 1170 40
+//@node D5CEDC25-0 965 145
+//@node BA6F9C18-0 1450 200
+//@node CD0419DC-0 1245 305
+//@node 47E26603-0 1730 360
+//@node 551D12FC-0 2010 200
+//@node 4720FD06-0 1785 305
+//@node 2E8D3691-0 2290 200
+//@node B6CC0CAC-0 2085 305
+//@node CE1A6F64-0 1880 305
+//@node C5EF9D69-0 1880 389
+//@node 45D8D626-0 1880 389
+//@node A3BEBECD-0 2570 360
+//@node F2D94132-0 2850 200
+//@node 973F6968-0 40 40
+//@node 0FABD7DC-0 330 40
+//@node 00D8B4F6-0 610 40
+//@node 22532146-0 890 40
+//@node 98AFB1EA-0 1170 40
+//@node 4269DCC0-0 1450 40
+//@node 3070D515-0 1730 40
+//@node D077AFED-0 2010 40
+//@node FCC8478C-0 2290 40
+//@node FBD7013F-0 2065 145
+//@node 7B8C2813-0 2570 40
+//@node 5C993E1F-0 2365 145
+//@node 38428BFA-0 2850 200
+//@node 09C8A401-0 2625 305
+//@node 6ADA4A6F-0 3130 200
+//@node 9DD0C0A3-0 2925 305
+//@node 9C08B5CD-0 2720 305
+//@node AFE6F857-0 2720 389
+//@node 00D8B4F6-1 3410 360
+//@node 031E7E5F-0 3690 360
+//@node 230A6F0D-0 3485 465
+//@node C90BE188-0 3280 465
+//@node 4C3808F0-0 3970 200
+//@node DE5F2EC0-0 4250 40
+//@node 0889F229-0 4530 40
+//@node 3070D515-1 4810 40
+//@node 3179AA81-0 5090 40
+//@node 69EEBC01-0 40 40
+//@node F3152DA6-0 330 40
+//@node 17276D0D-0 125 145
+//@node 97119BA8-0 610 40
+//@doomscript-blueprint end
