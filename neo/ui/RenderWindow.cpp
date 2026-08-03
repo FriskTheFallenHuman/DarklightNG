@@ -46,6 +46,10 @@ idRenderWindow::idRenderWindow(idUserInterfaceLocal *g) : idWindow(g) {
 }
 
 idRenderWindow::~idRenderWindow() {
+	if ( worldEntity != NULL && worldEntity->GetJoints() != NULL ) {
+		Mem_Free16( worldEntity->GetJoints() );
+		worldEntity->SetJoints( 0, NULL );
+	}
 	renderSystem->FreeRenderWorld( world ); 
 }
 
@@ -59,7 +63,8 @@ void idRenderWindow::CommonInit() {
 	modelAnim = NULL;
 	animLength = 0;
 	animEndTime = -1;
-	modelDef = -1;
+	worldEntity = NULL;
+	rLight = NULL;
 	updateAnimation = true;
 }
 
@@ -71,8 +76,12 @@ void idRenderWindow::BuildAnimation(int time) {
 	}
 
 	if (animName.Length() && animClass.Length()) {
-		worldEntity.numJoints = worldEntity.hModel->NumJoints();
-		worldEntity.joints = ( idJointMat * )Mem_Alloc16( worldEntity.numJoints * sizeof( *worldEntity.joints ) );
+		if ( worldEntity->GetJoints() != NULL ) {
+			Mem_Free16( worldEntity->GetJoints() );
+			worldEntity->SetJoints( 0, NULL );
+		}
+		const int numJoints = worldEntity->GetModel()->NumJoints();
+		worldEntity->SetJoints( numJoints, ( idJointMat * )Mem_Alloc16( numJoints * sizeof( idJointMat ) ) );
 		modelAnim = gameEdit->ANIM_GetAnimFromEntityDef(animClass, animName);
 		if (modelAnim) {
 			animLength = gameEdit->ANIM_GetLength(modelAnim);
@@ -91,37 +100,38 @@ void idRenderWindow::PreRender() {
 		spawnArgs.Set("name", "light_1");
 		spawnArgs.Set("origin", lightOrigin.ToVec3().ToString());
 		spawnArgs.Set("_color", lightColor.ToVec3().ToString());
-		gameEdit->ParseSpawnArgsToRenderLight( &spawnArgs, &rLight );
-		lightDef = world->AddLightDef( &rLight );
+		rLight = world->AllocRenderLight();
+		gameEdit->ParseSpawnArgsToRenderLight( &spawnArgs, rLight );
+		rLight->UpdateRenderLight();
 		if ( !modelName[0] ) {
 			common->Warning( "Window '%s' in gui '%s': no model set", GetName(), GetGui()->GetSourceFile() );
 		}
-		memset( &worldEntity, 0, sizeof( worldEntity ) );
+		worldEntity = world->AllocRenderEntity();
 		spawnArgs.Clear();
 		spawnArgs.Set("classname", "func_static");
 		spawnArgs.Set("model", modelName);
 		spawnArgs.Set("origin", modelOrigin.c_str());
-		gameEdit->ParseSpawnArgsToRenderEntity( &spawnArgs, &worldEntity );
-		if ( worldEntity.hModel ) {
+		gameEdit->ParseSpawnArgsToRenderEntity( &spawnArgs, worldEntity );
+		if ( worldEntity->GetModel() ) {
 			idVec3 v = modelRotate.ToVec3();
-			worldEntity.axis = v.ToMat3();
-			worldEntity.shaderParms[0] = 1;
-			worldEntity.shaderParms[1] = 1;
-			worldEntity.shaderParms[2] = 1;
-			worldEntity.shaderParms[3] = 1;
-			modelDef = world->AddEntityDef( &worldEntity );
+			worldEntity->SetAxis( v.ToMat3() );
+			worldEntity->SetShaderParm( 0, 1.0f );
+			worldEntity->SetShaderParm( 1, 1.0f );
+			worldEntity->SetShaderParm( 2, 1.0f );
+			worldEntity->SetShaderParm( 3, 1.0f );
+			worldEntity->UpdateRenderEntity();
 		}
 		needsRender = false;
 	}
 }
 
 void idRenderWindow::Render( int time ) {
-	rLight.origin = lightOrigin.ToVec3();
-	rLight.shaderParms[SHADERPARM_RED] = lightColor.x();
-	rLight.shaderParms[SHADERPARM_GREEN] = lightColor.y();
-	rLight.shaderParms[SHADERPARM_BLUE] = lightColor.z();
-	world->UpdateLightDef(lightDef, &rLight);
-	if ( worldEntity.hModel ) {
+	rLight->SetOrigin( lightOrigin.ToVec3() );
+	rLight->SetShaderParm( SHADERPARM_RED, lightColor.x() );
+	rLight->SetShaderParm( SHADERPARM_GREEN, lightColor.y() );
+	rLight->SetShaderParm( SHADERPARM_BLUE, lightColor.z() );
+	rLight->UpdateRenderLight();
+	if ( worldEntity->GetModel() ) {
 		if (updateAnimation) {
 			BuildAnimation(time);
 		}
@@ -129,10 +139,10 @@ void idRenderWindow::Render( int time ) {
 			if (time > animEndTime) {
 				animEndTime = time + animLength;
 			}
-			gameEdit->ANIM_CreateAnimFrame(worldEntity.hModel, modelAnim, worldEntity.numJoints, worldEntity.joints, animLength - (animEndTime - time), vec3_origin, false );
+			gameEdit->ANIM_CreateAnimFrame( worldEntity->GetModel(), modelAnim, worldEntity->GetNumJoints(), worldEntity->GetJoints(), animLength - (animEndTime - time), vec3_origin, false );
 		}
-		worldEntity.axis = idAngles(modelRotate.x(), modelRotate.y(), modelRotate.z()).ToMat3();
-		world->UpdateEntityDef(modelDef, &worldEntity);
+		worldEntity->SetAxis( idAngles(modelRotate.x(), modelRotate.y(), modelRotate.z()).ToMat3() );
+		worldEntity->UpdateRenderEntity();
 	}
 }
 

@@ -32,6 +32,8 @@ If you have questions concerning this license or the applicable additional terms
 #pragma once
 #endif // _MSC_VER >= 1000
 
+class idRenderEntity;
+
 typedef enum
 {
 	cd_wire,
@@ -146,7 +148,7 @@ protected:
 	void Cam_Render();
 
 	// game renderer interaction
-	qhandle_t	worldModelDef;
+	idRenderEntity *worldModelDef;
 	idRenderModel	*worldModel;		// createRawModel of the brush and patch geometry
 	bool	worldDirty;
 	bool	renderMode;

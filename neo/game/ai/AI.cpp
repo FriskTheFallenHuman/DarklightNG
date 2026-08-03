@@ -333,8 +333,7 @@ idAI::idAI() {
 	useBoneAxis			= false;
 
 	wakeOnFlashlight	= false;
-	memset( &worldMuzzleFlash, 0, sizeof ( worldMuzzleFlash ) );
-	worldMuzzleFlashHandle = -1;
+	worldMuzzleFlash = NULL;
 
 	enemy				= NULL;
 	lastVisibleEnemyPos.Zero();
@@ -394,9 +393,9 @@ idAI::~idAI() {
 	delete projectileClipModel;
 	DeconstructScriptObject();
 	scriptObject.Free();
-	if ( worldMuzzleFlashHandle != -1 ) {
-		gameRenderWorld->FreeLightDef( worldMuzzleFlashHandle );
-		worldMuzzleFlashHandle = -1;
+	if ( worldMuzzleFlash != NULL ) {
+		worldMuzzleFlash->FreeRenderLight();
+		worldMuzzleFlash = NULL;
 	}
 
 	if ( harvestEnt.GetEntity() ) {
@@ -1007,20 +1006,16 @@ void idAI::InitMuzzleFlash( void ) {
 	float flashRadius = spawnArgs.GetFloat( "flashRadius" );	
 	flashTime = SEC2MS( spawnArgs.GetFloat( "flashTime", "0.25" ) );
 
-	memset( &worldMuzzleFlash, 0, sizeof ( worldMuzzleFlash ) );
+	worldMuzzleFlash = gameRenderWorld->AllocRenderLight();
+	worldMuzzleFlash->SetPointLight( true );
+	worldMuzzleFlash->SetShader( declManager->FindMaterial( shader, false ) );
+	worldMuzzleFlash->SetShaderParm( SHADERPARM_RED, flashColor[0] );
+	worldMuzzleFlash->SetShaderParm( SHADERPARM_GREEN, flashColor[1] );
+	worldMuzzleFlash->SetShaderParm( SHADERPARM_BLUE, flashColor[2] );
+	worldMuzzleFlash->SetShaderParm( SHADERPARM_ALPHA, 1.0f );
+	worldMuzzleFlash->SetShaderParm( SHADERPARM_TIMESCALE, 1.0f );
+	worldMuzzleFlash->SetLightRadius( idVec3( flashRadius, flashRadius, flashRadius ) );
 
-	worldMuzzleFlash.pointLight = true;
-	worldMuzzleFlash.shader = declManager->FindMaterial( shader, false );
-	worldMuzzleFlash.shaderParms[ SHADERPARM_RED ] = flashColor[0];
-	worldMuzzleFlash.shaderParms[ SHADERPARM_GREEN ] = flashColor[1];
-	worldMuzzleFlash.shaderParms[ SHADERPARM_BLUE ] = flashColor[2];
-	worldMuzzleFlash.shaderParms[ SHADERPARM_ALPHA ] = 1.0f;
-	worldMuzzleFlash.shaderParms[ SHADERPARM_TIMESCALE ] = 1.0f;
-	worldMuzzleFlash.lightRadius[0] = flashRadius;
-	worldMuzzleFlash.lightRadius[1]	= flashRadius;
-	worldMuzzleFlash.lightRadius[2]	= flashRadius;
-
-	worldMuzzleFlashHandle = -1;
 }
 
 /*
@@ -3358,7 +3353,7 @@ const idDeclParticle *idAI::SpawnParticlesOnJoint( particleEmitter_t &pe, const 
 		pe.particle = NULL;
 	} else {
 		animator.GetJointTransform( pe.joint, gameLocal.time, origin, axis );
-		origin = renderEntity.origin + origin * renderEntity.axis;
+		origin = renderEntity->GetOrigin() + origin * renderEntity->GetAxis();
 
 		BecomeActive( TH_UPDATEPARTICLES );
 		if ( !gameLocal.time ) {
@@ -3447,7 +3442,7 @@ void idAI::Killed( idEntity *inflictor, idEntity *attacker, int damage, const id
 	if ( spawnArgs.GetString( "model_death", "", &modelDeath ) ) {
 		// lost soul is only case that does not use a ragdoll and has a model_death so get the death sound in here
 		StartSound( "snd_death", SND_CHANNEL_VOICE, 0, false, NULL );
-		renderEntity.shaderParms[ SHADERPARM_TIMEOFFSET ] = -MS2SEC( gameLocal.time );
+		renderEntity->SetShaderParm( SHADERPARM_TIMEOFFSET, -MS2SEC( gameLocal.time ) );
 		SetModel( modelDeath );
 		physicsObj.SetLinearVelocity( vec3_zero );
 		physicsObj.PutToRest();
@@ -4589,20 +4584,16 @@ void idAI::TriggerWeaponEffects( const idVec3 &muzzle ) {
 
 	// muzzle flash
 	// offset the shader parms so muzzle flashes show up
-	renderEntity.shaderParms[SHADERPARM_TIMEOFFSET] = -MS2SEC( gameLocal.time );
-	renderEntity.shaderParms[ SHADERPARM_DIVERSITY ] = gameLocal.random.CRandomFloat();
+	renderEntity->SetShaderParm( SHADERPARM_TIMEOFFSET, -MS2SEC( gameLocal.time ) );
+	renderEntity->SetShaderParm( SHADERPARM_DIVERSITY, gameLocal.random.CRandomFloat() );
 
 	if ( flashJointWorld != INVALID_JOINT ) {
 		GetJointWorldTransform( flashJointWorld, gameLocal.time, org, axis );
 
-		if ( worldMuzzleFlash.lightRadius.x > 0.0f ) {
-			worldMuzzleFlash.axis = axis;
-			worldMuzzleFlash.shaderParms[SHADERPARM_TIMEOFFSET] = -MS2SEC( gameLocal.time );
-			if ( worldMuzzleFlashHandle != - 1 ) {
-				gameRenderWorld->UpdateLightDef( worldMuzzleFlashHandle, &worldMuzzleFlash );
-			} else {
-				worldMuzzleFlashHandle = gameRenderWorld->AddLightDef( &worldMuzzleFlash );
-			}
+		if ( worldMuzzleFlash != NULL && worldMuzzleFlash->GetLightRadius().x > 0.0f ) {
+			worldMuzzleFlash->SetAxis( axis );
+			worldMuzzleFlash->SetShaderParm( SHADERPARM_TIMEOFFSET, -MS2SEC( gameLocal.time ) );
+			worldMuzzleFlash->UpdateRenderLight();
 			muzzleFlashEnd = gameLocal.time + flashTime;
 			UpdateVisuals();
 		}
@@ -4615,17 +4606,17 @@ idAI::UpdateMuzzleFlash
 ================
 */
 void idAI::UpdateMuzzleFlash( void ) {
-	if ( worldMuzzleFlashHandle != -1 ) { 
+	if ( worldMuzzleFlash != NULL ) {
 		if ( gameLocal.time >= muzzleFlashEnd ) {
-			gameRenderWorld->FreeLightDef( worldMuzzleFlashHandle );
-			worldMuzzleFlashHandle = -1;
+			return;
 		} else {
 			idVec3 muzzle;
-			animator.GetJointTransform( flashJointWorld, gameLocal.time, muzzle, worldMuzzleFlash.axis );
-			animator.GetJointTransform( flashJointWorld, gameLocal.time, muzzle, worldMuzzleFlash.axis );
+			idMat3 flashAxis;
+			animator.GetJointTransform( flashJointWorld, gameLocal.time, muzzle, flashAxis );
+			worldMuzzleFlash->SetAxis( flashAxis );
 			muzzle = physicsObj.GetOrigin() + ( muzzle + modelOffset ) * viewAxis * physicsObj.GetGravityAxis();
-			worldMuzzleFlash.origin = muzzle;
-			gameRenderWorld->UpdateLightDef( worldMuzzleFlashHandle, &worldMuzzleFlash );
+			worldMuzzleFlash->SetOrigin( muzzle );
+			worldMuzzleFlash->UpdateRenderLight();
 		}
 	}
 }
@@ -4765,7 +4756,7 @@ void idAI::UpdateParticles( void ) {
 					realVector = GetPhysics()->GetOrigin();
 				} else {
 					animator.GetJointTransform( particles[i].joint, gameLocal.time, realVector, realAxis );
-					realAxis *= renderEntity.axis;
+					realAxis *= renderEntity->GetAxis();
 					realVector = physicsObj.GetOrigin() + ( realVector + modelOffset ) * ( viewAxis * physicsObj.GetGravityAxis() );
 				}
 

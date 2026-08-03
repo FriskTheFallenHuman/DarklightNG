@@ -59,10 +59,10 @@ idMultiModelAF::~idMultiModelAF
 idMultiModelAF::~idMultiModelAF( void ) {
 	int i;
 
-	for ( i = 0; i < modelDefHandles.Num(); i++ ) {
-		if ( modelDefHandles[i] != -1 ) {
-			gameRenderWorld->FreeEntityDef( modelDefHandles[i] );
-			modelDefHandles[i] = -1;
+	for ( i = 0; i < modelDefs.Num(); i++ ) {
+		if ( modelDefs[i] != NULL ) {
+			modelDefs[i]->FreeRenderEntity();
+			modelDefs[i] = NULL;
 		}
 	}
 }
@@ -74,7 +74,7 @@ idMultiModelAF::SetModelForId
 */
 void idMultiModelAF::SetModelForId( int id, const idStr &modelName ) {
 	modelHandles.AssureSize( id+1, NULL );
-	modelDefHandles.AssureSize( id+1, -1 );
+	modelDefs.AssureSize( id+1, NULL );
 	modelHandles[id] = renderModelManager->FindModel( modelName );
 }
 
@@ -98,17 +98,14 @@ void idMultiModelAF::Present( void ) {
 			continue;
 		}
 
-		renderEntity.origin = physicsObj.GetOrigin( i );
-		renderEntity.axis = physicsObj.GetAxis( i );
-		renderEntity.hModel = modelHandles[i];
-		renderEntity.bodyId = i;
-
-		// add to refresh list
-		if ( modelDefHandles[i] == -1 ) {
-			modelDefHandles[i] = gameRenderWorld->AddEntityDef( &renderEntity );
-		} else {
-			gameRenderWorld->UpdateEntityDef( modelDefHandles[i], &renderEntity );
+		if ( modelDefs[i] == NULL ) {
+			modelDefs[i] = gameRenderWorld->AllocRenderEntity();
 		}
+		modelDefs[i]->SetOrigin( physicsObj.GetOrigin( i ) );
+		modelDefs[i]->SetAxis( physicsObj.GetAxis( i ) );
+		modelDefs[i]->SetModel( modelHandles[i] );
+		modelDefs[i]->SetBodyId( i );
+		modelDefs[i]->UpdateRenderEntity();
 	}
 }
 
@@ -459,9 +456,9 @@ idAFAttachment::SetCombatModel
 void idAFAttachment::SetCombatModel( void ) {
 	if ( combatModel ) {
 		combatModel->Unlink();
-		combatModel->LoadModel( modelDefHandle );
+		combatModel->LoadModel( renderEntity );
 	} else {
-		combatModel = new idClipModel( modelDefHandle );
+		combatModel = new idClipModel( renderEntity );
 	}
 	combatModel->SetOwner( body );
 }
@@ -486,7 +483,7 @@ void idAFAttachment::LinkCombat( void ) {
 	}
 
 	if ( combatModel ) {
-		combatModel->Link( gameLocal.clip, this, 0, renderEntity.origin, renderEntity.axis, modelDefHandle );
+		combatModel->Link( gameLocal.clip, this, 0, renderEntity->GetOrigin(), renderEntity->GetAxis(), renderEntity );
 	}
 }
 
@@ -794,9 +791,9 @@ idAFEntity_Base::SetCombatModel
 void idAFEntity_Base::SetCombatModel( void ) {
 	if ( combatModel ) {
 		combatModel->Unlink();
-		combatModel->LoadModel( modelDefHandle );
+		combatModel->LoadModel( renderEntity );
 	} else {
-		combatModel = new idClipModel( modelDefHandle );
+		combatModel = new idClipModel( renderEntity );
 	}
 }
 
@@ -837,7 +834,7 @@ void idAFEntity_Base::LinkCombat( void ) {
 		return;
 	}
 	if ( combatModel ) {
-		combatModel->Link( gameLocal.clip, this, 0, renderEntity.origin, renderEntity.axis, modelDefHandle );
+		combatModel->Link( gameLocal.clip, this, 0, renderEntity->GetOrigin(), renderEntity->GetAxis(), renderEntity );
 	}
 }
 
@@ -947,7 +944,7 @@ idAFEntity_Gibbable::idAFEntity_Gibbable
 */
 idAFEntity_Gibbable::idAFEntity_Gibbable( void ) {
 	skeletonModel = NULL;
-	skeletonModelDefHandle = -1;
+	skeletonModelDef = NULL;
 	gibbed = false;
 	wasThrown = false;
 }
@@ -958,9 +955,9 @@ idAFEntity_Gibbable::~idAFEntity_Gibbable
 ================
 */
 idAFEntity_Gibbable::~idAFEntity_Gibbable() {
-	if ( skeletonModelDefHandle != -1 ) {
-		gameRenderWorld->FreeEntityDef( skeletonModelDefHandle );
-		skeletonModelDefHandle = -1;
+	if ( skeletonModelDef != NULL ) {
+		skeletonModelDef->FreeRenderEntity();
+		skeletonModelDef = NULL;
 	}
 }
 
@@ -1017,7 +1014,7 @@ void idAFEntity_Gibbable::InitSkeletonModel( void ) {
 	const idDeclModelDef *modelDef;
 
 	skeletonModel = NULL;
-	skeletonModelDefHandle = -1;
+	skeletonModelDef = NULL;
 
 	modelName = spawnArgs.GetString( "model_gib" );
 
@@ -1029,10 +1026,10 @@ void idAFEntity_Gibbable::InitSkeletonModel( void ) {
 		} else {
 			skeletonModel = renderModelManager->FindModel( modelName );
 		}
-		if ( skeletonModel != NULL && renderEntity.hModel != NULL ) {
-			if ( skeletonModel->NumJoints() != renderEntity.hModel->NumJoints() ) {
+		if ( skeletonModel != NULL && renderEntity->GetModel() != NULL ) {
+			if ( skeletonModel->NumJoints() != renderEntity->GetModel()->NumJoints() ) {
 				gameLocal.Error( "gib model '%s' has different number of joints than model '%s'",
-									skeletonModel->Name(), renderEntity.hModel->Name() );
+									skeletonModel->Name(), renderEntity->GetModel()->Name() );
 			}
 		}
 	}
@@ -1044,8 +1041,6 @@ idAFEntity_Gibbable::Present
 ================
 */
 void idAFEntity_Gibbable::Present( void ) {
-	renderEntity_t skeleton;
-
 	if ( !gameLocal.isNewFrame ) {
 		return;
 	}
@@ -1057,14 +1052,13 @@ void idAFEntity_Gibbable::Present( void ) {
 
 	// update skeleton model
 	if ( gibbed && !IsHidden() && skeletonModel != NULL ) {
-		skeleton = renderEntity;
-		skeleton.hModel = skeletonModel;
 		// add to refresh list
-		if ( skeletonModelDefHandle == -1 ) {
-			skeletonModelDefHandle = gameRenderWorld->AddEntityDef( &skeleton );
-		} else {
-			gameRenderWorld->UpdateEntityDef( skeletonModelDefHandle, &skeleton );
+		if ( skeletonModelDef == NULL ) {
+			skeletonModelDef = gameRenderWorld->AllocRenderEntity();
 		}
+		skeletonModelDef->CopyFrom( *renderEntity );
+		skeletonModelDef->SetModel( skeletonModel );
+		skeletonModelDef->UpdateRenderEntity();
 	}
 
 	idEntity::Present();
@@ -1176,8 +1170,8 @@ void idAFEntity_Gibbable::SpawnGibs( const idVec3 &dir, const char *damageDefNam
 		}
 		// Don't allow grabber to pick up temporary gibs
 		list[i]->noGrab = true;
-		list[i]->GetRenderEntity()->noShadow = true;
-		list[i]->GetRenderEntity()->shaderParms[ SHADERPARM_TIME_OF_DEATH ] = gameLocal.time * 0.001f;
+		list[i]->GetRenderEntity()->SetNoShadow( true );
+		list[i]->GetRenderEntity()->SetShaderParm( SHADERPARM_TIME_OF_DEATH, gameLocal.time * 0.001f );
 		list[i]->PostEventSec( &EV_Remove, 4.0f );
 	}
 }
@@ -1217,8 +1211,8 @@ void idAFEntity_Gibbable::Gib( const idVec3 &dir, const char *damageDefName ) {
 		if ( gameLocal.time > gameLocal.GetGibTime() ) {
 			gameLocal.SetGibTime( gameLocal.time + GIB_DELAY );
 			SpawnGibs( dir, damageDefName );
-			renderEntity.noShadow = true;
-			renderEntity.shaderParms[ SHADERPARM_TIME_OF_DEATH ] = gameLocal.time * 0.001f;
+			renderEntity->SetNoShadow( true );
+			renderEntity->SetShaderParm( SHADERPARM_TIME_OF_DEATH, gameLocal.time * 0.001f );
 			StartSound( "snd_gibbed", SND_CHANNEL_ANY, 0, false, NULL );
 			gibbed = true;
 		}
@@ -1464,9 +1458,9 @@ void idAFEntity_WithAttachedHead::SetupHead( void ) {
 			headEnt->UpdateModel();
 		}
 		animator.GetJointTransform( joint, gameLocal.time, origin, axis );
-		origin = renderEntity.origin + origin * renderEntity.axis;
+		origin = renderEntity->GetOrigin() + origin * renderEntity->GetAxis();
 		headEnt->SetOrigin( origin );
-		headEnt->SetAxis( renderEntity.axis );
+		headEnt->SetAxis( renderEntity->GetAxis() );
 		headEnt->BindToJoint( this, joint, true );
 	}
 }
@@ -1493,7 +1487,7 @@ void idAFEntity_WithAttachedHead::LinkCombat( void ) {
 	}
 
 	if ( combatModel ) {
-		combatModel->Link( gameLocal.clip, this, 0, renderEntity.origin, renderEntity.axis, modelDefHandle );
+		combatModel->Link( gameLocal.clip, this, 0, renderEntity->GetOrigin(), renderEntity->GetAxis(), renderEntity );
 	}
 	headEnt = head.GetEntity();
 	if ( headEnt ) {
@@ -1699,7 +1693,7 @@ void idAFEntity_Vehicle::Use( idPlayer *other ) {
 	else {
 		player = other;
 		animator.GetJointTransform( eyesJoint, gameLocal.time, origin, axis );
-		origin = renderEntity.origin + origin * renderEntity.axis;
+		origin = renderEntity->GetOrigin() + origin * renderEntity->GetAxis();
 		player->GetPhysics()->SetOrigin( origin );
 		player->BindToBody( this, 0, true );
 
@@ -1797,7 +1791,7 @@ void idAFEntity_VehicleSimple::Spawn( void ) {
 		}
 
 		GetAnimator()->GetJointTransform( wheelJoints[i], 0, origin, axis );
-		origin = renderEntity.origin + origin * renderEntity.axis;
+		origin = renderEntity->GetOrigin() + origin * renderEntity->GetAxis();
 
 		suspension[i] = new idAFConstraint_Suspension();
 		suspension[i]->Setup( va( "suspension%d", i ), af.GetPhysics()->GetBody( 0 ), origin, af.GetPhysics()->GetAxis( 0 ), wheelModel );
@@ -1897,7 +1891,7 @@ void idAFEntity_VehicleSimple::Think( void ) {
 			}
 
 			// set wheel position for suspension
-			origin = ( origin - renderEntity.origin ) * renderEntity.axis.Transpose();
+			origin = ( origin - renderEntity->GetOrigin() ) * renderEntity->GetAxis().Transpose();
 			GetAnimator()->SetJointPos( wheelJoints[i], JOINTMOD_WORLD_OVERRIDE, origin );
 		}
 /*
@@ -2489,8 +2483,7 @@ idAFEntity_SteamPipe::idAFEntity_SteamPipe( void ) {
 	steamBody			= 0;
 	steamForce			= 0.0f;
 	steamUpForce		= 0.0f;
-	steamModelDefHandle	= -1;
-	memset( &steamRenderEntity, 0, sizeof( steamRenderEntity ) );
+	steamRenderEntity = NULL;
 }
 
 /*
@@ -2499,8 +2492,9 @@ idAFEntity_SteamPipe::~idAFEntity_SteamPipe
 ================
 */
 idAFEntity_SteamPipe::~idAFEntity_SteamPipe( void ) {
-	if ( steamModelDefHandle >= 0 ){
-		gameRenderWorld->FreeEntityDef( steamModelDefHandle );
+	if ( steamRenderEntity != NULL ){
+		steamRenderEntity->FreeRenderEntity();
+		steamRenderEntity = NULL;
 	}
 }
 
@@ -2560,32 +2554,32 @@ void idAFEntity_SteamPipe::InitSteamRenderEntity( void ) {
 	const char	*temp;
 	const idDeclModelDef *modelDef;
 
-	memset( &steamRenderEntity, 0, sizeof( steamRenderEntity ) );
-	steamRenderEntity.shaderParms[ SHADERPARM_RED ]		= 1.0f;
-	steamRenderEntity.shaderParms[ SHADERPARM_GREEN ]	= 1.0f;
-	steamRenderEntity.shaderParms[ SHADERPARM_BLUE ]	= 1.0f;
+	steamRenderEntity = gameRenderWorld->AllocRenderEntity();
+	steamRenderEntity->SetShaderParm( SHADERPARM_RED, 1.0f );
+	steamRenderEntity->SetShaderParm( SHADERPARM_GREEN, 1.0f );
+	steamRenderEntity->SetShaderParm( SHADERPARM_BLUE, 1.0f );
 	modelDef = NULL;
 	temp = spawnArgs.GetString ( "model_steam" );
 	if ( *temp != '\0' ) {
 		if ( !strstr( temp, "." ) ) {
 			modelDef = static_cast<const idDeclModelDef *>( declManager->FindType( DECL_MODELDEF, temp, false ) );
 			if ( modelDef ) {
-				steamRenderEntity.hModel = modelDef->ModelHandle();
+				steamRenderEntity->SetModel( modelDef->ModelHandle() );
 			}
 		}
 
-		if ( !steamRenderEntity.hModel ) {
-			steamRenderEntity.hModel = renderModelManager->FindModel( temp );
+		if ( !steamRenderEntity->GetModel() ) {
+			steamRenderEntity->SetModel( renderModelManager->FindModel( temp ) );
 		}
 
-		if ( steamRenderEntity.hModel ) {
-			steamRenderEntity.bounds = steamRenderEntity.hModel->Bounds( &steamRenderEntity );
+		if ( steamRenderEntity->GetModel() ) {
+			steamRenderEntity->SetBounds( steamRenderEntity->GetModel()->Bounds( steamRenderEntity ) );
 		} else {
-			steamRenderEntity.bounds.Zero();
+			steamRenderEntity->SetBounds( bounds_zero );
 		}
-		steamRenderEntity.origin = af.GetPhysics()->GetOrigin( steamBody );
-		steamRenderEntity.axis = af.GetPhysics()->GetAxis( steamBody );
-		steamModelDefHandle = gameRenderWorld->AddEntityDef( &steamRenderEntity );
+		steamRenderEntity->SetOrigin( af.GetPhysics()->GetOrigin( steamBody ) );
+		steamRenderEntity->SetAxis( af.GetPhysics()->GetAxis( steamBody ) );
+		steamRenderEntity->UpdateRenderEntity();
 	}
 }
 
@@ -2606,10 +2600,10 @@ void idAFEntity_SteamPipe::Think( void ) {
 		//gameRenderWorld->DebugArrow( colorWhite, af.GetPhysics()->GetOrigin( steamBody ), af.GetPhysics()->GetOrigin( steamBody ) - 10.0f * steamDir, 4 );
 	}
 
-	if ( steamModelDefHandle >= 0 ){
-		steamRenderEntity.origin = af.GetPhysics()->GetOrigin( steamBody );
-		steamRenderEntity.axis = af.GetPhysics()->GetAxis( steamBody );
-		gameRenderWorld->UpdateEntityDef( steamModelDefHandle, &steamRenderEntity );
+	if ( steamRenderEntity != NULL ){
+		steamRenderEntity->SetOrigin( af.GetPhysics()->GetOrigin( steamBody ) );
+		steamRenderEntity->SetAxis( af.GetPhysics()->GetAxis( steamBody ) );
+		steamRenderEntity->UpdateRenderEntity();
 	}
 
 	idAFEntity_Base::Think();
@@ -2851,7 +2845,7 @@ GetJointTransform
 ================
 */
 typedef struct {
-	renderEntity_t *ent;
+	idRenderEntity *ent;
 	const idMD5Joint *joints;
 } jointTransformData_t;
 
@@ -2859,12 +2853,12 @@ static bool GetJointTransform( void *model, const idJointMat *frame, const char 
 	int i;
 	jointTransformData_t *data = reinterpret_cast<jointTransformData_t *>(model);
 
-	for ( i = 0; i < data->ent->numJoints; i++ ) {
+	for ( i = 0; i < data->ent->GetNumJoints(); i++ ) {
 		if ( data->joints[i].name.Icmp( jointName ) == 0 ) {
 			break;
 		}
 	}
-	if ( i >= data->ent->numJoints ) {
+	if ( i >= data->ent->GetNumJoints() ) {
 		return false;
 	}
 	origin = frame[i].ToVec3();
@@ -2896,7 +2890,7 @@ idRenderModel *idGameEdit::AF_CreateMesh( const idDict &args, idVec3 &meshOrigin
 	int i, jointNum;
 	const idDeclAF *af;
 	const idDeclAF_Body *fb;
-	renderEntity_t ent;
+	idRenderEntity *ent;
 	idVec3 origin, *bodyOrigin, *newBodyOrigin, *modifiedOrigin;
 	idMat3 axis, *bodyAxis, *newBodyAxis, *modifiedAxis;
 	declAFJointMod_t *jointMod;
@@ -2961,14 +2955,16 @@ idRenderModel *idGameEdit::AF_CreateMesh( const idDict &args, idVec3 &meshOrigin
 	numMD5joints = md5->NumJoints();
 
 	// setup a render entity
-	memset( &ent, 0, sizeof( ent ) );
-	ent.customSkin = modelDef->GetSkin();
-	ent.bounds.Clear();
-	ent.numJoints = numMD5joints;
-	ent.joints = ( idJointMat * )_alloca16( ent.numJoints * sizeof( *ent.joints ) );
+	ent = gameRenderWorld->AllocRenderEntity();
+	ent->SetCustomSkin( modelDef->GetSkin() );
+	idBounds clearedBounds;
+	clearedBounds.Clear();
+	ent->SetBounds( clearedBounds );
+	idJointMat *entJoints = ( idJointMat * )_alloca16( numMD5joints * sizeof( idJointMat ) );
+	ent->SetJoints( numMD5joints, entJoints );
 
 	// create animation from of the af_pose
-	ANIM_CreateAnimFrame( md5, MD5anim, ent.numJoints, ent.joints, 1, modelDef->GetVisualOffset(), false );
+	ANIM_CreateAnimFrame( md5, MD5anim, ent->GetNumJoints(), entJoints, 1, modelDef->GetVisualOffset(), false );
 
 	// buffers to store the initial origin and axis for each body
 	bodyOrigin = (idVec3 *) _alloca16( af->bodies.Num() * sizeof( idVec3 ) );
@@ -2977,9 +2973,9 @@ idRenderModel *idGameEdit::AF_CreateMesh( const idDict &args, idVec3 &meshOrigin
 	newBodyAxis = (idMat3 *) _alloca16( af->bodies.Num() * sizeof( idMat3 ) );
 
 	// finish the AF positions
-	data.ent = &ent;
+	data.ent = ent;
 	data.joints = MD5joints;
-	af->Finish( GetJointTransform, ent.joints, &data );
+	af->Finish( GetJointTransform, entJoints, &data );
 
 	// get the initial origin and axis for each AF body
 	for ( i = 0; i < af->bodies.Num(); i++ ) {
@@ -3026,7 +3022,7 @@ idRenderModel *idGameEdit::AF_CreateMesh( const idDict &args, idVec3 &meshOrigin
 
 	// save the original joints
 	originalJoints = ( idJointMat * )_alloca16( numMD5joints * sizeof( originalJoints[0] ) );
-	memcpy( originalJoints, ent.joints, numMD5joints * sizeof( originalJoints[0] ) );
+	memcpy( originalJoints, entJoints, numMD5joints * sizeof( originalJoints[0] ) );
 
 	// buffer to store the joint mods
 	jointMod = (declAFJointMod_t *) _alloca16( numMD5joints * sizeof( declAFJointMod_t ) );
@@ -3050,7 +3046,7 @@ idRenderModel *idGameEdit::AF_CreateMesh( const idDict &args, idVec3 &meshOrigin
 			}
 		}
 
-		if ( jointNum >= 0 && jointNum < ent.numJoints ) {
+		if ( jointNum >= 0 && jointNum < ent->GetNumJoints() ) {
 			jointMod[ jointNum ] = fb->jointMod;
 			modifiedAxis[ jointNum ] = ( bodyAxis[i] * originalJoints[jointNum].ToMat3().Transpose() ).Transpose() * ( newBodyAxis[i] * meshAxis.Transpose() );
 			// FIXME: calculate correct modifiedOrigin
@@ -3069,30 +3065,32 @@ idRenderModel *idGameEdit::AF_CreateMesh( const idDict &args, idVec3 &meshOrigin
 
 		switch( jointMod[i] ) {
 			case DECLAF_JOINTMOD_ORIGIN: {
-				ent.joints[ i ].SetRotation( localm * ent.joints[ parentNum ].ToMat3() );
-				ent.joints[ i ].SetTranslation( modifiedOrigin[ i ] );
+				entJoints[ i ].SetRotation( localm * entJoints[ parentNum ].ToMat3() );
+				entJoints[ i ].SetTranslation( modifiedOrigin[ i ] );
 				break;
 			}
 			case DECLAF_JOINTMOD_AXIS: {
-				ent.joints[ i ].SetRotation( modifiedAxis[ i ] );
-				ent.joints[ i ].SetTranslation( ent.joints[ parentNum ].ToVec3() + localt * ent.joints[ parentNum ].ToMat3() );
+				entJoints[ i ].SetRotation( modifiedAxis[ i ] );
+				entJoints[ i ].SetTranslation( entJoints[ parentNum ].ToVec3() + localt * entJoints[ parentNum ].ToMat3() );
 				break;
 			}
 			case DECLAF_JOINTMOD_BOTH: {
-				ent.joints[ i ].SetRotation( modifiedAxis[ i ] );
-				ent.joints[ i ].SetTranslation( modifiedOrigin[ i ] );
+				entJoints[ i ].SetRotation( modifiedAxis[ i ] );
+				entJoints[ i ].SetTranslation( modifiedOrigin[ i ] );
 				break;
 			}
 			default: {
-				ent.joints[ i ].SetRotation( localm * ent.joints[ parentNum ].ToMat3() );
-				ent.joints[ i ].SetTranslation( ent.joints[ parentNum ].ToVec3() + localt * ent.joints[ parentNum ].ToMat3() );
+				entJoints[ i ].SetRotation( localm * entJoints[ parentNum ].ToMat3() );
+				entJoints[ i ].SetTranslation( entJoints[ parentNum ].ToVec3() + localt * entJoints[ parentNum ].ToMat3() );
 				break;
 			}
 		}
 	}
 
 	// instantiate a mesh using the joint information from the render entity
-	return md5->InstantiateDynamicModel( &ent, NULL, NULL );
+	idRenderModel *result = md5->InstantiateDynamicModel( ent, NULL, NULL );
+	ent->FreeRenderEntity();
+	return result;
 }
 
 
@@ -3289,7 +3287,7 @@ void idHarvestable::BeginBurn() {
 	if(skin.Length()) {
 		parent->SetSkin(declManager->FindSkin(skin.c_str()));
 	}
-	parent->GetRenderEntity()->noShadow = true;
+	parent->GetRenderEntity()->SetNoShadow( true );
 	parent->SetShaderParm( SHADERPARM_TIME_OF_DEATH, gameLocal.slow.time * 0.001f );
 
 	idEntity* head;
@@ -3307,7 +3305,7 @@ void idHarvestable::BeginBurn() {
 			head->SetSkin(declManager->FindSkin(headskin.c_str()));
 		}
 
-		head->GetRenderEntity()->noShadow = true;
+		head->GetRenderEntity()->SetNoShadow( true );
 		head->SetShaderParm( SHADERPARM_TIME_OF_DEATH, gameLocal.slow.time * 0.001f );
 	}
 

@@ -522,7 +522,7 @@ static void LM_BuildBakedLights( void ) {
 			evaluatedRegisters.resize( shader->GetNumRegisters() );
 			viewDef_t view;
 			memset( &view, 0, sizeof( view ) );
-			shader->EvaluateRegisters( evaluatedRegisters.data(), light->def.parms.shaderParms, &view, NULL );
+			shader->EvaluateRegisters( evaluatedRegisters.data(), light->def.GetShaderParms(), &view, NULL );
 			registers = evaluatedRegisters.data();
 		}
 
@@ -740,24 +740,24 @@ static void LM_AddExternalModelOccluders( void ) {
 			continue;
 		}
 
-		renderEntity_t renderEntity;
+		idRenderEntityLocal renderEntity;
 		gameEdit->ParseSpawnArgsToRenderEntity( &mapEntity->epairs, &renderEntity );
-		if ( !renderEntity.hModel || renderEntity.hModel->IsDefaultModel() ||
-			renderEntity.hModel->IsDynamicModel() != DM_STATIC ) {
+		if ( !renderEntity.GetModel() || renderEntity.GetModel()->IsDefaultModel() ||
+			renderEntity.GetModel()->IsDynamicModel() != DM_STATIC ) {
 			continue;
 		}
-		for ( int surfaceNum = 0; surfaceNum < renderEntity.hModel->NumSurfaces(); surfaceNum++ ) {
-			const modelSurface_t *surface = renderEntity.hModel->Surface( surfaceNum );
+		for ( int surfaceNum = 0; surfaceNum < renderEntity.GetModel()->NumSurfaces(); surfaceNum++ ) {
+			const modelSurface_t *surface = renderEntity.GetModel()->Surface( surfaceNum );
 			if ( !surface || !surface->geometry ) {
 				continue;
 			}
 			const idMaterial *material = R_RemapShaderBySkin( surface->shader,
-				renderEntity.customSkin, renderEntity.customShader );
+				renderEntity.GetCustomSkin(), renderEntity.GetCustomShader() );
 			if ( !material || material->Coverage() == MC_TRANSLUCENT ||
 				( material->Coverage() != MC_PERFORATED && !material->SurfaceCastsShadow() ) ) {
 				continue;
 			}
-			LM_AddTraceTriangles( surface->geometry, renderEntity.origin, renderEntity.axis,
+			LM_AddTraceTriangles( surface->geometry, renderEntity.GetOrigin(), renderEntity.GetAxis(),
 				material, true, -1, NULL, doorShadow );
 			lmExternalOccluders += surface->geometry->numIndexes / 3;
 		}
@@ -1268,16 +1268,16 @@ static bool LM_PointInLight( const mapLight_t *light, const idVec3 &point, float
 }
 
 static float LM_FallbackLightAttenuation( const mapLight_t *light, const idVec3 &point ) {
-	if ( !light->def.parms.pointLight ) {
+	if ( !light->def.GetPointLight() ) {
 		return 1.0f;
 	}
-	idVec3 local = ( point - light->def.parms.origin ) * light->def.parms.axis.Transpose();
+	idVec3 local = ( point - light->def.GetOrigin() ) * light->def.GetAxis().Transpose();
 	float distanceSquared = 0.0f;
 	for ( int axis = 0; axis < 3; axis++ ) {
-		if ( light->def.parms.lightRadius[axis] <= 0.0f ) {
+		if ( light->def.GetLightRadius()[axis] <= 0.0f ) {
 			return 0.0f;
 		}
-		const float distance = local[axis] / light->def.parms.lightRadius[axis];
+		const float distance = local[axis] / light->def.GetLightRadius()[axis];
 		distanceSquared += distance * distance;
 	}
 	return Max( 0.0f, 1.0f - distanceSquared );
@@ -1350,17 +1350,17 @@ static void LM_ShadePoint( const idVec3 &point, const idVec3 &normal, const idVe
 		idVec3 color;
 		if ( !LM_SampleBakedLight( i, point, color ) ) {
 			attenuation = LM_FallbackLightAttenuation( light, point );
-			color.Set( light->def.parms.shaderParms[SHADERPARM_RED] * attenuation,
-				light->def.parms.shaderParms[SHADERPARM_GREEN] * attenuation,
-				light->def.parms.shaderParms[SHADERPARM_BLUE] * attenuation );
+			color.Set( light->def.GetShaderParm( SHADERPARM_RED ) * attenuation,
+				light->def.GetShaderParm( SHADERPARM_GREEN ) * attenuation,
+				light->def.GetShaderParm( SHADERPARM_BLUE ) * attenuation );
 		}
 		if ( color[0] <= 0.0001f && color[1] <= 0.0001f && color[2] <= 0.0001f ) {
 			continue;
 		}
 
 		idVec3 lightDirection;
-		if ( light->def.parms.parallel ) {
-			lightDirection = -light->def.parms.axis[2];
+		if ( light->def.GetParallel() ) {
+			lightDirection = -light->def.GetAxis()[2];
 			lightDirection.Normalize();
 		} else {
 			lightDirection = light->def.globalLightOrigin - point;
@@ -1383,9 +1383,9 @@ static void LM_ShadePoint( const idVec3 &point, const idVec3 &normal, const idVe
 			deluxeLightDirection.Normalize();
 		}
 		float visibility = 1.0f;
-		if ( !light->def.parms.noShadows ) {
+		if ( !light->def.GetNoShadows() ) {
 			visibility = LM_ShadowVisibility( point, footprintS, footprintT, lightDirection,
-				light->def.globalLightOrigin, light->def.parms.parallel );
+				light->def.globalLightOrigin, light->def.GetParallel() );
 			if ( visibility < 1.0f ) {
 				lmLightsOccluded++;
 			}

@@ -32,6 +32,9 @@ If you have questions concerning this license or the applicable additional terms
 #pragma once
 #endif // _MSC_VER > 1000
 
+class idRenderEntity;
+class idRenderLight;
+
 /////////////////////////////////////////////////////////////////////////////
 // idGLWidget window
 
@@ -80,9 +83,9 @@ public:
 protected:
 	idRenderWorld *world;
 	idRenderModel *worldModel;
-	qhandle_t	worldModelDef;
-	qhandle_t	lightDef;
-	qhandle_t   modelDef;
+	idRenderEntity *worldModelDef;
+	idRenderLight *lightDef;
+	idRenderEntity *modelDef;
 };
 
 class idGLDrawableMaterial : public idGLDrawableWorld {

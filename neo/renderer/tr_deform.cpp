@@ -1020,7 +1020,7 @@ Emit particles from the surface instead of drawing it
 =====================
 */
 static void R_ParticleDeform( drawSurf_t *surf, bool useArea ) {
-	const struct renderEntity_s *renderEntity = &surf->space->entityDef->parms;
+	const idRenderEntity *renderEntity = surf->space->entityDef;
 	const struct viewDef_s *viewDef = tr.viewDef;
 	const idDeclParticle *particleSystem = (idDeclParticle *)surf->material->GetDeformDecl();
 
@@ -1029,8 +1029,8 @@ static void R_ParticleDeform( drawSurf_t *surf, bool useArea ) {
 	}
 
 #if 0
-	if ( renderEntity->shaderParms[SHADERPARM_PARTICLE_STOPTIME] && 
-		viewDef->renderView.time*0.001 >= renderEntity->shaderParms[SHADERPARM_PARTICLE_STOPTIME] ) {
+	if ( renderEntity->GetShaderParm( SHADERPARM_PARTICLE_STOPTIME ) &&
+		viewDef->renderView.time*0.001 >= renderEntity->GetShaderParm( SHADERPARM_PARTICLE_STOPTIME ) ) {
 		// the entire system has faded out
 		return NULL;
 	}
@@ -1102,13 +1102,13 @@ static void R_ParticleDeform( drawSurf_t *surf, bool useArea ) {
 
 			idRandom	steppingRandom, steppingRandom2;
 
-			int stageAge = g.renderView->time + renderEntity->shaderParms[SHADERPARM_TIMEOFFSET] * 1000 - stage->timeOffset * 1000;
+			int stageAge = g.renderView->time + renderEntity->GetShaderParm( SHADERPARM_TIMEOFFSET ) * 1000 - stage->timeOffset * 1000;
 			int	stageCycle = stageAge / stage->cycleMsec;
 			int	inCycleTime = stageAge - stageCycle * stage->cycleMsec;
 
 			// some particles will be in this cycle, some will be in the previous cycle
-			steppingRandom.SetSeed( (( stageCycle << 10 ) & idRandom::MAX_RAND) ^ (int)( renderEntity->shaderParms[SHADERPARM_DIVERSITY] * idRandom::MAX_RAND )  );
-			steppingRandom2.SetSeed( (( (stageCycle-1) << 10 ) & idRandom::MAX_RAND) ^ (int)( renderEntity->shaderParms[SHADERPARM_DIVERSITY] * idRandom::MAX_RAND )  );
+			steppingRandom.SetSeed( (( stageCycle << 10 ) & idRandom::MAX_RAND) ^ (int)( renderEntity->GetShaderParm( SHADERPARM_DIVERSITY ) * idRandom::MAX_RAND )  );
+			steppingRandom2.SetSeed( (( (stageCycle-1) << 10 ) & idRandom::MAX_RAND) ^ (int)( renderEntity->GetShaderParm( SHADERPARM_DIVERSITY ) * idRandom::MAX_RAND )  );
 
 			for ( int index = 0 ; index < totalParticles ; index++ ) {
 				g.index = index;
@@ -1139,8 +1139,8 @@ static void R_ParticleDeform( drawSurf_t *surf, bool useArea ) {
 
 				int	inCycleTime = particleAge - particleCycle * stage->cycleMsec;
 
-				if ( renderEntity->shaderParms[SHADERPARM_PARTICLE_STOPTIME] && 
-					g.renderView->time - inCycleTime >= renderEntity->shaderParms[SHADERPARM_PARTICLE_STOPTIME]*1000 ) {
+				if ( renderEntity->GetShaderParm( SHADERPARM_PARTICLE_STOPTIME ) &&
+					g.renderView->time - inCycleTime >= renderEntity->GetShaderParm( SHADERPARM_PARTICLE_STOPTIME )*1000 ) {
 					// don't fire any more particles
 					continue;
 				}

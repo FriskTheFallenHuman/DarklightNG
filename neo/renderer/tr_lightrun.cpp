@@ -71,11 +71,12 @@ void R_ModulateLights_f( const idCmdArgs &args ) {
 		idRenderLightLocal	*light;
 
 		light = tr.primaryWorld->lightDefs[i];
-		if ( light ) {
+		if ( light && light->initialized ) {
 			count++;
 			for ( int j = 0 ; j < 3 ; j++ ) {
-				light->parms.shaderParms[j] *= modulate[j];
+				light->SetShaderParm( j, light->GetShaderParm( j ) * modulate[j] );
 			}
+			light->UpdateRenderLight();
 		}
 	}
 	common->Printf( "modulated %i lights\n", count );
@@ -101,16 +102,16 @@ void R_CreateEntityRefs( idRenderEntityLocal *def ) {
 	idVec3		transformed[8];
 	idVec3		v;
 
-	if ( !def->parms.hModel ) {
-		def->parms.hModel = renderModelManager->DefaultModel();
+	if ( !def->GetModel() ) {
+		def->SetModel( renderModelManager->DefaultModel() );
 	}
 
 	// if the entity hasn't been fully specified due to expensive animation calcs
 	// for md5 and particles, use the provided conservative bounds.
-	if ( def->parms.callback ) {
-		def->referenceBounds = def->parms.bounds;
+	if ( def->GetCallback() ) {
+		def->referenceBounds = def->GetBounds();
 	} else {
-		def->referenceBounds = def->parms.hModel->Bounds( &def->parms );
+		def->referenceBounds = def->GetModel()->Bounds( def );
 	}
 
 	// some models, like empty particles, may not need to be added at all
@@ -283,11 +284,11 @@ void R_DeriveLightData( idRenderLightLocal *light ) {
 	int i;
 
 	// decide which light shader we are going to use
-	if ( light->parms.shader ) {
-		light->lightShader = light->parms.shader;
+	if ( light->GetShader() ) {
+		light->lightShader = light->GetShader();
 	}
 	if ( !light->lightShader ) {
-		if ( light->parms.pointLight ) {
+		if ( light->GetPointLight() ) {
 			light->lightShader = declManager->FindMaterial( "lights/defaultPointLight" );
 		} else {
 			light->lightShader = declManager->FindMaterial( "lights/defaultProjectedLight" );
@@ -300,7 +301,7 @@ void R_DeriveLightData( idRenderLightLocal *light ) {
 		// use the falloff from the default shader of the correct type
 		const idMaterial	*defaultShader;
 
-		if ( light->parms.pointLight ) {
+		if ( light->GetPointLight() ) {
 			defaultShader = declManager->FindMaterial( "lights/defaultPointLight" );
 			light->falloffImage = defaultShader->LightFalloffImage();
 		} else {
@@ -311,17 +312,17 @@ void R_DeriveLightData( idRenderLightLocal *light ) {
 	}
 
 	// set the projection
-	if ( !light->parms.pointLight ) {
+	if ( !light->GetPointLight() ) {
 		// projected light
 
-		R_SetLightProject( light->lightProject, vec3_origin /* light->parms.origin */, light->parms.target, 
-			light->parms.right, light->parms.up, light->parms.start, light->parms.end);
+		R_SetLightProject( light->lightProject, vec3_origin, light->GetTarget(),
+			light->GetRight(), light->GetUp(), light->GetStart(), light->GetEnd() );
 	} else {
 		// point light
 		memset( light->lightProject, 0, sizeof( light->lightProject ) );
-		light->lightProject[0][0] = 0.5f / light->parms.lightRadius[0];
-		light->lightProject[1][1] = 0.5f / light->parms.lightRadius[1];
-		light->lightProject[3][2] = 0.5f / light->parms.lightRadius[2];
+		light->lightProject[0][0] = 0.5f / light->GetLightRadius()[0];
+		light->lightProject[1][1] = 0.5f / light->GetLightRadius()[1];
+		light->lightProject[3][2] = 0.5f / light->GetLightRadius()[2];
 		light->lightProject[0][3] = 0.5f;
 		light->lightProject[1][3] = 0.5f;
 		light->lightProject[2][3] = 1.0f;
@@ -332,7 +333,7 @@ void R_DeriveLightData( idRenderLightLocal *light ) {
 	R_SetLightFrustum( light->lightProject, light->frustum );
 
 	// rotate the light planes and projections by the axis
-	R_AxisToModelMatrix( light->parms.axis, light->parms.origin, light->modelMatrix );
+	R_AxisToModelMatrix( light->GetAxis(), light->GetOrigin(), light->modelMatrix );
 
 	for ( i = 0 ; i < 6 ; i++ ) {
 		idPlane		temp;
@@ -347,17 +348,17 @@ void R_DeriveLightData( idRenderLightLocal *light ) {
 
 	// adjust global light origin for off center projections and parallel projections
 	// we are just faking parallel by making it a very far off center for now
-	if ( light->parms.parallel ) {
+	if ( light->GetParallel() ) {
 		idVec3	dir;
 
-		dir = light->parms.lightCenter;
+		dir = light->GetLightCenter();
 		if ( !dir.Normalize() ) {
 			// make point straight up if not specified
 			dir[2] = 1;
 		}
-		light->globalLightOrigin = light->parms.origin + dir * 100000;
+		light->globalLightOrigin = light->GetOrigin() + dir * 100000;
 	} else {
-		light->globalLightOrigin = light->parms.origin + light->parms.axis * light->parms.lightCenter;
+		light->globalLightOrigin = light->GetOrigin() + light->GetAxis() * light->GetLightCenter();
 	}
 
 	R_FreeLightDefFrustum( light );
@@ -410,11 +411,9 @@ R_RenderLightFrustum
 Called by the editor and dmap to operate on light volumes
 ===============
 */
-void R_RenderLightFrustum( const renderLight_t &renderLight, idPlane lightFrustum[6] ) {
+void R_RenderLightFrustum( const idRenderLight &renderLight, idPlane lightFrustum[6] ) {
 	idRenderLightLocal	fakeLight;
-
-	memset( &fakeLight, 0, sizeof( fakeLight ) );
-	fakeLight.parms = renderLight;
+	fakeLight.CopyFrom( renderLight );
 
 	R_DeriveLightData( &fakeLight );
 	
@@ -533,7 +532,7 @@ void R_FreeLightDefDerivedData( idRenderLightLocal *ldef ) {
 ===================
 R_FreeEntityDefDerivedData
 
-Used by both RE_FreeEntityDef and RE_UpdateEntityDef
+Used when freeing or rebuilding a render entity
 Does not actually free the entityDef.
 ===================
 */
@@ -544,18 +543,18 @@ void R_FreeEntityDefDerivedData( idRenderEntityLocal *def, bool keepDecals, bool
 	// demo playback needs to free the joints, while normal play
 	// leaves them in the control of the game
 	if ( session->readDemo ) {
-		if ( def->parms.joints ) {
-			Mem_Free16( def->parms.joints );
-			def->parms.joints = NULL;
+		if ( def->GetJoints() ) {
+			Mem_Free16( def->GetJoints() );
+			def->SetJoints( 0, NULL );
 		}
-		if ( def->parms.callbackData ) {
-			Mem_Free( def->parms.callbackData );
-			def->parms.callbackData = NULL;
+		if ( def->GetCallbackData() ) {
+			Mem_Free( def->GetCallbackData() );
+			def->SetCallbackData( NULL );
 		}
 		for ( i = 0; i < MAX_RENDERENTITY_GUI; i++ ) {
-			if ( def->parms.gui[ i ] ) {
-				delete def->parms.gui[ i ];
-				def->parms.gui[ i ] = NULL;
+			if ( def->GetGui( i ) ) {
+				delete def->GetGui( i );
+				def->SetGui( i, NULL );
 			}
 		}
 	}
@@ -658,7 +657,7 @@ void R_FreeDerivedData( void ) {
 
 		for ( i = 0; i < rw->entityDefs.Num(); i++ ) {
 			def = rw->entityDefs[i];
-			if ( !def ) {
+			if ( !def || !def->initialized ) {
 				continue;
 			}
 			R_FreeEntityDefDerivedData( def, false, false );
@@ -666,7 +665,7 @@ void R_FreeDerivedData( void ) {
 
 		for ( i = 0; i < rw->lightDefs.Num(); i++ ) {
 			light = rw->lightDefs[i];
-			if ( !light ) {
+			if ( !light || !light->initialized ) {
 				continue;
 			}
 			R_FreeLightDefDerivedData( light );
@@ -692,7 +691,7 @@ void R_CheckForEntityDefsUsingModel( idRenderModel *model ) {
 			if ( !def ) {
 				continue;
 			}
-			if ( def->parms.hModel == model ) {
+			if ( def->GetModel() == model ) {
 				//assert( 0 );
 				// this should never happen but Radiant messes it up all the time so just free the derived data
 				R_FreeEntityDefDerivedData( def, false, false );
@@ -723,7 +722,7 @@ void R_ReCreateWorldReferences( void ) {
 
 		for ( i = 0 ; i < rw->entityDefs.Num() ; i++ ) {
 			def = rw->entityDefs[i];
-			if ( !def ) {
+			if ( !def || !def->initialized ) {
 				continue;
 			}
 			// the world model entities are put specifically in a single
@@ -737,13 +736,12 @@ void R_ReCreateWorldReferences( void ) {
 
 		for ( i = 0 ; i < rw->lightDefs.Num() ; i++ ) {
 			light = rw->lightDefs[i];
-			if ( !light ) {
+			if ( !light || !light->initialized ) {
 				continue;
 			}
-			renderLight_t parms = light->parms;
-
-			light->world->FreeLightDef( i );
-			rw->UpdateLightDef( i, &parms );
+			R_DeriveLightData( light );
+			R_CreateLightRefs( light );
+			R_CreateLightDefFogPortals( light );
 		}
 	}
 }

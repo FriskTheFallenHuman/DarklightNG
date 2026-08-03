@@ -37,11 +37,9 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
-typedef struct {
-	renderLight_t			renderLight;			// light presented to the renderer
-	qhandle_t				lightDefHandle;			// handle to renderer light def
-	renderEntity_t			renderEntity;			// used to present a model to the renderer
-	int						modelDefHandle;			// handle to static renderer model
+struct idFXLocalAction {
+	idRenderLight *			renderLight;			// renderer-owned light
+	idRenderEntity *		renderEntity;			// renderer-owned entity
 	float					delay;
 	int						particleSystem;
 	int						start;
@@ -49,7 +47,9 @@ typedef struct {
 	bool					shakeStarted;
 	bool					decalDropped;
 	bool					launched;
-} idFXLocalAction;
+
+							idFXLocalAction() : renderLight( NULL ), renderEntity( NULL ), delay( 0.0f ), particleSystem( -1 ), start( -1 ), soundStarted( false ), shakeStarted( false ), decalDropped( false ), launched( false ) {}
+};
 
 D3_CLASS()
 class idEntityFx : public idEntity {

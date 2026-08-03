@@ -29,6 +29,8 @@ If you have questions concerning this license or the applicable additional terms
 #define __RENDERWINDOW_H
 
 class idUserInterfaceLocal;
+class idRenderEntity;
+class idRenderLight;
 class idRenderWindow : public idWindow {
 public:
 	idRenderWindow(idUserInterfaceLocal *gui);
@@ -51,13 +53,10 @@ private:
 	void BuildAnimation(int time);
 	renderView_t refdef;
 	idRenderWorld *world;
-	renderEntity_t worldEntity;
-	renderLight_t rLight;
+	idRenderEntity *worldEntity;
+	idRenderLight *rLight;
 	const idMD5Anim *modelAnim;
 
-	qhandle_t	worldModelDef;
-	qhandle_t	lightDef;
-	qhandle_t   modelDef;
 	idWinStr modelName;
 	idWinStr animName;
 	idStr	 animClass;

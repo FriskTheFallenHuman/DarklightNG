@@ -69,14 +69,14 @@ typedef struct {
 	idFuncEmitter*  emitter;		//Used for non-smoke particles
 } WeaponParticle_t;
 
-typedef struct {
+struct WeaponLight_t {
+	WeaponLight_t() : active( false ), startTime( 0 ), joint( INVALID_JOINT ), light( NULL ) { name[0] = '\0'; }
 	char			name[64];
 	bool			active;
 	int				startTime;
 	jointHandle_t	joint;
-	int				lightHandle;
-	renderLight_t	light;
-} WeaponLight_t;
+	idRenderLight *	light;
+};
 
 D3_CLASS()
 class idWeapon : public idAnimatedEntity {
@@ -243,15 +243,12 @@ private:
 	idStr					icon;
 
 	// view weapon gui light
-	renderLight_t			guiLight;
-	int						guiLightHandle;
+	idRenderLight *			guiLight;
 
 	// muzzle flash
-	renderLight_t			muzzleFlash;		// positioned on view weapon bone
-	int						muzzleFlashHandle;
+	idRenderLight *			muzzleFlash;		// positioned on view weapon bone
 
-	renderLight_t			worldMuzzleFlash;	// positioned on world weapon bone
-	int						worldMuzzleFlashHandle;
+	idRenderLight *			worldMuzzleFlash;	// positioned on world weapon bone
 
 	idVec3					flashColor;
 	int						muzzleFlashEnd;
@@ -318,8 +315,7 @@ private:
 										// this also assumes a nozzle light atm
 	int						nozzleFxFade;		// time it takes to fade between the effects
 	int						lastAttack;			// last time an attack occured
-	renderLight_t			nozzleGlow;			// nozzle light
-	int						nozzleGlowHandle;	// handle for nozzle light
+	idRenderLight *			nozzleGlow;			// nozzle light
 
 	idVec3					nozzleGlowColor;	// color of the nozzle glow
 	const idMaterial *		nozzleGlowShader;	// shader for glow light

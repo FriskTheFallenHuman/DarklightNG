@@ -1514,11 +1514,11 @@ void idPlayer::Init( void ) {
 
 	if ( ( gameLocal.isMultiplayer || g_testDeath.GetBool() ) && skin ) {
 		SetSkin( skin );
-		renderEntity.shaderParms[6] = 0.0f;
+		renderEntity->SetShaderParm( 6, 0.0f );
 	} else if ( spawnArgs.GetString( "spawn_skin", NULL, &value ) ) {
 		skin = declManager->FindSkin( value );
 		SetSkin( skin );
-		renderEntity.shaderParms[6] = 0.0f;
+		renderEntity->SetShaderParm( 6, 0.0f );
 	}
 
 	value = spawnArgs.GetString( "bone_hips", "" );
@@ -1632,7 +1632,7 @@ void idPlayer::Spawn( void ) {
 	SetPhysics( &physicsObj );
 	InitAASLocation();
 
-	skin = renderEntity.customSkin;
+	skin = renderEntity->GetCustomSkin();
 
 	// only the local player needs guis
 	if ( !gameLocal.isMultiplayer || entityNumber == gameLocal.localClientNum ) {
@@ -1688,15 +1688,15 @@ void idPlayer::Spawn( void ) {
 	playerView.SetPlayerEntity( this );
 
 	// supress model in non-player views, but allow it in mirrors and remote views
-	renderEntity.suppressSurfaceInViewID = entityNumber+1;
+	renderEntity->SetSuppressSurfaceInViewID( entityNumber + 1 );
 
 	// don't project shadow on self or weapon
-	renderEntity.noSelfShadow = true;
+	renderEntity->SetNoSelfShadow( true );
 
 	idAFAttachment *headEnt = head.GetEntity();
 	if ( headEnt ) {
-		headEnt->GetRenderEntity()->suppressSurfaceInViewID = entityNumber+1;
-		headEnt->GetRenderEntity()->noSelfShadow = true;
+		headEnt->GetRenderEntity()->SetSuppressSurfaceInViewID( entityNumber + 1 );
+		headEnt->GetRenderEntity()->SetNoSelfShadow( true );
 	}
 
 	if ( gameLocal.isMultiplayer ) {
@@ -3522,8 +3522,8 @@ bool idPlayer::GivePowerUp( int powerup, int time ) {
 				spawnArgs.GetString( "skin_invisibility", "", &skin );
 				powerUpSkin = declManager->FindSkin( skin );
 				// remove any decals from the model
-				if ( modelDefHandle != -1 ) {
-					gameRenderWorld->RemoveDecals( modelDefHandle );
+				if ( renderEntity != NULL ) {
+					renderEntity->RemoveDecals();
 				}
 				if ( weapon.GetEntity() ) {
 					weapon.GetEntity()->UpdateSkin();
@@ -3744,9 +3744,9 @@ void idPlayer::UpdatePowerUps( void ) {
 
 	if ( health > 0 ) {
 		if ( powerUpSkin ) {
-			renderEntity.customSkin = powerUpSkin;
+			renderEntity->SetCustomSkin( powerUpSkin );
 		} else {
-			renderEntity.customSkin = skin;
+			renderEntity->SetCustomSkin( skin );
 		}
 	}
 
@@ -4884,8 +4884,8 @@ bool idPlayer::HandleSingleGuiCommand( idEntity *entityGui, idLexer *src ) {
 			int amt = ( _health >= HEALTH_PER_DOSE ) ? HEALTH_PER_DOSE : _health;
 			_health -= amt;
 			entityGui->spawnArgs.SetInt( "gui_parm1", _health );
-			if ( entityGui->GetRenderEntity() && entityGui->GetRenderEntity()->gui[ 0 ] ) {
-				entityGui->GetRenderEntity()->gui[ 0 ]->SetStateInt( "gui_parm1", _health );
+			if ( entityGui->GetRenderEntity() && entityGui->GetRenderEntity()->GetGui( 0 ) ) {
+				entityGui->GetRenderEntity()->GetGui( 0 )->SetStateInt( "gui_parm1", _health );
 			}
 			health += amt;
 			if ( health > 100 ) {
@@ -5159,7 +5159,7 @@ void idPlayer::UpdateFocus( void ) {
 			}
 		}
 
-		if ( !ent->GetRenderEntity() || !ent->GetRenderEntity()->gui[ 0 ] || !ent->GetRenderEntity()->gui[ 0 ]->IsInteractive() ) {
+		if ( !ent->GetRenderEntity() || !ent->GetRenderEntity()->GetGui( 0 ) || !ent->GetRenderEntity()->GetGui( 0 )->IsInteractive() ) {
 			continue;
 		}
 
@@ -5168,20 +5168,20 @@ void idPlayer::UpdateFocus( void ) {
 			continue;
 		}
 
-		pt = gameRenderWorld->GuiTrace( ent->GetModelDefHandle(), start, end );
+		pt = gameRenderWorld->GuiTrace( ent->GetRenderEntityDef(), start, end );
 		if ( pt.x != -1 ) {
 			// we have a hit
-			renderEntity_t *focusGUIrenderEntity = ent->GetRenderEntity();
+			idRenderEntity *focusGUIrenderEntity = ent->GetRenderEntity();
 			if ( !focusGUIrenderEntity ) {
 				continue;
 			}
 
 			if ( pt.guiId == 1 ) {
-				ui = focusGUIrenderEntity->gui[ 0 ];
+				ui = focusGUIrenderEntity->GetGui( 0 );
 			} else if ( pt.guiId == 2 ) {
-				ui = focusGUIrenderEntity->gui[ 1 ];
+				ui = focusGUIrenderEntity->GetGui( 1 );
 			} else {
-				ui = focusGUIrenderEntity->gui[ 2 ];
+				ui = focusGUIrenderEntity->GetGui( 2 );
 			}
 			
 			if ( ui == NULL ) {
@@ -6958,11 +6958,11 @@ void idPlayer::UpdateDeathSkin( bool state_hitch ) {
 		if ( !doingDeathSkin ) {
 			deathClearContentsTime = spawnArgs.GetInt( "deathSkinTime" );
 			doingDeathSkin = true;
-			renderEntity.noShadow = true;
+			renderEntity->SetNoShadow( true );
 			if ( state_hitch ) {
-				renderEntity.shaderParms[ SHADERPARM_TIME_OF_DEATH ] = gameLocal.time * 0.001f - 2.0f;
+				renderEntity->SetShaderParm( SHADERPARM_TIME_OF_DEATH, gameLocal.time * 0.001f - 2.0f );
 			} else {
-				renderEntity.shaderParms[ SHADERPARM_TIME_OF_DEATH ] = gameLocal.time * 0.001f;
+				renderEntity->SetShaderParm( SHADERPARM_TIME_OF_DEATH, gameLocal.time * 0.001f );
 			}
 			UpdateVisuals();
 		}
@@ -6973,8 +6973,8 @@ void idPlayer::UpdateDeathSkin( bool state_hitch ) {
 			deathClearContentsTime = 0;
 		}
 	} else {
-		renderEntity.noShadow = false;
-		renderEntity.shaderParms[ SHADERPARM_TIME_OF_DEATH ] = 0.0f;
+		renderEntity->SetNoShadow( false );
+		renderEntity->SetShaderParm( SHADERPARM_TIME_OF_DEATH, 0.0f );
 		UpdateVisuals();
 		doingDeathSkin = false;
 	}
@@ -7011,7 +7011,7 @@ Called every tic for each player
 ==============
 */
 void idPlayer::Think( void ) {
-	renderEntity_t *headRenderEnt;
+	idRenderEntity *headRenderEnt;
 
 	UpdatePlayerIcons();
 
@@ -7204,27 +7204,27 @@ void idPlayer::Think( void ) {
 
 	if ( headRenderEnt ) {
 		if ( influenceSkin ) {
-			headRenderEnt->customSkin = influenceSkin;
+			headRenderEnt->SetCustomSkin( influenceSkin );
 		} else {
-			headRenderEnt->customSkin = NULL;
+			headRenderEnt->SetCustomSkin( NULL );
 		}
 	}
 
 	if ( gameLocal.isMultiplayer || g_showPlayerShadow.GetBool() ) {
-		renderEntity.suppressShadowInViewID	= 0;
+		renderEntity->SetSuppressShadowInViewID( 0 );
 		if ( headRenderEnt ) {
-			headRenderEnt->suppressShadowInViewID = 0;
+			headRenderEnt->SetSuppressShadowInViewID( 0 );
 		}
 	} else {
-		renderEntity.suppressShadowInViewID	= entityNumber+1;
+		renderEntity->SetSuppressShadowInViewID( entityNumber + 1 );
 		if ( headRenderEnt ) {
-			headRenderEnt->suppressShadowInViewID = entityNumber+1;
+			headRenderEnt->SetSuppressShadowInViewID( entityNumber + 1 );
 		}
 	}
 	// never cast shadows from our first-person muzzle flashes
-	renderEntity.suppressShadowInLightID = LIGHTID_VIEW_MUZZLE_FLASH + entityNumber;
+	renderEntity->SetSuppressShadowInLightID( LIGHTID_VIEW_MUZZLE_FLASH + entityNumber );
 	if ( headRenderEnt ) {
-		headRenderEnt->suppressShadowInLightID = LIGHTID_VIEW_MUZZLE_FLASH + entityNumber;
+		headRenderEnt->SetSuppressShadowInLightID( LIGHTID_VIEW_MUZZLE_FLASH + entityNumber );
 	}
 
 	if ( !g_stopTime.GetBool() ) {
@@ -8560,7 +8560,7 @@ void idPlayer::SetInfluenceView( const char *mtr, const char *skinname, float ra
 	if ( skinname && *skinname ) {
 		influenceSkin = declManager->FindSkin( skinname );
 		if ( head.GetEntity() ) {
-			head.GetEntity()->GetRenderEntity()->shaderParms[ SHADERPARM_TIMEOFFSET ] = -MS2SEC( gameLocal.time );
+			head.GetEntity()->GetRenderEntity()->SetShaderParm( SHADERPARM_TIMEOFFSET, -MS2SEC( gameLocal.time ) );
 		}
 		UpdateVisuals();
 	}
@@ -8931,7 +8931,7 @@ idPlayer::ClientPredictionThink
 ================
 */
 void idPlayer::ClientPredictionThink( void ) {
-	renderEntity_t *headRenderEnt;
+	idRenderEntity *headRenderEnt;
 
 	oldFlags = usercmd.flags;
 	oldButtons = usercmd.buttons;
@@ -9035,27 +9035,27 @@ void idPlayer::ClientPredictionThink( void ) {
 
 	if ( headRenderEnt ) {
 		if ( influenceSkin ) {
-			headRenderEnt->customSkin = influenceSkin;
+			headRenderEnt->SetCustomSkin( influenceSkin );
 		} else {
-			headRenderEnt->customSkin = NULL;
+			headRenderEnt->SetCustomSkin( NULL );
 		}
 	}
 
 	if ( gameLocal.isMultiplayer || g_showPlayerShadow.GetBool() ) {
-		renderEntity.suppressShadowInViewID	= 0;
+		renderEntity->SetSuppressShadowInViewID( 0 );
 		if ( headRenderEnt ) {
-			headRenderEnt->suppressShadowInViewID = 0;
+			headRenderEnt->SetSuppressShadowInViewID( 0 );
 		}
 	} else {
-		renderEntity.suppressShadowInViewID	= entityNumber+1;
+		renderEntity->SetSuppressShadowInViewID( entityNumber + 1 );
 		if ( headRenderEnt ) {
-			headRenderEnt->suppressShadowInViewID = entityNumber+1;
+			headRenderEnt->SetSuppressShadowInViewID( entityNumber + 1 );
 		}
 	}
 	// never cast shadows from our first-person muzzle flashes
-	renderEntity.suppressShadowInLightID = LIGHTID_VIEW_MUZZLE_FLASH + entityNumber;
+	renderEntity->SetSuppressShadowInLightID( LIGHTID_VIEW_MUZZLE_FLASH + entityNumber );
 	if ( headRenderEnt ) {
-		headRenderEnt->suppressShadowInLightID = LIGHTID_VIEW_MUZZLE_FLASH + entityNumber;
+		headRenderEnt->SetSuppressShadowInLightID( LIGHTID_VIEW_MUZZLE_FLASH + entityNumber );
 	}
 
 	if ( !gameLocal.inCinematic ) {

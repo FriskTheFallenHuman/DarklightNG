@@ -32,13 +32,13 @@ If you have questions concerning this license or the applicable additional terms
 #include "tr_local.h"
 
 idRenderEntityLocal::idRenderEntityLocal() {
-	memset( &parms, 0, sizeof( parms ) );
 	memset( modelMatrix, 0, sizeof( modelMatrix ) );
 
 	world					= NULL;
 	index					= 0;
 	lastModifiedFrameNum	= 0;
 	archived				= false;
+	initialized				= false;
 	dynamicModel			= NULL;
 	dynamicModelFrameCount	= 0;
 	cachedDynamicModel		= NULL;
@@ -53,58 +53,95 @@ idRenderEntityLocal::idRenderEntityLocal() {
 }
 
 void idRenderEntityLocal::FreeRenderEntity() {
+	if ( world != NULL ) {
+		world->FreeRenderEntity( this );
+	}
 }
 
-void idRenderEntityLocal::UpdateRenderEntity( const renderEntity_t *re, bool forceUpdate ) {
+void idRenderEntityLocal::RemoveFromRenderWorld() {
+	if ( !initialized ) {
+		return;
+	}
+
+	R_FreeEntityDefDerivedData( this, false, false );
+	if ( session->writeDemo && archived ) {
+		world->WriteFreeEntity( index );
+		archived = false;
+	}
+	initialized = false;
 }
 
-void idRenderEntityLocal::GetRenderEntity( renderEntity_t *re ) {
+void idRenderEntityLocal::UpdateRenderEntity( bool force ) {
+	if ( r_skipUpdates.GetBool() ) {
+		return;
+	}
+
+	tr.pc.c_entityUpdates++;
+	if ( hModel == NULL && callback == NULL ) {
+		common->Error( "idRenderEntity::UpdateRenderEntity: NULL model" );
+	}
+
+	force = force || forceUpdate != 0;
+	if ( initialized ) {
+		if ( !force && dirtyFlags == DIRTY_NONE && joints == NULL && callbackData == NULL && dynamicModel == NULL ) {
+			return;
+		}
+
+		const unsigned int referenceChanges = DIRTY_MODEL | DIRTY_TRANSFORM | DIRTY_BOUNDS;
+		if ( !force && callback != NULL && ( dirtyFlags & referenceChanges ) == 0 ) {
+			c_callbackUpdate++;
+			R_ClearEntityDefDynamicModel( this );
+			dirtyFlags = DIRTY_NONE;
+			return;
+		}
+
+		const bool keepModelData = ( dirtyFlags & DIRTY_MODEL ) == 0;
+		R_FreeEntityDefDerivedData( this, keepModelData, keepModelData );
+	}
+
+	R_AxisToModelMatrix( axis, origin, modelMatrix );
+	lastModifiedFrameNum = tr.frameCount;
+	if ( session->writeDemo && archived ) {
+		world->WriteFreeEntity( index );
+		archived = false;
+	}
+
+	if ( !r_useEntityCallbacks.GetBool() && callback != NULL ) {
+		R_IssueEntityDefCallback( this );
+	}
+	R_CreateEntityRefs( this );
+
+	initialized = true;
+	dirtyFlags = DIRTY_NONE;
 }
 
 void idRenderEntityLocal::ForceUpdate() {
+	dirtyFlags = DIRTY_ALL;
+	UpdateRenderEntity( true );
 }
 
-int idRenderEntityLocal::GetIndex() {
+bool idRenderEntityLocal::IsInRenderWorld() const {
+	return initialized;
+}
+
+int idRenderEntityLocal::GetIndex() const {
 	return index;
 }
 
 void idRenderEntityLocal::ProjectOverlay( const idPlane localTextureAxis[2], const idMaterial *material ) {
+	if ( !initialized || hModel == NULL || hModel->IsDynamicModel() != DM_CACHED ) {
+		return;
+	}
+	idRenderModel *model = R_EntityDefDynamicModel( this );
+	if ( overlay == NULL ) {
+		overlay = idRenderModelOverlay::Alloc();
+	}
+	overlay->CreateOverlay( model, localTextureAxis, material );
 }
 void idRenderEntityLocal::RemoveDecals() {
-}
-
-//======================================================================
-
-idRenderLightLocal::idRenderLightLocal() {
-	memset( &parms, 0, sizeof( parms ) );
-	memset( modelMatrix, 0, sizeof( modelMatrix ) );
-	memset( lightProject, 0, sizeof( lightProject ) );
-	memset( frustum, 0, sizeof( frustum ) );
-	memset( frustumWindings, 0, sizeof( frustumWindings ) );
-
-	lightHasMoved			= false;
-	world					= NULL;
-	index					= 0;
-	lastModifiedFrameNum	= 0;
-	archived				= false;
-	lightShader				= NULL;
-	falloffImage			= NULL;
-	globalLightOrigin		= vec3_zero;
-	frustumTris				= NULL;
-	viewCount				= 0;
-	viewLight				= NULL;
-	references				= NULL;
-	foggedPortals			= NULL;
-}
-
-void idRenderLightLocal::FreeRenderLight() {
-}
-void idRenderLightLocal::UpdateRenderLight( const renderLight_t *re, bool forceUpdate ) {
-}
-void idRenderLightLocal::GetRenderLight( renderLight_t *re ) {
-}
-void idRenderLightLocal::ForceUpdate() {
-}
-int idRenderLightLocal::GetIndex() {
-	return index;
+	if ( !initialized ) {
+		return;
+	}
+	R_FreeEntityDefDecals( this );
+	R_FreeEntityDefOverlay( this );
 }

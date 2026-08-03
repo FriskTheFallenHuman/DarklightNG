@@ -272,7 +272,7 @@ void idRenderModelMD3::LerpMeshVertexes ( srfTriangles_t *tri, const struct md3S
 idRenderModelMD3::InstantiateDynamicModel
 =============
 */
-idRenderModel *idRenderModelMD3::InstantiateDynamicModel( const struct renderEntity_s *ent, const struct viewDef_s *view, idRenderModel *cachedModel ) {
+idRenderModel *idRenderModelMD3::InstantiateDynamicModel( const idRenderEntity *ent, const struct viewDef_s *view, idRenderModel *cachedModel ) {
 	int				i, j;
 	float			backlerp;
 	int *			triangles;
@@ -294,9 +294,9 @@ idRenderModel *idRenderModelMD3::InstantiateDynamicModel( const struct renderEnt
 	surface = (md3Surface_t *) ((byte *)md3 + md3->ofsSurfaces);
 
 	// TODO: these need set by an entity
-	frame = ent->shaderParms[SHADERPARM_MD3_FRAME];			// probably want to keep frames < 1000 or so
-	oldframe = ent->shaderParms[SHADERPARM_MD3_LASTFRAME];
-	backlerp = ent->shaderParms[SHADERPARM_MD3_BACKLERP];
+	frame = ent->GetShaderParm( SHADERPARM_MD3_FRAME );			// probably want to keep frames < 1000 or so
+	oldframe = ent->GetShaderParm( SHADERPARM_MD3_LASTFRAME );
+	backlerp = ent->GetShaderParm( SHADERPARM_MD3_BACKLERP );
 
 	for( i = 0; i < md3->numSurfaces; i++ ) {
 
@@ -349,7 +349,7 @@ idRenderModelMD3::Bounds
 =====================
 */
 
-idBounds idRenderModelMD3::Bounds(const struct renderEntity_s *ent) const {
+idBounds idRenderModelMD3::Bounds(const idRenderEntity *ent) const {
 	idBounds		ret;
 
 	ret.Clear();
@@ -368,4 +368,3 @@ idBounds idRenderModelMD3::Bounds(const struct renderEntity_s *ent) const {
 
 	return ret;
 }
-

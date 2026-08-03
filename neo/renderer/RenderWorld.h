@@ -71,137 +71,8 @@ const int SHADERPARM_SPRITE_HEIGHT		= 9;
 
 const int SHADERPARM_PARTICLE_STOPTIME = 8;	// don't spawn any more particles after this time
 
-// guis
-const int MAX_RENDERENTITY_GUI		= 3;
-
-
-typedef bool(*deferredEntityCallback_t)( renderEntity_s *, const renderView_s * );
-
-
-typedef struct renderEntity_s {
-	idRenderModel *			hModel;				// this can only be null if callback is set
-
-	int						entityNum;
-	int						bodyId;
-
-	// Entities that are expensive to generate, like skeletal models, can be
-	// deferred until their bounds are found to be in view, in the frustum
-	// of a shadowing light that is in view, or contacted by a trace / overlay test.
-	// This is also used to do visual cueing on items in the view
-	// The renderView may be NULL if the callback is being issued for a non-view related
-	// source.
-	// The callback function should clear renderEntity->callback if it doesn't
-	// want to be called again next time the entity is referenced (ie, if the
-	// callback has now made the entity valid until the next updateEntity)
-	idBounds				bounds;					// only needs to be set for deferred models and md5s
-	deferredEntityCallback_t	callback;
-
-	void *					callbackData;			// used for whatever the callback wants
-
-	// player bodies and possibly player shadows should be suppressed in views from
-	// that player's eyes, but will show up in mirrors and other subviews
-	// security cameras could suppress their model in their subviews if we add a way
-	// of specifying a view number for a remoteRenderMap view
-	int						suppressSurfaceInViewID;
-	int						suppressShadowInViewID;
-
-	// world models for the player and weapons will not cast shadows from view weapon
-	// muzzle flashes
-	int						suppressShadowInLightID;
-
-	// if non-zero, the surface and shadow (if it casts one)
-	// will only show up in the specific view, ie: player weapons
-	int						allowSurfaceInViewID;
-
-	// positioning
-	// axis rotation vectors must be unit length for many
-	// R_LocalToGlobal functions to work, so don't scale models!
-	// axis vectors are [0] = forward, [1] = left, [2] = up
-	idVec3					origin;
-	idMat3					axis;
-
-	// texturing
-	const idMaterial *		customShader;			// if non-0, all surfaces will use this
-	const idMaterial *		referenceShader;		// used so flares can reference the proper light shader
-	const idDeclSkin *		customSkin;				// 0 for no remappings
-	class idSoundEmitter *	referenceSound;			// for shader sound tables, allowing effects to vary with sounds
-	float					shaderParms[ MAX_ENTITY_SHADER_PARMS ];	// can be used in any way by shader or model generation
-
-	// networking: see WriteGUIToSnapshot / ReadGUIFromSnapshot
-	class idUserInterface * gui[ MAX_RENDERENTITY_GUI ];
-
-	struct renderView_s	*	remoteRenderView;		// any remote camera surfaces will use this
-
-	int						numJoints;
-	idJointMat *			joints;					// array of joints that will modify vertices.
-													// NULL if non-deformable model.  NOT freed by renderer
-
-	float					modelDepthHack;			// squash depth range so particle effects don't clip into walls
-
-	// options to override surface shader flags (replace with material parameters?)
-	bool					noSelfShadow;			// cast shadows onto other objects,but not self
-	bool					noShadow;				// no shadow at all
-
-	bool					noDynamicInteractions;	// retained in saves and demos for compatibility;
-													// transient realtime lighting ignores this legacy hint
-
-	bool					weaponDepthHack;		// squash depth range so view weapons don't poke into walls
-													// this automatically implies noShadow
-	int						forceUpdate;			// force an update (NOTE: not a bool to keep this struct a multiple of 4 bytes)
-	int						timeGroup;
-	int						xrayIndex;
-} renderEntity_t;
-
-
-typedef struct renderLight_s {
-	idMat3					axis;				// rotation vectors, must be unit length
-	idVec3					origin;
-
-	// if non-zero, the light will not show up in the specific view,
-	// which may be used if we want to have slightly different muzzle
-	// flash lights for the player and other views
-	int						suppressLightInViewID;
-
-	// if non-zero, the light will only show up in the specific view
-	// which can allow player gun gui lights and such to not effect everyone
-	int						allowLightInViewID;
-
-	// I am sticking the four bools together so there are no unused gaps in
-	// the padded structure, which could confuse the memcmp that checks for redundant
-	// updates
-	bool					noShadows;			// (should we replace this with material parameters on the shader?)
-	bool					noSpecular;			// (should we replace this with material parameters on the shader?)
-
-	bool					pointLight;			// otherwise a projection light (should probably invert the sense of this, because points are way more common)
-	bool					parallel;			// lightCenter gives the direction to the light at infinity
-	bool					bakedLight;			// immutable map light represented by the map lightmap archive
-	bool					bakedLightPadding[3];	// keep memcmp-visible padding initialized by canonical parsing
-	idVec3					lightRadius;		// xyz radius for point lights
-	idVec3					lightCenter;		// offset the lighting direction for shading and
-												// shadows, relative to origin
-
-	// frustum definition for projected lights, all reletive to origin
-	// FIXME: we should probably have real plane equations here, and offer
-	// a helper function for conversion from this format
-	idVec3					target;
-	idVec3					right;
-	idVec3					up;
-	idVec3					start;
-	idVec3					end;
-
-	// Dmap will generate an optimized shadow volume named _prelight_<lightName>
-	// for the light against all the _area* models in the map.  The renderer will
-	// ignore this value if the light has been moved after initial creation
-	idRenderModel *			prelightModel;
-
-	// muzzle flash lights will not cast shadows from player and weapon world models
-	int						lightId;
-
-
-	const idMaterial *		shader;				// NULL = either lights/defaultPointLight or lights/defaultProjectedLight
-	float					shaderParms[MAX_ENTITY_SHADER_PARMS];		// can be used in any way by shader
-	idSoundEmitter *		referenceSound;		// for shader sound tables, allowing effects to vary with sounds
-} renderLight_t;
+#include "RenderEntity.h"
+#include "RenderLight.h"
 
 
 typedef struct renderView_s {
@@ -248,7 +119,7 @@ typedef struct modelTrace_s {
 	idVec3					point;				// end point of trace in global space
 	idVec3					normal;				// hit triangle normal vector in global space
 	const idMaterial *		material;			// material of hit surface
-	const renderEntity_t *	entity;				// render entity that was hit
+	const idRenderEntity *	entity;				// render entity that was hit
 	int						jointNumber;		// md5 joint nearest to the hit triangle
 } modelTrace_t;
 
@@ -279,15 +150,10 @@ public:
 	// entityDefs and lightDefs are added to a given world to determine
 	// what will be drawn for a rendered scene.  Most update work is defered
 	// until it is determined that it is actually needed for a given view.
-	virtual	qhandle_t		AddEntityDef( const renderEntity_t *re ) = 0;
-	virtual	void			UpdateEntityDef( qhandle_t entityHandle, const renderEntity_t *re ) = 0;
-	virtual	void			FreeEntityDef( qhandle_t entityHandle ) = 0;
-	virtual const renderEntity_t *GetRenderEntity( qhandle_t entityHandle ) const = 0;
-
-	virtual	qhandle_t		AddLightDef( const renderLight_t *rlight ) = 0;
-	virtual	void			UpdateLightDef( qhandle_t lightHandle, const renderLight_t *rlight ) = 0;
-	virtual	void			FreeLightDef( qhandle_t lightHandle ) = 0;
-	virtual const renderLight_t *GetRenderLight( qhandle_t lightHandle ) const = 0;
+	virtual idRenderEntity *	AllocRenderEntity() = 0;
+	virtual void			FreeRenderEntity( idRenderEntity *entity ) = 0;
+	virtual idRenderLight *	AllocRenderLight() = 0;
+	virtual void			FreeRenderLight( idRenderLight *light ) = 0;
 
 	// returns true if this area model needs portal sky to draw
 	virtual bool			CheckAreaForPortalSky( int areaNum ) = 0;
@@ -302,13 +168,13 @@ public:
 	virtual void			ProjectDecalOntoWorld( const idFixedWinding &winding, const idVec3 &projectionOrigin, const bool parallel, const float fadeDepth, const idMaterial *material, const int startTime ) = 0;
 
 	// Creates decals on static models.
-	virtual void			ProjectDecal( qhandle_t entityHandle, const idFixedWinding &winding, const idVec3 &projectionOrigin, const bool parallel, const float fadeDepth, const idMaterial *material, const int startTime ) = 0;
+	virtual void			ProjectDecal( idRenderEntity *entity, const idFixedWinding &winding, const idVec3 &projectionOrigin, const bool parallel, const float fadeDepth, const idMaterial *material, const int startTime ) = 0;
 
 	// Creates overlays on dynamic models.
-	virtual void			ProjectOverlay( qhandle_t entityHandle, const idPlane localTextureAxis[2], const idMaterial *material ) = 0;
+	virtual void			ProjectOverlay( idRenderEntity *entity, const idPlane localTextureAxis[2], const idMaterial *material ) = 0;
 
 	// Removes all decals and overlays from the given entity def.
-	virtual void			RemoveDecals( qhandle_t entityHandle ) = 0;
+	virtual void			RemoveDecals( idRenderEntity *entity ) = 0;
 
 	//-------------- Scene Rendering -----------------
 
@@ -365,10 +231,10 @@ public:
 	// fraction location of the trace on the gui surface, or -1,-1 if no hit.
 	// This doesn't do any occlusion testing, simply ignoring non-gui surfaces.
 	// start / end are in global world coordinates.
-	virtual guiPoint_t		GuiTrace( qhandle_t entityHandle, const idVec3 start, const idVec3 end ) const = 0;
+	virtual guiPoint_t		GuiTrace( idRenderEntity *entity, const idVec3 start, const idVec3 end ) const = 0;
 
 	// Traces vs the render model, possibly instantiating a dynamic version, and returns true if something was hit
-	virtual bool			ModelTrace( modelTrace_t &trace, qhandle_t entityHandle, const idVec3 &start, const idVec3 &end, const float radius ) const = 0;
+	virtual bool			ModelTrace( modelTrace_t &trace, idRenderEntity *entity, const idVec3 &start, const idVec3 &end, const float radius ) const = 0;
 
 	// Traces vs the whole rendered world. FIXME: we need some kind of material flags.
 	virtual bool			Trace( modelTrace_t &trace, const idVec3 &start, const idVec3 &end, const float radius, bool skipDynamic = true, bool skipPlayer = false ) const = 0;

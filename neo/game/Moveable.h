@@ -193,10 +193,8 @@ private:
 
 	idVec3					spawnOrigin;
 	idMat3					spawnAxis;
-	qhandle_t				particleModelDefHandle;
-	qhandle_t				lightDefHandle;
-	renderEntity_t			particleRenderEntity;
-	renderLight_t			light;
+	idRenderEntity *		particleRenderEntity;
+	idRenderLight *			light;
 	int						particleTime;
 	int						lightTime;
 	float					time;

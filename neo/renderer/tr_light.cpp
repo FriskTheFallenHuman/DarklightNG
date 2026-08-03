@@ -316,10 +316,10 @@ viewEntity_t *R_SetEntityDefViewEntity( idRenderEntityLocal *def ) {
 	vModel->scissorRect.Clear();
 
 	// copy the model and weapon depth hack for back-end use
-	vModel->modelDepthHack = def->parms.modelDepthHack;
-	vModel->weaponDepthHack = def->parms.weaponDepthHack;
+	vModel->modelDepthHack = def->GetModelDepthHack();
+	vModel->weaponDepthHack = def->GetWeaponDepthHack();
 
-	R_AxisToModelMatrix( def->parms.axis, def->parms.origin, vModel->modelMatrix );
+	R_AxisToModelMatrix( def->GetAxis(), def->GetOrigin(), vModel->modelMatrix );
 
 	myGlMultMatrix( vModel->modelMatrix, tr.viewDef->worldSpace.modelViewMatrix, vModel->modelViewMatrix );
 	vModel->next = tr.viewDef->viewEntitys;
@@ -406,7 +406,7 @@ void R_LinkLightSurf( const drawSurf_t **link, const srfTriangles_t *tri, const 
 			// FIXME: share with the ambient surface?
 			float *regs = (float *)R_FrameAlloc( shader->GetNumRegisters() * sizeof( float ) );
 			drawSurf->shaderRegisters = regs;
-			shader->EvaluateRegisters( regs, space->entityDef->parms.shaderParms, tr.viewDef, space->entityDef->parms.referenceSound );
+			shader->EvaluateRegisters( regs, space->entityDef->GetShaderParms(), tr.viewDef, space->entityDef->GetReferenceSound() );
 		}
 	}
 
@@ -505,10 +505,10 @@ idScreenRect	R_CalcLightScissorRectangle( viewLight_t *vLight ) {
 	idPlane			eye, clip;
 	idVec3			ndc;
 
-	if ( vLight->lightDef->parms.pointLight ) {
+	if ( vLight->lightDef->GetPointLight() ) {
 		idBounds bounds;
 		idRenderLightLocal *lightDef = vLight->lightDef;
-		tr.viewDef->viewFrustum.ProjectionBounds( idBox( lightDef->parms.origin, lightDef->parms.lightRadius, lightDef->parms.axis ), bounds );
+		tr.viewDef->viewFrustum.ProjectionBounds( idBox( lightDef->GetOrigin(), lightDef->GetLightRadius(), lightDef->GetAxis() ), bounds );
 		return R_ScreenRectFromViewFrustumBounds( bounds );
 	}
 
@@ -594,14 +594,14 @@ void R_AddLightSurfaces( void ) {
 
 		// see if we are suppressing the light in this view
 		if ( !r_skipSuppress.GetBool() ) {
-			if ( light->parms.suppressLightInViewID
-			&& light->parms.suppressLightInViewID == tr.viewDef->renderView.viewID ) {
+			if ( light->GetSuppressLightInViewID()
+			&& light->GetSuppressLightInViewID() == tr.viewDef->renderView.viewID ) {
 				*ptr = vLight->next;
 				light->viewCount = -1;
 				continue;
 			}
-			if ( light->parms.allowLightInViewID 
-			&& light->parms.allowLightInViewID != tr.viewDef->renderView.viewID ) {
+			if ( light->GetAllowLightInViewID()
+			&& light->GetAllowLightInViewID() != tr.viewDef->renderView.viewID ) {
 				*ptr = vLight->next;
 				light->viewCount = -1;
 				continue;
@@ -611,7 +611,7 @@ void R_AddLightSurfaces( void ) {
 		// evaluate the light shader registers
 		float *lightRegs =(float *)R_FrameAlloc( lightShader->GetNumRegisters() * sizeof( float ) );
 		vLight->shaderRegisters = lightRegs;
-		lightShader->EvaluateRegisters( lightRegs, light->parms.shaderParms, tr.viewDef, light->parms.referenceSound );
+		lightShader->EvaluateRegisters( lightRegs, light->GetShaderParms(), tr.viewDef, light->GetReferenceSound() );
 
 		// if this is a purely additive light and no stage in the light shader evaluates
 		// to a positive light value, we can completely skip the light
@@ -719,12 +719,12 @@ bool R_IssueEntityDefCallback( idRenderEntityLocal *def ) {
 	def->archived = false;		// will need to be written to the demo file
 	tr.pc.c_entityDefCallbacks++;
 	if ( tr.viewDef ) {
-		update = def->parms.callback( &def->parms, &tr.viewDef->renderView );
+		update = def->GetCallback()( def, &tr.viewDef->renderView );
 	} else {
-		update = def->parms.callback( &def->parms, NULL );
+		update = def->GetCallback()( def, NULL );
 	}
 
-	if ( !def->parms.hModel ) {
+	if ( !def->GetModel() ) {
 		common->Error( "R_IssueEntityDefCallback: dynamic entity callback didn't set model" );
 	}
 
@@ -756,13 +756,13 @@ idRenderModel *R_EntityDefDynamicModel( idRenderEntityLocal *def ) {
 	bool callbackUpdate;
 
 	// allow deferred entities to construct themselves
-	if ( def->parms.callback ) {
+	if ( def->GetCallback() ) {
 		callbackUpdate = R_IssueEntityDefCallback( def );
 	} else {
 		callbackUpdate = false;
 	}
 
-	idRenderModel *model = def->parms.hModel;
+	idRenderModel *model = def->GetModel();
 
 	if ( !model ) {
 		common->Error( "R_EntityDefDynamicModel: NULL model" );
@@ -783,7 +783,7 @@ idRenderModel *R_EntityDefDynamicModel( idRenderEntityLocal *def ) {
 	if ( !def->dynamicModel ) {
 
 		// instantiate the snapshot of the dynamic model, possibly reusing memory from the cached snapshot
-		def->cachedDynamicModel = model->InstantiateDynamicModel( &def->parms, tr.viewDef, def->cachedDynamicModel );
+		def->cachedDynamicModel = model->InstantiateDynamicModel( def, tr.viewDef, def->cachedDynamicModel );
 
 		if ( def->cachedDynamicModel ) {
 
@@ -815,9 +815,9 @@ idRenderModel *R_EntityDefDynamicModel( idRenderEntityLocal *def ) {
 	if ( def->dynamicModel && model->DepthHack() != 0.0f && tr.viewDef ) {
 		idPlane eye, clip;
 		idVec3 ndc;
-		R_TransformModelToClip( def->parms.origin, tr.viewDef->worldSpace.modelViewMatrix, tr.viewDef->projectionMatrix, eye, clip );
+		R_TransformModelToClip( def->GetOrigin(), tr.viewDef->worldSpace.modelViewMatrix, tr.viewDef->projectionMatrix, eye, clip );
 		R_TransformClipToDevice( clip, tr.viewDef, ndc );
-		def->parms.modelDepthHack = model->DepthHack() * ( 1.0f - ndc.z );
+		def->SetModelDepthHack( model->DepthHack() * ( 1.0f - ndc.z ) );
 	}
 
 	// FIXME: if any of the surfaces have deforms, create a frame-temporary model with references to the
@@ -831,7 +831,7 @@ idRenderModel *R_EntityDefDynamicModel( idRenderEntityLocal *def ) {
 R_AddDrawSurf
 =================
 */
-void R_AddDrawSurf( const srfTriangles_t *tri, const viewEntity_t *space, const renderEntity_t *renderEntity,
+void R_AddDrawSurf( const srfTriangles_t *tri, const viewEntity_t *space, const idRenderEntity *renderEntity,
 					const idMaterial *shader, const idScreenRect &scissor ) {
 	drawSurf_t		*drawSurf;
 	const float		*shaderParms;
@@ -880,14 +880,14 @@ void R_AddDrawSurf( const srfTriangles_t *tri, const viewEntity_t *space, const 
 		// and use that for the parm0-parm3 of the current shader, which allows a stage of
 		// a light model and light flares to pick up different flashing tables from
 		// different light shaders
-		if ( renderEntity->referenceShader ) {
+		if ( renderEntity->GetReferenceShader() ) {
 			// evaluate the reference shader to find our shader parms
 			const shaderStage_t *pStage;
 
-			renderEntity->referenceShader->EvaluateRegisters( refRegs, renderEntity->shaderParms, tr.viewDef, renderEntity->referenceSound );
-			pStage = renderEntity->referenceShader->GetStage(0);
+			renderEntity->GetReferenceShader()->EvaluateRegisters( refRegs, renderEntity->GetShaderParms(), tr.viewDef, renderEntity->GetReferenceSound() );
+			pStage = renderEntity->GetReferenceShader()->GetStage(0);
 
-			memcpy( generatedShaderParms, renderEntity->shaderParms, sizeof( generatedShaderParms ) );
+			memcpy( generatedShaderParms, renderEntity->GetShaderParms(), sizeof( generatedShaderParms ) );
 			generatedShaderParms[0] = refRegs[ pStage->color.registers[0] ];
 			generatedShaderParms[1] = refRegs[ pStage->color.registers[1] ];
 			generatedShaderParms[2] = refRegs[ pStage->color.registers[2] ];
@@ -895,23 +895,23 @@ void R_AddDrawSurf( const srfTriangles_t *tri, const viewEntity_t *space, const 
 			shaderParms = generatedShaderParms;
 		} else {
 			// evaluate with the entityDef's shader parms
-			shaderParms = renderEntity->shaderParms;
+			shaderParms = renderEntity->GetShaderParms();
 		}
 
 		float oldFloatTime;
 		int oldTime;
 
-		if ( space->entityDef && space->entityDef->parms.timeGroup ) {
+		if ( space->entityDef && space->entityDef->GetTimeGroup() ) {
 			oldFloatTime = tr.viewDef->floatTime;
 			oldTime = tr.viewDef->renderView.time;
 
-			tr.viewDef->floatTime = game->GetTimeGroupTime( space->entityDef->parms.timeGroup ) * 0.001;
-			tr.viewDef->renderView.time = game->GetTimeGroupTime( space->entityDef->parms.timeGroup );
+			tr.viewDef->floatTime = game->GetTimeGroupTime( space->entityDef->GetTimeGroup() ) * 0.001;
+			tr.viewDef->renderView.time = game->GetTimeGroupTime( space->entityDef->GetTimeGroup() );
 		}
 
-		shader->EvaluateRegisters( regs, shaderParms, tr.viewDef, renderEntity->referenceSound );
+		shader->EvaluateRegisters( regs, shaderParms, tr.viewDef, renderEntity->GetReferenceSound() );
 
-		if ( space->entityDef && space->entityDef->parms.timeGroup ) {
+		if ( space->entityDef && space->entityDef->GetTimeGroup() ) {
 			tr.viewDef->floatTime = oldFloatTime;
 			tr.viewDef->renderView.time = oldTime;
 		}
@@ -938,7 +938,7 @@ void R_AddDrawSurf( const srfTriangles_t *tri, const viewEntity_t *space, const 
 	} else {
 		int guiNum = shader->GetEntityGui() - 1;
 		if ( guiNum >= 0 && guiNum < MAX_RENDERENTITY_GUI ) {
-			gui = renderEntity->gui[ guiNum ];
+			gui = renderEntity->GetGui( guiNum );
 		}
 		if ( gui == NULL ) {
 			gui = shader->GlobalGui();
@@ -994,7 +994,7 @@ static void R_AddAmbientDrawsurfs( viewEntity_t *vEntity ) {
 	if ( def->dynamicModel ) {
 		model = def->dynamicModel;
 	} else {
-		model = def->parms.hModel;
+		model = def->GetModel();
 	}
 
 	// add all the surfaces
@@ -1015,7 +1015,7 @@ static void R_AddAmbientDrawsurfs( viewEntity_t *vEntity ) {
 			continue;
 		}
 		shader = surf->shader;
-		shader = R_RemapShaderBySkin( shader, def->parms.customSkin, def->parms.customShader );
+		shader = R_RemapShaderBySkin( shader, def->GetCustomSkin(), def->GetCustomShader() );
 
 		R_GlobalShaderOverride( &shader );
 
@@ -1033,12 +1033,12 @@ static void R_AddAmbientDrawsurfs( viewEntity_t *vEntity ) {
 				for ( k = 0 ; k < 3 ; k++ ) {
 					if ( tri->verts[j].xyz[k] > tri->bounds[1][k] + CHECK_BOUNDS_EPSILON
 						|| tri->verts[j].xyz[k] < tri->bounds[0][k] - CHECK_BOUNDS_EPSILON ) {
-						common->Printf( "bad tri->bounds on %s:%s\n", def->parms.hModel->Name(), shader->GetName() );
+						common->Printf( "bad tri->bounds on %s:%s\n", def->GetModel()->Name(), shader->GetName() );
 						break;
 					}
 					if ( tri->verts[j].xyz[k] > def->referenceBounds[1][k] + CHECK_BOUNDS_EPSILON
 						|| tri->verts[j].xyz[k] < def->referenceBounds[0][k] - CHECK_BOUNDS_EPSILON ) {
-						common->Printf( "bad referenceBounds on %s:%s\n", def->parms.hModel->Name(), shader->GetName() );
+						common->Printf( "bad referenceBounds on %s:%s\n", def->GetModel()->Name(), shader->GetName() );
 						break;
 					}
 				}
@@ -1058,7 +1058,7 @@ static void R_AddAmbientDrawsurfs( viewEntity_t *vEntity ) {
 				return;
 			}
 			// add the surface for drawing
-			R_AddDrawSurf( tri, vEntity, &vEntity->entityDef->parms, shader, vEntity->scissorRect );
+			R_AddDrawSurf( tri, vEntity, vEntity->entityDef, shader, vEntity->scissorRect );
 
 			// ambientViewCount lets transient realtime lighting reject surfaces
 			// if the ambient surface isn't visible at all
@@ -1140,7 +1140,7 @@ static srfTriangles_t *R_CreateTransientLightTris( const idRenderEntityLocal *en
 	const bool allInside = tri->gpuSkinned || frontBits == ( ( 1 << 6 ) - 1 );
 	const bool includeBackFaces = tri->gpuSkinned || r_lightAllBackFaces.GetBool() ||
 		lightDef->lightShader->LightEffectsBackSides() || shader->ReceivesLightingOnBackSides() ||
-		entityDef->parms.noSelfShadow || entityDef->parms.noShadow;
+		entityDef->GetNoSelfShadow() || entityDef->GetNoShadow();
 
 	byte *facing = NULL;
 	if ( !includeBackFaces ) {
@@ -1237,7 +1237,7 @@ Adds frame-local realtime, fog, and blend-light surfaces for one visible entity.
 */
 static void R_AddTransientLightSurfaces( viewEntity_t *vEntity, const idRenderModel *model ) {
 	idRenderEntityLocal *entityDef = vEntity->entityDef;
-	const idBounds modelBounds = model->Bounds( &entityDef->parms );
+	const idBounds modelBounds = model->Bounds( entityDef );
 	const int numSurfaces = model->NumSurfaces();
 
 	for ( viewLight_t *vLight = tr.viewDef->viewLights; vLight; vLight = vLight->next ) {
@@ -1260,7 +1260,7 @@ static void R_AddTransientLightSurfaces( viewEntity_t *vEntity, const idRenderMo
 		R_GlobalPointToLocal( vEntity->modelMatrix, lightDef->globalLightOrigin, localLightOrigin );
 
 		const bool useBakedSurfaceLighting = lightDef->world && lightDef->world->hasBakedLightmaps &&
-			!r_skipBakedLightmaps.GetBool() && lightDef->parms.bakedLight && !lightDef->lightHasMoved;
+			!r_skipBakedLightmaps.GetBool() && lightDef->GetBakedLight() && !lightDef->lightHasMoved;
 
 		for ( int i = 0; i < numSurfaces; i++ ) {
 			const modelSurface_t *surface = model->Surface( i );
@@ -1270,7 +1270,7 @@ static void R_AddTransientLightSurfaces( viewEntity_t *vEntity, const idRenderMo
 			}
 
 			const idMaterial *shader = R_RemapShaderBySkin( surface->shader,
-				entityDef->parms.customSkin, entityDef->parms.customShader );
+				entityDef->GetCustomSkin(), entityDef->GetCustomShader() );
 			if ( !shader || !shader->ReceivesLighting() ||
 				shader->Spectrum() != vLight->lightShader->Spectrum() ) {
 				continue;
@@ -1313,7 +1313,7 @@ idScreenRect R_CalcEntityScissorRectangle( viewEntity_t *vEntity ) {
 	idBounds bounds;
 	idRenderEntityLocal *def = vEntity->entityDef;
 
-	tr.viewDef->viewFrustum.ProjectionBounds( idBox( def->referenceBounds, def->parms.origin, def->parms.axis ), bounds );
+	tr.viewDef->viewFrustum.ProjectionBounds( idBox( def->referenceBounds, def->GetOrigin(), def->GetAxis() ), bounds );
 
 	return R_ScreenRectFromViewFrustumBounds( bounds );
 }
@@ -1353,24 +1353,24 @@ void R_AddModelSurfaces( void ) {
 		float oldFloatTime;
 		int oldTime;
 
-		game->SelectTimeGroup( vEntity->entityDef->parms.timeGroup );
+		game->SelectTimeGroup( vEntity->entityDef->GetTimeGroup() );
 
-		if ( vEntity->entityDef->parms.timeGroup ) {
+		if ( vEntity->entityDef->GetTimeGroup() ) {
 			oldFloatTime = tr.viewDef->floatTime;
 			oldTime = tr.viewDef->renderView.time;
 
-			tr.viewDef->floatTime = game->GetTimeGroupTime( vEntity->entityDef->parms.timeGroup ) * 0.001;
-			tr.viewDef->renderView.time = game->GetTimeGroupTime( vEntity->entityDef->parms.timeGroup );
+			tr.viewDef->floatTime = game->GetTimeGroupTime( vEntity->entityDef->GetTimeGroup() ) * 0.001;
+			tr.viewDef->renderView.time = game->GetTimeGroupTime( vEntity->entityDef->GetTimeGroup() );
 		}
 
-		if ( tr.viewDef->isXraySubview && vEntity->entityDef->parms.xrayIndex == 1 ) {
-			if ( vEntity->entityDef->parms.timeGroup ) {
+		if ( tr.viewDef->isXraySubview && vEntity->entityDef->GetXrayIndex() == 1 ) {
+			if ( vEntity->entityDef->GetTimeGroup() ) {
 				tr.viewDef->floatTime = oldFloatTime;
 				tr.viewDef->renderView.time = oldTime;
 			}
 			continue;
-		} else if ( !tr.viewDef->isXraySubview && vEntity->entityDef->parms.xrayIndex == 2 ) {
-			if ( vEntity->entityDef->parms.timeGroup ) {
+		} else if ( !tr.viewDef->isXraySubview && vEntity->entityDef->GetXrayIndex() == 2 ) {
+			if ( vEntity->entityDef->GetTimeGroup() ) {
 				tr.viewDef->floatTime = oldFloatTime;
 				tr.viewDef->renderView.time = oldTime;
 			}
@@ -1381,7 +1381,7 @@ void R_AddModelSurfaces( void ) {
 		if ( !vEntity->scissorRect.IsEmpty() ) {
 			model = R_EntityDefDynamicModel( vEntity->entityDef );
 			if ( model == NULL || model->NumSurfaces() <= 0 ) {
-				if ( vEntity->entityDef->parms.timeGroup ) {
+				if ( vEntity->entityDef->GetTimeGroup() ) {
 					tr.viewDef->floatTime = oldFloatTime;
 					tr.viewDef->renderView.time = oldTime;
 				}
@@ -1393,7 +1393,7 @@ void R_AddModelSurfaces( void ) {
 			tr.pc.c_visibleViewEntities++;
 		}
 
-		if ( vEntity->entityDef->parms.timeGroup ) {
+		if ( vEntity->entityDef->GetTimeGroup() ) {
 			tr.viewDef->floatTime = oldFloatTime;
 			tr.viewDef->renderView.time = oldTime;
 		}

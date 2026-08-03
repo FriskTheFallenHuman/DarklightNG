@@ -55,7 +55,7 @@ idItem::idItem() {
 	inViewTime = 0;
 	lastCycle = 0;
 	lastRenderViewTime = -1;
-	itemShellHandle = -1;
+	itemShellDef = NULL;
 	shellMaterial = NULL;
 	orgOrigin.Zero();
 	canPickUp = true;
@@ -69,8 +69,8 @@ idItem::~idItem
 */
 idItem::~idItem() {
 	// remove the highlight shell
-	if ( itemShellHandle != -1 ) {
-		gameRenderWorld->FreeEntityDef( itemShellHandle );
+	if ( itemShellDef != NULL ) {
+		itemShellDef->FreeRenderEntity();
 	}
 }
 
@@ -113,7 +113,7 @@ void idItem::Restore( idRestoreGame *savefile ) {
 	savefile->ReadInt( lastCycle );
 	savefile->ReadInt( lastRenderViewTime );
 
-	itemShellHandle = -1;
+	itemShellDef = NULL;
 }
 
 /*
@@ -121,7 +121,7 @@ void idItem::Restore( idRestoreGame *savefile ) {
 idItem::UpdateRenderEntity
 ================
 */
-bool idItem::UpdateRenderEntity( renderEntity_s *renderEntity, const renderView_t *renderView ) const {
+bool idItem::UpdateRenderEntity( idRenderEntity *renderEntity, const renderView_t *renderView ) const {
 
 	if ( lastRenderViewTime == renderView->time ) {
 		return false;
@@ -130,7 +130,7 @@ bool idItem::UpdateRenderEntity( renderEntity_s *renderEntity, const renderView_
 	lastRenderViewTime = renderView->time;
 
 	// check for glow highlighting if near the center of the view
-	idVec3 dir = renderEntity->origin - renderView->vieworg;
+	idVec3 dir = renderEntity->GetOrigin() - renderView->vieworg;
 	dir.Normalize();
 	float d = dir * renderView->viewaxis[0];
 
@@ -155,19 +155,19 @@ bool idItem::UpdateRenderEntity( renderEntity_s *renderEntity, const renderView_
 
 	// fade down after the last pulse finishes 
 	if ( !inView && cycle > lastCycle ) {
-		renderEntity->shaderParms[4] = 0.0f;
+		renderEntity->SetShaderParm( 4, 0.0f );
 	} else {
 		// pulse up in 1/4 second
 		cycle -= (int)cycle;
 		if ( cycle < 0.1f ) {
-			renderEntity->shaderParms[4] = cycle * 10.0f;
+			renderEntity->SetShaderParm( 4, cycle * 10.0f );
 		} else if ( cycle < 0.2f ) {
-			renderEntity->shaderParms[4] = 1.0f;
+			renderEntity->SetShaderParm( 4, 1.0f );
 		} else if ( cycle < 0.3f ) {
-			renderEntity->shaderParms[4] = 1.0f - ( cycle - 0.2f ) * 10.0f;
+			renderEntity->SetShaderParm( 4, 1.0f - ( cycle - 0.2f ) * 10.0f );
 		} else {
 			// stay off between pulses
-			renderEntity->shaderParms[4] = 0.0f;
+			renderEntity->SetShaderParm( 4, 0.0f );
 		}
 	}
 
@@ -180,7 +180,7 @@ bool idItem::UpdateRenderEntity( renderEntity_s *renderEntity, const renderView_
 idItem::ModelCallback
 ================
 */
-bool idItem::ModelCallback( renderEntity_t *renderEntity, const renderView_t *renderView ) {
+bool idItem::ModelCallback( idRenderEntity *renderEntity, const renderView_t *renderView ) {
 	const idItem *ent;
 
 	// this may be triggered by a model trace or other non-view related source
@@ -188,7 +188,7 @@ bool idItem::ModelCallback( renderEntity_t *renderEntity, const renderView_t *re
 		return false;
 	}
 
-	ent = static_cast<idItem *>(gameLocal.entities[ renderEntity->entityNum ]);
+	ent = static_cast<idItem *>(gameLocal.entities[ renderEntity->GetEntityNum() ]);
 	if ( !ent ) {
 		gameLocal.Error( "idItem::ModelCallback: callback with NULL game entity" );
 	}
@@ -232,20 +232,16 @@ void idItem::Present( void ) {
 
 	if ( !fl.hidden && pulse ) {
 		// also add a highlight shell model
-		renderEntity_t	shell;
-
-		shell = renderEntity;
-
+		if ( itemShellDef == NULL ) {
+			itemShellDef = gameRenderWorld->AllocRenderEntity();
+		}
+		itemShellDef->CopyFrom( *renderEntity );
 		// we will mess with shader parms when the item is in view
 		// to give the "item pulse" effect
-		shell.callback = idItem::ModelCallback;
-		shell.entityNum = entityNumber;
-		shell.customShader = shellMaterial;
-		if ( itemShellHandle == -1 ) {
-			itemShellHandle = gameRenderWorld->AddEntityDef( &shell );
-		} else {
-			gameRenderWorld->UpdateEntityDef( itemShellHandle, &shell );
-		}
+		itemShellDef->SetCallback( idItem::ModelCallback );
+		itemShellDef->SetEntityNum( entityNumber );
+		itemShellDef->SetCustomShader( shellMaterial );
+		itemShellDef->UpdateRenderEntity();
 
 	}
 }
@@ -307,7 +303,7 @@ void idItem::Spawn( void ) {
 
 	inViewTime = -1000;
 	lastCycle = -1;
-	itemShellHandle = -1;
+	itemShellDef = NULL;
 	shellMaterial = declManager->FindMaterial( "itemHighlightShell" );
 }
 
@@ -373,9 +369,9 @@ bool idItem::Pickup( idPlayer *player ) {
 	Hide();
 
 	// add the highlight shell
-	if ( itemShellHandle != -1 ) {
-		gameRenderWorld->FreeEntityDef( itemShellHandle );
-		itemShellHandle = -1;
+	if ( itemShellDef != NULL ) {
+		itemShellDef->FreeRenderEntity();
+		itemShellDef = NULL;
 	}
 
 	float respawn = spawnArgs.GetFloat( "respawn" );
@@ -456,9 +452,9 @@ bool idItem::ClientReceiveEvent( int event, int time, const idBitMsg &msg ) {
 			Hide();
 
 			// remove the highlight shell
-			if ( itemShellHandle != -1 ) {
-				gameRenderWorld->FreeEntityDef( itemShellHandle );
-				itemShellHandle = -1;
+			if ( itemShellDef != NULL ) {
+				itemShellDef->FreeRenderEntity();
+				itemShellDef = NULL;
 			}
 			return true;
 		}
@@ -490,7 +486,7 @@ void idItem::Event_DropToFloor( void ) {
 		return;
 	}
 
-	gameLocal.clip.TraceBounds( trace, renderEntity.origin, renderEntity.origin - idVec3( 0, 0, 64 ), renderEntity.bounds, MASK_SOLID | CONTENTS_CORPSE, this );
+	gameLocal.clip.TraceBounds( trace, renderEntity->GetOrigin(), renderEntity->GetOrigin() - idVec3( 0, 0, 64 ), renderEntity->GetBounds(), MASK_SOLID | CONTENTS_CORPSE, this );
 	SetOrigin( trace.endpos );
 }
 
@@ -660,7 +656,7 @@ idItemTeam::idItemTeam() {
 	dropped		   = false;
 	lastDrop	   = 0;
 
-    itemGlowHandle = -1;
+    itemGlowDef = NULL;
 
 	skinDefault	= NULL;
 	skinCarried	= NULL;
@@ -713,30 +709,6 @@ void idItemTeam::Spawn( void ) {
 	scriptReturned	= LoadScript( "script_returned" );
 	scriptCaptured	= LoadScript( "script_captured" );
 
-	/* Spawn attached dlight */
-	/*
-	idDict args;
-	idVec3 lightOffset( 0.0f, 20.0f, 0.0f );
-
-	// Set up the flag's dynamic light
-	memset( &itemGlow, 0, sizeof( itemGlow ) );
-	itemGlow.axis = mat3_identity;
-	itemGlow.lightRadius.x = 128.0f;
-	itemGlow.lightRadius.y = itemGlow.lightRadius.z = itemGlow.lightRadius.x;
-	itemGlow.noShadows  = true;
-	itemGlow.pointLight = true;
-	itemGlow.shaderParms[ SHADERPARM_RED ] = 0.0f;
-	itemGlow.shaderParms[ SHADERPARM_GREEN ] = 0.0f;
-	itemGlow.shaderParms[ SHADERPARM_BLUE ] = 0.0f;
-	itemGlow.shaderParms[ SHADERPARM_ALPHA ] = 0.0f;
-
-	// Select a shader based on the team
-	if ( team == 0 )
-		itemGlow.shader = declManager->FindMaterial( "lights/redflag" );
-	else
-		itemGlow.shader = declManager->FindMaterial( "lights/blueflag" );
-	*/
-
 	idMoveableItem::Spawn();
 
 	physicsObj.SetContents( 0 );
@@ -774,15 +746,6 @@ void idItemTeam::Think( void ) {
 	idMoveableItem::Think();
 
 	TouchTriggers();
-
-	// TODO : only update on updatevisuals
-	/*idVec3 offset( 0.0f, 0.0f, 20.0f );
-	itemGlow.origin = GetPhysics()->GetOrigin() + offset;
-	if ( itemGlowHandle == -1 ) {
-		itemGlowHandle = gameRenderWorld->AddLightDef( &itemGlow );
-	} else {
-		gameRenderWorld->UpdateLightDef( itemGlowHandle, &itemGlow );
-	}*/
 
 #if 1
 	// should only the server do this?
@@ -954,15 +917,6 @@ void idItemTeam::PrivateReturn( void )
 
 	SetSkin( skinDefault );
 
-	// Turn off the light
-	/*itemGlow.shaderParms[ SHADERPARM_RED ] = 0.0f;
-	itemGlow.shaderParms[ SHADERPARM_GREEN ] = 0.0f;
-	itemGlow.shaderParms[ SHADERPARM_BLUE ] = 0.0f;
-	itemGlow.shaderParms[ SHADERPARM_ALPHA ] = 0.0f;
-
-	if ( itemGlowHandle != -1 ) 
-		gameRenderWorld->UpdateLightDef( itemGlowHandle, &itemGlow );*/
-
 	GetPhysics()->SetLinearVelocity( idVec3(0, 0, 0) );
 	GetPhysics()->SetAngularVelocity( idVec3(0, 0, 0) );
 }
@@ -999,15 +953,6 @@ void idItemTeam::Event_TakeFlag( idPlayer * player ) {
 	idAngles angle( g_flagAttachAngleX.GetFloat(), g_flagAttachAngleY.GetFloat(), g_flagAttachAngleZ.GetFloat() );
 	SetAngles( angle );
 	SetOrigin( origin );
-
-	// Turn the light on
-	/*itemGlow.shaderParms[ SHADERPARM_RED ] = 1.0f;
-	itemGlow.shaderParms[ SHADERPARM_GREEN ] = 1.0f;
-	itemGlow.shaderParms[ SHADERPARM_BLUE ] = 1.0f;
-	itemGlow.shaderParms[ SHADERPARM_ALPHA ] = 1.0f;
-
-	if ( itemGlowHandle != -1 )
-		gameRenderWorld->UpdateLightDef( itemGlowHandle, &itemGlow );*/
 
 	if ( scriptTaken ) {
 		idThread *thread = new idThread();
@@ -1211,9 +1156,9 @@ idItemTeam::FreeLightDef
 ================
 */
 void idItemTeam::FreeLightDef( void ) {
-	if ( itemGlowHandle != -1 ) {
-		gameRenderWorld->FreeLightDef( itemGlowHandle );
-		itemGlowHandle = -1;
+	if ( itemGlowDef != NULL ) {
+		itemGlowDef->FreeRenderLight();
+		itemGlowDef = NULL;
 	}
 }
 
@@ -1913,7 +1858,7 @@ void idMoveableItem::Gib( const idVec3 &dir, const char *damageDefName ) {
 	const char *smokeName = spawnArgs.GetString( "smoke_gib" );
 	if ( *smokeName != '\0' ) {
 		const idDeclParticle *smoke = static_cast<const idDeclParticle *>( declManager->FindType( DECL_PARTICLE, smokeName ) );
-		gameLocal.smokeParticles->EmitSmoke( smoke, gameLocal.time, gameLocal.random.CRandomFloat(), renderEntity.origin, renderEntity.axis, timeGroup /*_D3XP*/ );
+		gameLocal.smokeParticles->EmitSmoke( smoke, gameLocal.time, gameLocal.random.CRandomFloat(), renderEntity->GetOrigin(), renderEntity->GetAxis(), timeGroup /*_D3XP*/ );
 	}
 	// remove the entity
 	PostEventMS( &EV_Remove, 0 );

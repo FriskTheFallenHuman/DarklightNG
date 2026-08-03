@@ -59,19 +59,19 @@ public:
 							idClipModel( void );
 							explicit idClipModel( const char *name );
 							explicit idClipModel( const idTraceModel &trm );
-							explicit idClipModel( const int renderModelHandle );
+							explicit idClipModel( idRenderEntity *renderModel );
 							explicit idClipModel( const idClipModel *model );
 							~idClipModel( void );
 
 	bool					LoadModel( const char *name );
 	void					LoadModel( const idTraceModel &trm );
-	void					LoadModel( const int renderModelHandle );
+	void					LoadModel( idRenderEntity *renderModel );
 
 	void					Save( idSaveGame *savefile ) const;
 	void					Restore( idRestoreGame *savefile );
 
 	void					Link( idClip &clp );				// must have been linked with an entity and id before
-	void					Link( idClip &clp, idEntity *ent, int newId, const idVec3 &newOrigin, const idMat3 &newAxis, int renderModelHandle = -1 );
+	void					Link( idClip &clp, idEntity *ent, int newId, const idVec3 &newOrigin, const idMat3 &newAxis, idRenderEntity *renderModel = NULL );
 	void					Unlink( void );						// unlink from sectors
 	void					SetPosition( const idVec3 &newOrigin, const idMat3 &newAxis );	// unlinks the clip model
 	void					Translate( const idVec3 &translation );							// unlinks the clip model
@@ -121,7 +121,7 @@ private:
 	int						contents;				// all contents ored together
 	cmHandle_t				collisionModelHandle;	// handle to collision model
 	int						traceModelIndex;		// trace model used for collision detection
-	int						renderModelHandle;		// render model def handle
+	idRenderEntity *		renderModel;			// renderer-owned model entity
 
 	struct clipLink_s *		clipLinks;				// links into sectors
 	int						touchCount;
@@ -212,7 +212,7 @@ ID_INLINE const idMat3 &idClipModel::GetAxis( void ) const {
 }
 
 ID_INLINE bool idClipModel::IsRenderModel( void ) const {
-	return ( renderModelHandle != -1 );
+	return ( renderModel != NULL );
 }
 
 ID_INLINE bool idClipModel::IsTraceModel( void ) const {

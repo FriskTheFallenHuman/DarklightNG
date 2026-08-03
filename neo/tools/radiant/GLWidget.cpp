@@ -382,7 +382,6 @@ void idGLDrawableMaterial::draw(int x, int y, int w, int h) {
 
 		if (worldDirty) {
 			InitWorld();
-			renderLight_t	parms;
 			idDict spawnArgs;
 			spawnArgs.Set("classname", "light");
 			spawnArgs.Set("name", "light_1");
@@ -390,8 +389,9 @@ void idGLDrawableMaterial::draw(int x, int y, int w, int h) {
 			idStr str;
 			sprintf(str, "%f %f %f", light, light, light);
 			spawnArgs.Set("_color", str);
-			gameEdit->ParseSpawnArgsToRenderLight( &spawnArgs, &parms );
-			lightDef = world->AddLightDef( &parms );
+			lightDef = world->AllocRenderLight();
+			gameEdit->ParseSpawnArgsToRenderLight( &spawnArgs, lightDef );
+			lightDef->UpdateRenderLight();
 
 			idImage *img = (mat->GetNumStages() > 0) ? mat->GetStage(0)->texture.image : mat->GetEditorImage();
 
@@ -447,19 +447,17 @@ void idGLDrawableMaterial::draw(int x, int y, int w, int h) {
 
 			worldModel->FinishSurfaces();
 			
-			renderEntity_t worldEntity;
-
-			memset( &worldEntity, 0, sizeof( worldEntity ) );
+			modelDef = world->AllocRenderEntity();
 			if ( mat->HasGui() ) {
-				worldEntity.gui[ 0 ] = mat->GlobalGui();
+				modelDef->SetGui( 0, mat->GlobalGui() );
 			}
-			worldEntity.hModel = worldModel;
-			worldEntity.axis = mat3_default;
-			worldEntity.shaderParms[0] = 1;
-			worldEntity.shaderParms[1] = 1;
-			worldEntity.shaderParms[2] = 1;
-			worldEntity.shaderParms[3] = 1;
-			modelDef = world->AddEntityDef( &worldEntity );
+			modelDef->SetModel( worldModel );
+			modelDef->SetAxis( mat3_default );
+			modelDef->SetShaderParm( SHADERPARM_RED, 1.0f );
+			modelDef->SetShaderParm( SHADERPARM_GREEN, 1.0f );
+			modelDef->SetShaderParm( SHADERPARM_BLUE, 1.0f );
+			modelDef->SetShaderParm( SHADERPARM_ALPHA, 1.0f );
+			modelDef->UpdateRenderEntity();
 
 			worldDirty = false;
 		}
@@ -658,7 +656,9 @@ void idGLDrawableModel::draw(int x, int y, int w, int h) {
 	if (worldDirty) {
 		//InitWorld();
 		world->InitFromMap( NULL );
-		renderLight_t	parms;
+		worldModelDef = NULL;
+		lightDef = NULL;
+		modelDef = NULL;
 		idDict spawnArgs;
 		spawnArgs.Set("classname", "light");
 		spawnArgs.Set("name", "light_1");
@@ -666,11 +666,11 @@ void idGLDrawableModel::draw(int x, int y, int w, int h) {
 		idStr str;
 		sprintf(str, "%f %f %f", light, light, light);
 		spawnArgs.Set("_color", str);
-		gameEdit->ParseSpawnArgsToRenderLight( &spawnArgs, &parms );
-		lightDef = world->AddLightDef( &parms );
+		lightDef = world->AllocRenderLight();
+		gameEdit->ParseSpawnArgsToRenderLight( &spawnArgs, lightDef );
+		lightDef->UpdateRenderLight();
 
-		renderEntity_t worldEntity;
-		memset( &worldEntity, 0, sizeof( worldEntity ) );
+		modelDef = world->AllocRenderEntity();
 		spawnArgs.Clear();
 		spawnArgs.Set("classname", "func_static");
 		spawnArgs.Set("name", spawnArgs.GetString("model"));
@@ -678,16 +678,16 @@ void idGLDrawableModel::draw(int x, int y, int w, int h) {
 		if ( skinStr.Length() ) {
 			spawnArgs.Set( "skin", skinStr );
 		}
-		gameEdit->ParseSpawnArgsToRenderEntity(&spawnArgs, &worldEntity);
-		worldEntity.hModel = worldModel;
+		gameEdit->ParseSpawnArgsToRenderEntity(&spawnArgs, modelDef);
+		modelDef->SetModel( worldModel );
 
-		worldEntity.axis = rotation.ToMat3();
+		modelDef->SetAxis( rotation.ToMat3() );
 
-		worldEntity.shaderParms[0] = 1;
-		worldEntity.shaderParms[1] = 1;
-		worldEntity.shaderParms[2] = 1;
-		worldEntity.shaderParms[3] = 1;
-		modelDef = world->AddEntityDef( &worldEntity );
+		modelDef->SetShaderParm( SHADERPARM_RED, 1.0f );
+		modelDef->SetShaderParm( SHADERPARM_GREEN, 1.0f );
+		modelDef->SetShaderParm( SHADERPARM_BLUE, 1.0f );
+		modelDef->SetShaderParm( SHADERPARM_ALPHA, 1.0f );
+		modelDef->UpdateRenderEntity();
 
 		worldDirty = false;
 	}
@@ -927,11 +927,21 @@ BOOL idGLWidget::OnEraseBkgnd(CDC* pDC)
 idGLDrawableWorld::idGLDrawableWorld() {
 	world = NULL;
 	worldModel = NULL;
+	worldModelDef = NULL;
+	lightDef = NULL;
+	modelDef = NULL;
 	InitWorld();
 }
 
 idGLDrawableWorld::~idGLDrawableWorld() {
-	delete world;
+	if ( world != NULL ) {
+		renderSystem->FreeRenderWorld( world );
+		world = NULL;
+	}
+	if ( worldModel != NULL ) {
+		renderModelManager->FreeModel( worldModel );
+		worldModel = NULL;
+	}
 }
 
 void idGLDrawableWorld::AddTris(srfTriangles_t *tris, const idMaterial *mat) {
@@ -953,5 +963,8 @@ void idGLDrawableWorld::InitWorld() {
 		worldModel = renderModelManager->AllocModel();
 	}
 	world->InitFromMap( NULL );
+	worldModelDef = NULL;
+	lightDef = NULL;
+	modelDef = NULL;
 	worldModel->InitEmpty( va( "GLWorldModel_%i", Sys_Milliseconds() ) );
 }

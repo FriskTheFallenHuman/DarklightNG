@@ -102,8 +102,7 @@ protected:
 	int						thrust_end;
 	float					damagePower;
 
-	renderLight_t			renderLight;
-	qhandle_t				lightDefHandle;				// handle to renderer light def
+	idRenderLight *			renderLight;
 	idVec3					lightOffset;
 	int						lightStartTime;
 	int						lightEndTime;
@@ -214,8 +213,9 @@ private:
 
 struct beamTarget_t {
 	idEntityPtr<idEntity>	target;
-	renderEntity_t			renderEntity;
-	qhandle_t				modelDefHandle;
+	idRenderEntity *		renderEntity;
+
+							beamTarget_t() : renderEntity( NULL ) {}
 };
 
 D3_CLASS()
@@ -236,8 +236,7 @@ public :
 
 private:
 	idList<beamTarget_t>	beamTargets;
-	renderEntity_t			secondModel;
-	qhandle_t				secondModelDefHandle;
+	idRenderEntity *		secondModel;
 	int						nextDamageTime;
 	idStr					damageFreq;
 

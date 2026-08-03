@@ -79,11 +79,11 @@ typedef enum {
 	POR_Z
 } prtOrientation_t;
 
-typedef struct renderEntity_s renderEntity_t;
+class idRenderEntity;
 typedef struct renderView_s renderView_t;
 
 typedef struct {
-	const renderEntity_t *	renderEnt;			// for shaderParms, etc
+	const idRenderEntity *	renderEnt;			// for shader parameters, etc
 	const renderView_t *	renderView;
 	int						index;				// particle number in the system
 	float					frac;				// 0.0 to 1.0

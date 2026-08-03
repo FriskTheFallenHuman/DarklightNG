@@ -55,7 +55,7 @@ idProjectile::idProjectile
 */
 idProjectile::idProjectile( void ) {
 	owner				= NULL;
-	lightDefHandle		= -1;
+	renderLight			= gameRenderWorld->AllocRenderLight();
 	thrust				= 0.0f;
 	thrust_end			= 0;
 	smokeFly			= NULL;
@@ -68,7 +68,6 @@ idProjectile::idProjectile( void ) {
 	state				= SPAWNED;
 	damagePower			= 1.0f;
 	memset( &projectileFlags, 0, sizeof( projectileFlags ) );
-	memset( &renderLight, 0, sizeof( renderLight ) );
 
 	// note: for net_instanthit projectiles, we will force this back to false at spawn time
 	fl.networkSync		= true;
@@ -106,8 +105,10 @@ void idProjectile::Save( idSaveGame *savefile ) const {
 	savefile->WriteFloat( thrust );
 	savefile->WriteInt( thrust_end );
 
-	savefile->WriteRenderLight( renderLight );
-	savefile->WriteInt( (int)lightDefHandle );
+	savefile->WriteBool( renderLight != NULL );
+	if ( renderLight != NULL ) {
+		savefile->WriteRenderLight( *renderLight );
+	}
 	savefile->WriteVec3( lightOffset );
 	savefile->WriteInt( lightStartTime );
 	savefile->WriteInt( lightEndTime );
@@ -141,8 +142,16 @@ void idProjectile::Restore( idRestoreGame *savefile ) {
 	savefile->ReadFloat( thrust );
 	savefile->ReadInt( thrust_end );
 
-	savefile->ReadRenderLight( renderLight );
-	savefile->ReadInt( (int &)lightDefHandle );
+	bool hadRenderLight;
+	savefile->ReadBool( hadRenderLight );
+	if ( renderLight != NULL ) {
+		renderLight->FreeRenderLight();
+		renderLight = NULL;
+	}
+	if ( hadRenderLight ) {
+		renderLight = gameRenderWorld->AllocRenderLight();
+		savefile->ReadRenderLight( *renderLight );
+	}
 	savefile->ReadVec3( lightOffset );
 	savefile->ReadInt( lightStartTime );
 	savefile->ReadInt( lightEndTime );
@@ -170,8 +179,8 @@ void idProjectile::Restore( idRestoreGame *savefile ) {
 		gameLocal.smokeParticles->EmitSmoke( smokeFly, gameLocal.time, gameLocal.random.RandomFloat(), GetPhysics()->GetOrigin(), GetPhysics()->GetAxis(), timeGroup /*_D3XP*/ );
 	}
 
-	if ( lightDefHandle >= 0 ) {
-		lightDefHandle = gameRenderWorld->AddLightDef( &renderLight );
+	if ( renderLight != NULL ) {
+		renderLight->UpdateRenderLight();
 	}
 }
 
@@ -212,19 +221,22 @@ void idProjectile::Create( idEntity *owner, const idVec3 &start, const idVec3 &d
 
 	this->owner = owner;
 
-	memset( &renderLight, 0, sizeof( renderLight ) );
+	if ( renderLight == NULL ) {
+		renderLight = gameRenderWorld->AllocRenderLight();
+	} else {
+		renderLight->Reset();
+	}
 	shaderName = spawnArgs.GetString( "mtr_light_shader" );
 	if ( *(const char *)shaderName ) {
-		renderLight.shader = declManager->FindMaterial( shaderName, false );
-		renderLight.pointLight = true;
-		renderLight.lightRadius[0] =
-		renderLight.lightRadius[1] =
-		renderLight.lightRadius[2] = spawnArgs.GetFloat( "light_radius" );
+		renderLight->SetShader( declManager->FindMaterial( shaderName, false ) );
+		renderLight->SetPointLight( true );
+		const float radius = spawnArgs.GetFloat( "light_radius" );
+		renderLight->SetLightRadius( idVec3( radius, radius, radius ) );
 		spawnArgs.GetVector( "light_color", "1 1 1", light_color );
-		renderLight.shaderParms[0] = light_color[0];
-		renderLight.shaderParms[1] = light_color[1];
-		renderLight.shaderParms[2] = light_color[2];
-		renderLight.shaderParms[3] = 1.0f;
+		for ( int i = 0; i < 3; i++ ) {
+			renderLight->SetShaderParm( i, light_color[i] );
+		}
+		renderLight->SetShaderParm( 3, 1.0f );
 	}
 
 	spawnArgs.GetVector( "light_offset", "0 0 0", lightOffset );
@@ -236,7 +248,7 @@ void idProjectile::Create( idEntity *owner, const idVec3 &start, const idVec3 &d
 	damagePower = 1.0f;
 
 	if(spawnArgs.GetBool("reset_time_offset", "0")) {
-		renderEntity.shaderParms[ SHADERPARM_TIMEOFFSET ] = -MS2SEC( gameLocal.time );
+		renderEntity->SetShaderParm( SHADERPARM_TIMEOFFSET, -MS2SEC( gameLocal.time ) );
 	}
 
 	UpdateVisuals();
@@ -264,9 +276,9 @@ idProjectile::FreeLightDef
 =================
 */
 void idProjectile::FreeLightDef( void ) {
-	if ( lightDefHandle != -1 ) {
-		gameRenderWorld->FreeLightDef( lightDefHandle );
-		lightDefHandle = -1;
+	if ( renderLight != NULL ) {
+		renderLight->FreeRenderLight();
+		renderLight = NULL;
 	}
 }
 
@@ -428,7 +440,7 @@ void idProjectile::Launch( const idVec3 &start, const idVec3 &dir, const idVec3 
 	if ( projectileFlags.randomShaderSpin ) {
 		float f = gameLocal.random.RandomFloat();
 		f *= 0.5f;
-		renderEntity.shaderParms[SHADERPARM_DIVERSITY] = f;
+		renderEntity->SetShaderParm( SHADERPARM_DIVERSITY, f );
 	}
 
 	UpdateVisuals();
@@ -467,24 +479,20 @@ void idProjectile::Think( void ) {
 	}
 
 	// add the light
-	if ( renderLight.lightRadius.x > 0.0f && g_projectileLights.GetBool() ) {
-		renderLight.origin = GetPhysics()->GetOrigin() + GetPhysics()->GetAxis() * lightOffset;
-		renderLight.axis = GetPhysics()->GetAxis();
-		if ( ( lightDefHandle != -1 ) ) {
-			if ( lightEndTime > 0 && gameLocal.time <= lightEndTime + gameLocal.GetMSec() ) {
+	if ( renderLight != NULL && renderLight->GetLightRadius().x > 0.0f && g_projectileLights.GetBool() ) {
+		renderLight->SetOrigin( GetPhysics()->GetOrigin() + GetPhysics()->GetAxis() * lightOffset );
+		renderLight->SetAxis( GetPhysics()->GetAxis() );
+		if ( lightEndTime > 0 && gameLocal.time <= lightEndTime + gameLocal.GetMSec() ) {
 				idVec3 color( 0, 0, 0 );
 				if ( gameLocal.time < lightEndTime ) {
 					float frac = ( float )( gameLocal.time - lightStartTime ) / ( float )( lightEndTime - lightStartTime );
 					color.Lerp( lightColor, color, frac );
 				} 
-				renderLight.shaderParms[SHADERPARM_RED] = color.x;
-				renderLight.shaderParms[SHADERPARM_GREEN] = color.y;
-				renderLight.shaderParms[SHADERPARM_BLUE] = color.z;
-			} 
-			gameRenderWorld->UpdateLightDef( lightDefHandle, &renderLight );
-		} else {
-			lightDefHandle = gameRenderWorld->AddLightDef( &renderLight );
-		}
+				renderLight->SetShaderParm( SHADERPARM_RED, color.x );
+				renderLight->SetShaderParm( SHADERPARM_GREEN, color.y );
+				renderLight->SetShaderParm( SHADERPARM_BLUE, color.z );
+			}
+		renderLight->UpdateRenderLight();
 	}
 }
 
@@ -861,12 +869,12 @@ void idProjectile::Explode( const trace_t &collision, idEntity *ignore ) {
 
 	if ( fxname && *fxname ) {
 		SetModel( fxname );
-		renderEntity.shaderParms[SHADERPARM_RED] = 
-		renderEntity.shaderParms[SHADERPARM_GREEN] = 
-		renderEntity.shaderParms[SHADERPARM_BLUE] = 
-		renderEntity.shaderParms[SHADERPARM_ALPHA] = 1.0f;
-		renderEntity.shaderParms[SHADERPARM_TIMEOFFSET] = -MS2SEC( gameLocal.time );
-		renderEntity.shaderParms[SHADERPARM_DIVERSITY] = gameLocal.random.CRandomFloat();
+		renderEntity->SetShaderParm( SHADERPARM_RED, 1.0f );
+		renderEntity->SetShaderParm( SHADERPARM_GREEN, 1.0f );
+		renderEntity->SetShaderParm( SHADERPARM_BLUE, 1.0f );
+		renderEntity->SetShaderParm( SHADERPARM_ALPHA, 1.0f );
+		renderEntity->SetShaderParm( SHADERPARM_TIMEOFFSET, -MS2SEC( gameLocal.time ) );
+		renderEntity->SetShaderParm( SHADERPARM_DIVERSITY, gameLocal.random.CRandomFloat() );
 		Show();
 		removeTime = ( removeTime > 3000 ) ? removeTime : 3000;
 	}
@@ -882,29 +890,27 @@ void idProjectile::Explode( const trace_t &collision, idEntity *ignore ) {
 #endif        
     
 	if ( *light_shader ) {
-		renderLight.shader = declManager->FindMaterial( light_shader, false );
-		renderLight.pointLight = true;
-		renderLight.lightRadius[0] =
-		renderLight.lightRadius[1] =
-		renderLight.lightRadius[2] = spawnArgs.GetFloat( "explode_light_radius" );
+		renderLight->SetShader( declManager->FindMaterial( light_shader, false ) );
+		renderLight->SetPointLight( true );
+		float explodeRadius = spawnArgs.GetFloat( "explode_light_radius" );
+		renderLight->SetLightRadius( idVec3( explodeRadius, explodeRadius, explodeRadius ) );
 
 #ifdef CTF
         // Midnight ctf
         if ( gameLocal.mpGame.IsGametypeFlagBased() && gameLocal.serverInfo.GetBool("si_midnight") )
         {
-            renderLight.lightRadius[0] =
-            renderLight.lightRadius[1] =
-            renderLight.lightRadius[2] = spawnArgs.GetFloat( "explode_light_radius" ) * 2;
+			explodeRadius *= 2.0f;
+			renderLight->SetLightRadius( idVec3( explodeRadius, explodeRadius, explodeRadius ) );
         }
         
 #endif        
         
 		spawnArgs.GetVector( "explode_light_color", "1 1 1", lightColor );
-		renderLight.shaderParms[SHADERPARM_RED] = lightColor.x;
-		renderLight.shaderParms[SHADERPARM_GREEN] = lightColor.y;
-		renderLight.shaderParms[SHADERPARM_BLUE] = lightColor.z;
-		renderLight.shaderParms[SHADERPARM_ALPHA] = 1.0f;
-		renderLight.shaderParms[SHADERPARM_TIMEOFFSET] = -MS2SEC( gameLocal.time );
+		renderLight->SetShaderParm( SHADERPARM_RED, lightColor.x );
+		renderLight->SetShaderParm( SHADERPARM_GREEN, lightColor.y );
+		renderLight->SetShaderParm( SHADERPARM_BLUE, lightColor.z );
+		renderLight->SetShaderParm( SHADERPARM_ALPHA, 1.0f );
+		renderLight->SetShaderParm( SHADERPARM_TIMEOFFSET, -MS2SEC( gameLocal.time ) );
 
 #ifdef CTF
         // Midnight ctf
@@ -1200,7 +1206,7 @@ idProjectile::ClientPredictionThink
 ================
 */
 void idProjectile::ClientPredictionThink( void ) {
-	if ( !renderEntity.hModel ) {
+	if ( !renderEntity->GetModel() ) {
 		return;
 	}
 	Think();
@@ -1277,7 +1283,7 @@ void idProjectile::ReadFromSnapshot( const idBitMsgDelta &msg ) {
 			case FIZZLED:
 			case EXPLODED: {
 				StopSound( SND_CHANNEL_BODY2, false );
-				gameEdit->ParseSpawnArgsToRenderEntity( &spawnArgs, &renderEntity );
+				gameEdit->ParseSpawnArgsToRenderEntity( &spawnArgs, renderEntity );
 				state = SPAWNED;
 				break;
 			}
@@ -1813,8 +1819,7 @@ idBFGProjectile::idBFGProjectile
 =================
 */
 idBFGProjectile::idBFGProjectile() {
-	memset( &secondModel, 0, sizeof( secondModel ) );
-	secondModelDefHandle = -1;
+	secondModel = NULL;
 	nextDamageTime = 0;
 }
 
@@ -1826,9 +1831,9 @@ idBFGProjectile::~idBFGProjectile
 idBFGProjectile::~idBFGProjectile() {
 	FreeBeams();
 
-	if ( secondModelDefHandle >= 0 ) {
-		gameRenderWorld->FreeEntityDef( secondModelDefHandle );
-		secondModelDefHandle = -1;
+	if ( secondModel != NULL ) {
+		secondModel->FreeRenderEntity();
+		secondModel = NULL;
 	}
 }
 
@@ -1839,19 +1844,7 @@ idBFGProjectile::Spawn
 */
 void idBFGProjectile::Spawn( void ) {
 	beamTargets.Clear();
-	memset( &secondModel, 0, sizeof( secondModel ) );
-	secondModelDefHandle = -1;
-	const char *temp = spawnArgs.GetString( "model_two" );
-	if ( temp && *temp ) {
-		secondModel.hModel = renderModelManager->FindModel( temp );
-		secondModel.bounds = secondModel.hModel->Bounds( &secondModel );
-		secondModel.shaderParms[ SHADERPARM_RED ] =
-		secondModel.shaderParms[ SHADERPARM_GREEN ] =
-		secondModel.shaderParms[ SHADERPARM_BLUE ] =
-		secondModel.shaderParms[ SHADERPARM_ALPHA ] = 1.0f;
-		secondModel.noSelfShadow = true;
-		secondModel.noShadow = true;
-	}
+	secondModel = NULL;
 	nextDamageTime = 0;
 	damageFreq = NULL;
 }
@@ -1867,12 +1860,16 @@ void idBFGProjectile::Save( idSaveGame *savefile ) const {
 	savefile->WriteInt( beamTargets.Num() );
 	for ( i = 0; i < beamTargets.Num(); i++ ) {
 		beamTargets[i].target.Save( savefile );
-		savefile->WriteRenderEntity( beamTargets[i].renderEntity );
-		savefile->WriteInt( beamTargets[i].modelDefHandle );
+		savefile->WriteBool( beamTargets[i].renderEntity != NULL );
+		if ( beamTargets[i].renderEntity != NULL ) {
+			savefile->WriteRenderEntity( *beamTargets[i].renderEntity );
+		}
 	}
 
-	savefile->WriteRenderEntity( secondModel );
-	savefile->WriteInt( secondModelDefHandle );
+	savefile->WriteBool( secondModel != NULL );
+	if ( secondModel != NULL ) {
+		savefile->WriteRenderEntity( *secondModel );
+	}
 	savefile->WriteInt( nextDamageTime );
 	savefile->WriteString( damageFreq );
 }
@@ -1889,22 +1886,26 @@ void idBFGProjectile::Restore( idRestoreGame *savefile ) {
 	beamTargets.SetNum( num );
 	for ( i = 0; i < num; i++ ) {
 		beamTargets[i].target.Restore( savefile );
-		savefile->ReadRenderEntity( beamTargets[i].renderEntity );
-		savefile->ReadInt( beamTargets[i].modelDefHandle );
-
-		if ( beamTargets[i].modelDefHandle >= 0 ) {
-			beamTargets[i].modelDefHandle = gameRenderWorld->AddEntityDef( &beamTargets[i].renderEntity );
+		bool hadRenderEntity;
+		savefile->ReadBool( hadRenderEntity );
+		beamTargets[i].renderEntity = NULL;
+		if ( hadRenderEntity ) {
+			beamTargets[i].renderEntity = gameRenderWorld->AllocRenderEntity();
+			savefile->ReadRenderEntity( *beamTargets[i].renderEntity );
+			beamTargets[i].renderEntity->UpdateRenderEntity();
 		}
 	}
 
-	savefile->ReadRenderEntity( secondModel );
-	savefile->ReadInt( secondModelDefHandle );
+	bool hadSecondModel;
+	savefile->ReadBool( hadSecondModel );
+	secondModel = NULL;
+	if ( hadSecondModel ) {
+		secondModel = gameRenderWorld->AllocRenderEntity();
+		savefile->ReadRenderEntity( *secondModel );
+		secondModel->UpdateRenderEntity();
+	}
 	savefile->ReadInt( nextDamageTime );
 	savefile->ReadString( damageFreq );
-
-	if ( secondModelDefHandle >= 0 ) {
-		secondModelDefHandle = gameRenderWorld->AddEntityDef( &secondModel );
-	}
 }
 
 /*
@@ -1914,9 +1915,9 @@ idBFGProjectile::FreeBeams
 */
 void idBFGProjectile::FreeBeams() {
 	for ( int i = 0; i < beamTargets.Num(); i++ ) {
-		if ( beamTargets[i].modelDefHandle >= 0 ) {
-			gameRenderWorld->FreeEntityDef( beamTargets[i].modelDefHandle );
-			beamTargets[i].modelDefHandle = -1;
+		if ( beamTargets[i].renderEntity != NULL ) {
+			beamTargets[i].renderEntity->FreeRenderEntity();
+			beamTargets[i].renderEntity = NULL;
 		}
 	}
 
@@ -1958,14 +1959,14 @@ void idBFGProjectile::Think( void ) {
 			} else {
 				org = beamEnt->GetPhysics()->GetAbsBounds().GetCenter();
 			}
-			beamTargets[i].renderEntity.origin = GetPhysics()->GetOrigin();
-			beamTargets[i].renderEntity.shaderParms[ SHADERPARM_BEAM_END_X ] = org.x;
-			beamTargets[i].renderEntity.shaderParms[ SHADERPARM_BEAM_END_Y ] = org.y;
-			beamTargets[i].renderEntity.shaderParms[ SHADERPARM_BEAM_END_Z ] = org.z;
-			beamTargets[i].renderEntity.shaderParms[ SHADERPARM_RED ] = 
-			beamTargets[i].renderEntity.shaderParms[ SHADERPARM_GREEN ] = 
-			beamTargets[i].renderEntity.shaderParms[ SHADERPARM_BLUE ] = 
-			beamTargets[i].renderEntity.shaderParms[ SHADERPARM_ALPHA ] = 1.0f;
+			beamTargets[i].renderEntity->SetOrigin( GetPhysics()->GetOrigin() );
+			beamTargets[i].renderEntity->SetShaderParm( SHADERPARM_BEAM_END_X, org.x );
+			beamTargets[i].renderEntity->SetShaderParm( SHADERPARM_BEAM_END_Y, org.y );
+			beamTargets[i].renderEntity->SetShaderParm( SHADERPARM_BEAM_END_Z, org.z );
+			beamTargets[i].renderEntity->SetShaderParm( SHADERPARM_RED, 1.0f );
+			beamTargets[i].renderEntity->SetShaderParm( SHADERPARM_GREEN, 1.0f );
+			beamTargets[i].renderEntity->SetShaderParm( SHADERPARM_BLUE, 1.0f );
+			beamTargets[i].renderEntity->SetShaderParm( SHADERPARM_ALPHA, 1.0f );
 			if ( gameLocal.time > nextDamageTime ) {
 				bool bfgVision = true;
 				if ( damageFreq && *(const char *)damageFreq && beamTargets[i].target.GetEntity() && ( forceDamage || beamTargets[i].target.GetEntity()->CanDamage( GetPhysics()->GetOrigin(), org ) ) ) {
@@ -1973,10 +1974,10 @@ void idBFGProjectile::Think( void ) {
 					org.Normalize();
 					beamTargets[i].target.GetEntity()->Damage( this, owner.GetEntity(), org, damageFreq, ( damagePower ) ? damagePower : 1.0f, INVALID_JOINT );
 				} else {
-					beamTargets[i].renderEntity.shaderParms[ SHADERPARM_RED ] = 
-					beamTargets[i].renderEntity.shaderParms[ SHADERPARM_GREEN ] = 
-					beamTargets[i].renderEntity.shaderParms[ SHADERPARM_BLUE ] = 
-					beamTargets[i].renderEntity.shaderParms[ SHADERPARM_ALPHA ] = 0.0f;
+					beamTargets[i].renderEntity->SetShaderParm( SHADERPARM_RED, 0.0f );
+					beamTargets[i].renderEntity->SetShaderParm( SHADERPARM_GREEN, 0.0f );
+					beamTargets[i].renderEntity->SetShaderParm( SHADERPARM_BLUE, 0.0f );
+					beamTargets[i].renderEntity->SetShaderParm( SHADERPARM_ALPHA, 0.0f );
 					bfgVision = false;
 				}
 				if ( player ) {
@@ -1984,12 +1985,12 @@ void idBFGProjectile::Think( void ) {
 				}
 				nextDamageTime = gameLocal.time + BFG_DAMAGE_FREQUENCY;
 			}
-			gameRenderWorld->UpdateEntityDef( beamTargets[i].modelDefHandle, &beamTargets[i].renderEntity );
+			beamTargets[i].renderEntity->UpdateRenderEntity();
 		}
 
-		if ( secondModelDefHandle >= 0 ) {
-			secondModel.origin = GetPhysics()->GetOrigin();
-			gameRenderWorld->UpdateEntityDef( secondModelDefHandle, &secondModel );
+		if ( secondModel != NULL ) {
+			secondModel->SetOrigin( GetPhysics()->GetOrigin() );
+			secondModel->UpdateRenderEntity();
 		}
 
 		idAngles ang;
@@ -2002,7 +2003,9 @@ void idBFGProjectile::Think( void ) {
 		ang.pitch = ( gameLocal.time & 2047 ) * 360.0f / -2048.0f;
 		ang.yaw = ang.pitch;
 		ang.roll = 0.0f;
-		secondModel.axis = ang.ToMat3();
+		if ( secondModel != NULL ) {
+			secondModel->SetAxis( ang.ToMat3() );
+		}
 
 		UpdateVisuals();
 	}
@@ -2037,21 +2040,24 @@ void idBFGProjectile::Launch( const idVec3 &start, const idVec3 &dir, const idVe
 	float beamWidth = spawnArgs.GetFloat( "beam_WidthFly" );
 	const char *skin = spawnArgs.GetString( "skin_beam" );
 
-	memset( &secondModel, 0, sizeof( secondModel ) );
-	secondModelDefHandle = -1;
+	if ( secondModel != NULL ) {
+		secondModel->FreeRenderEntity();
+		secondModel = NULL;
+	}
 	const char *temp = spawnArgs.GetString( "model_two" );
 	if ( temp && *temp ) {
-		secondModel.hModel = renderModelManager->FindModel( temp );
-		secondModel.bounds = secondModel.hModel->Bounds( &secondModel );
-		secondModel.shaderParms[ SHADERPARM_RED ] =
-		secondModel.shaderParms[ SHADERPARM_GREEN ] =
-		secondModel.shaderParms[ SHADERPARM_BLUE ] =
-		secondModel.shaderParms[ SHADERPARM_ALPHA ] = 1.0f;
-		secondModel.noSelfShadow = true;
-		secondModel.noShadow = true;
-		secondModel.origin = GetPhysics()->GetOrigin();
-		secondModel.axis = GetPhysics()->GetAxis();
-		secondModelDefHandle = gameRenderWorld->AddEntityDef( &secondModel );
+		secondModel = gameRenderWorld->AllocRenderEntity();
+		secondModel->SetModel( renderModelManager->FindModel( temp ) );
+		secondModel->SetBounds( secondModel->GetModel()->Bounds( secondModel ) );
+		secondModel->SetShaderParm( SHADERPARM_RED, 1.0f );
+		secondModel->SetShaderParm( SHADERPARM_GREEN, 1.0f );
+		secondModel->SetShaderParm( SHADERPARM_BLUE, 1.0f );
+		secondModel->SetShaderParm( SHADERPARM_ALPHA, 1.0f );
+		secondModel->SetNoSelfShadow( true );
+		secondModel->SetNoShadow( true );
+		secondModel->SetOrigin( GetPhysics()->GetOrigin() );
+		secondModel->SetAxis( GetPhysics()->GetAxis() );
+		secondModel->UpdateRenderEntity();
 	}
 
 	idVec3 delta( 15.0f, 15.0f, 15.0f );
@@ -2077,23 +2083,22 @@ void idBFGProjectile::Launch( const idVec3 &start, const idVec3 &dir, const idVe
 		}
 
 		beamTarget_t bt;
-		memset( &bt.renderEntity, 0, sizeof( renderEntity_t ) );
-		bt.renderEntity.origin = GetPhysics()->GetOrigin();
-		bt.renderEntity.axis = GetPhysics()->GetAxis();
-		bt.renderEntity.shaderParms[ SHADERPARM_BEAM_WIDTH ] = beamWidth;
-		bt.renderEntity.shaderParms[ SHADERPARM_RED ] = 1.0f;
-		bt.renderEntity.shaderParms[ SHADERPARM_GREEN ] = 1.0f;
-		bt.renderEntity.shaderParms[ SHADERPARM_BLUE ] = 1.0f;
-		bt.renderEntity.shaderParms[ SHADERPARM_ALPHA ] = 1.0f;
-		bt.renderEntity.shaderParms[ SHADERPARM_DIVERSITY] = gameLocal.random.CRandomFloat() * 0.75;
-		bt.renderEntity.hModel = renderModelManager->FindModel( "_beam" );
-		bt.renderEntity.callback = NULL;
-		bt.renderEntity.numJoints = 0;
-		bt.renderEntity.joints = NULL;
-		bt.renderEntity.bounds.Clear();
-		bt.renderEntity.customSkin = declManager->FindSkin( skin );
+		bt.renderEntity = gameRenderWorld->AllocRenderEntity();
+		bt.renderEntity->SetOrigin( GetPhysics()->GetOrigin() );
+		bt.renderEntity->SetAxis( GetPhysics()->GetAxis() );
+		bt.renderEntity->SetShaderParm( SHADERPARM_BEAM_WIDTH, beamWidth );
+		bt.renderEntity->SetShaderParm( SHADERPARM_RED, 1.0f );
+		bt.renderEntity->SetShaderParm( SHADERPARM_GREEN, 1.0f );
+		bt.renderEntity->SetShaderParm( SHADERPARM_BLUE, 1.0f );
+		bt.renderEntity->SetShaderParm( SHADERPARM_ALPHA, 1.0f );
+		bt.renderEntity->SetShaderParm( SHADERPARM_DIVERSITY, gameLocal.random.CRandomFloat() * 0.75f );
+		bt.renderEntity->SetModel( renderModelManager->FindModel( "_beam" ) );
+		idBounds beamBounds;
+		beamBounds.Clear();
+		bt.renderEntity->SetBounds( beamBounds );
+		bt.renderEntity->SetCustomSkin( declManager->FindSkin( skin ) );
 		bt.target = ent;
-		bt.modelDefHandle = gameRenderWorld->AddEntityDef( &bt.renderEntity );
+		bt.renderEntity->UpdateRenderEntity();
 		beamTargets.Append( bt );
 	}
 
@@ -2115,23 +2120,22 @@ void idBFGProjectile::Launch( const idVec3 &start, const idVec3 &dir, const idVe
 
 		if ( dist < radius ) {
 			beamTarget_t bt;
-			memset( &bt.renderEntity, 0, sizeof( renderEntity_t ) );
-			bt.renderEntity.origin = GetPhysics()->GetOrigin();
-			bt.renderEntity.axis = GetPhysics()->GetAxis();
-			bt.renderEntity.shaderParms[ SHADERPARM_BEAM_WIDTH ] = beamWidth;
-			bt.renderEntity.shaderParms[ SHADERPARM_RED ] = 1.0f;
-			bt.renderEntity.shaderParms[ SHADERPARM_GREEN ] = 1.0f;
-			bt.renderEntity.shaderParms[ SHADERPARM_BLUE ] = 1.0f;
-			bt.renderEntity.shaderParms[ SHADERPARM_ALPHA ] = 1.0f;
-			bt.renderEntity.shaderParms[ SHADERPARM_DIVERSITY] = gameLocal.random.CRandomFloat() * 0.75;
-			bt.renderEntity.hModel = renderModelManager->FindModel( "_beam" );
-			bt.renderEntity.callback = NULL;
-			bt.renderEntity.numJoints = 0;
-			bt.renderEntity.joints = NULL;
-			bt.renderEntity.bounds.Clear();
-			bt.renderEntity.customSkin = declManager->FindSkin( skin );
+			bt.renderEntity = gameRenderWorld->AllocRenderEntity();
+			bt.renderEntity->SetOrigin( GetPhysics()->GetOrigin() );
+			bt.renderEntity->SetAxis( GetPhysics()->GetAxis() );
+			bt.renderEntity->SetShaderParm( SHADERPARM_BEAM_WIDTH, beamWidth );
+			bt.renderEntity->SetShaderParm( SHADERPARM_RED, 1.0f );
+			bt.renderEntity->SetShaderParm( SHADERPARM_GREEN, 1.0f );
+			bt.renderEntity->SetShaderParm( SHADERPARM_BLUE, 1.0f );
+			bt.renderEntity->SetShaderParm( SHADERPARM_ALPHA, 1.0f );
+			bt.renderEntity->SetShaderParm( SHADERPARM_DIVERSITY, gameLocal.random.CRandomFloat() * 0.75f );
+			bt.renderEntity->SetModel( renderModelManager->FindModel( "_beam" ) );
+			idBounds beamBounds;
+			beamBounds.Clear();
+			bt.renderEntity->SetBounds( beamBounds );
+			bt.renderEntity->SetCustomSkin( declManager->FindSkin( skin ) );
 			bt.target = maledict;
-			bt.modelDefHandle = gameRenderWorld->AddEntityDef( &bt.renderEntity );
+			bt.renderEntity->UpdateRenderEntity();
 			beamTargets.Append( bt );
 
 			numListedEntities++;
@@ -2190,7 +2194,7 @@ void idBFGProjectile::Explode( const trace_t &collision, idEntity *ignore ) {
 			continue;
 		}
 
-		beamTargets[i].renderEntity.shaderParms[SHADERPARM_BEAM_WIDTH] = beamWidth;
+		beamTargets[i].renderEntity->SetShaderParm( SHADERPARM_BEAM_WIDTH, beamWidth );
 
 		// if the hit entity takes damage
 		if ( damagePower ) {
@@ -2216,9 +2220,9 @@ void idBFGProjectile::Explode( const trace_t &collision, idEntity *ignore ) {
 		}
 	}
 
-	if ( secondModelDefHandle >= 0 ) {
-		gameRenderWorld->FreeEntityDef( secondModelDefHandle );
-		secondModelDefHandle = -1;
+	if ( secondModel != NULL ) {
+		secondModel->FreeRenderEntity();
+		secondModel = NULL;
 	}
 
 	if ( ignore == NULL ) {
@@ -2346,7 +2350,7 @@ void idDebris::Launch( void ) {
 	bool		randomVelocity;
 	idMat3		axis;
 
-	renderEntity.shaderParms[ SHADERPARM_TIMEOFFSET ] = -MS2SEC( gameLocal.time );
+	renderEntity->SetShaderParm( SHADERPARM_TIMEOFFSET, -MS2SEC( gameLocal.time ) );
 
 	spawnArgs.GetVector( "velocity", "0 0 0", velocity );
 	spawnArgs.GetAngles( "angular_velocity", "0 0 0", angular_velocity );
@@ -2393,7 +2397,7 @@ void idDebris::Launch( void ) {
 	// load the trace model
 	if ( !collisionModelManager->TrmFromModel( clipModelName, trm ) ) {
 		// default to a box
-		physicsObj.SetClipBox( renderEntity.bounds, 1.0f );
+		physicsObj.SetClipBox( renderEntity->GetBounds(), 1.0f );
 	} else {
 		physicsObj.SetClipModel( new idClipModel( trm ), 1.0f );
 	}

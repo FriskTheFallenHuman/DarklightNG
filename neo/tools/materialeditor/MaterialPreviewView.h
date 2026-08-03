@@ -76,8 +76,7 @@ protected:
 	idAngles		viewRotation;
 	float			viewDistance;
 
-	renderEntity_t	worldEntity;
-	qhandle_t		modelDefHandle;
+	idRenderEntity	*worldEntity;
 
 	int				objectId;
 	idStr			customModelName;
@@ -85,8 +84,7 @@ protected:
 	float			globalParms[MAX_GLOBAL_SHADER_PARMS];
 
 	typedef struct {
-		renderLight_t		renderLight;
-		qhandle_t			lightDefHandle;
+		idRenderLight		*renderLight;
 		idVec3				origin;
 		const idMaterial	*shader;
 		float				radius;
@@ -146,4 +144,3 @@ public:
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 };
-

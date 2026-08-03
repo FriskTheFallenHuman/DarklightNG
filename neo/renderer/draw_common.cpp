@@ -958,7 +958,7 @@ int RB_STD_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 		}
 
 		if ( backEnd.viewDef->isXraySubview && drawSurfs[i]->space->entityDef ) {
-			if ( drawSurfs[i]->space->entityDef->parms.xrayIndex != 2 ) {
+			if ( drawSurfs[i]->space->entityDef->GetXrayIndex() != 2 ) {
 				continue;
 			}
 		}

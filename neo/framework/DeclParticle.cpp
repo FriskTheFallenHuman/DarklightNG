@@ -86,15 +86,15 @@ void idDeclParticle::GetStageBounds( idParticleStage *stage ) {
 
 	particleGen_t g;
 
-	renderEntity_t	renderEntity;
-	memset( &renderEntity, 0, sizeof( renderEntity ) );
-	renderEntity.axis = mat3_identity;
+	idRenderWorld *temporaryWorld = renderSystem->AllocRenderWorld();
+	idRenderEntity *renderEntity = temporaryWorld->AllocRenderEntity();
+	renderEntity->SetAxis( mat3_identity );
 
 	renderView_t	renderView;
 	memset( &renderView, 0, sizeof( renderView ) );
 	renderView.viewaxis = mat3_identity;
 
-	g.renderEnt = &renderEntity;
+	g.renderEnt = renderEntity;
 	g.renderView = &renderView;
 	g.origin.Zero();
 	g.axis = mat3_identity;
@@ -143,6 +143,9 @@ void idDeclParticle::GetStageBounds( idParticleStage *stage ) {
 	maxSize += 8;	// just for good measure
 	// users can specify a per-stage bounds expansion to handle odd cases
 	stage->bounds.ExpandSelf( maxSize + stage->boundsExpansion );
+
+	renderEntity->FreeRenderEntity();
+	renderSystem->FreeRenderWorld( temporaryWorld );
 }
 
 /*
@@ -169,6 +172,7 @@ void idDeclParticle::ParseParms( idLexer &src, float *parms, int maxParms ) {
 		parms[count] = atof( token );
 		count++;
 	}
+
 }
 
 /*
@@ -1012,7 +1016,7 @@ void idParticleStage::ParticleOrigin( particleGen_t *g, idVec3 &origin ) const {
 	// add gravity after adjusting for axis
 	if ( worldGravity ) {
 		idVec3 gra( 0, 0, -gravity );
-		gra *= g->renderEnt->axis.Transpose();
+		gra *= g->renderEnt->GetAxis().Transpose();
 		origin += gra * g->age * g->age;
 	} else {
 		origin[2] -= gravity * g->age * g->age;
@@ -1062,7 +1066,7 @@ int	idParticleStage::ParticleVerts( particleGen_t *g, idVec3 origin, idDrawVert 
 			up = stepOrigin - oldOrigin;	// along the direction of travel
 
 			idVec3	forwardDir;
-			g->renderEnt->axis.ProjectVector( g->renderView->viewaxis[0], forwardDir );
+			g->renderEnt->GetAxis().ProjectVector( g->renderView->viewaxis[0], forwardDir );
 
 			up -= ( up * forwardDir ) * forwardDir;
 
@@ -1162,8 +1166,8 @@ int	idParticleStage::ParticleVerts( particleGen_t *g, idVec3 origin, idDrawVert 
 		// oriented in viewer space
 		idVec3	entityLeft, entityUp;
 
-		g->renderEnt->axis.ProjectVector( g->renderView->viewaxis[1], entityLeft );
-		g->renderEnt->axis.ProjectVector( g->renderView->viewaxis[2], entityUp );
+		g->renderEnt->GetAxis().ProjectVector( g->renderView->viewaxis[1], entityLeft );
+		g->renderEnt->GetAxis().ProjectVector( g->renderView->viewaxis[2], entityUp );
 
 		left = entityLeft * c + entityUp * s;
 		up = entityUp * c - entityLeft * s;
@@ -1249,7 +1253,7 @@ void idParticleStage::ParticleColors( particleGen_t *g, idDrawVert *verts ) cons
 	}
 
 	for ( int i = 0 ; i < 4 ; i++ ) {
-		float	fcolor = ( ( entityColor ) ? g->renderEnt->shaderParms[i] : color[i] ) * fadeFraction + fadeColor[i] * ( 1.0f - fadeFraction );
+		float	fcolor = ( ( entityColor ) ? g->renderEnt->GetShaderParm( i ) : color[i] ) * fadeFraction + fadeColor[i] * ( 1.0f - fadeFraction );
 		int		icolor = idMath::FtoiFast( fcolor * 255.0f );
 		if ( icolor < 0 ) {
 			icolor = 0;

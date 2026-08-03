@@ -1673,14 +1673,14 @@ void idAI::Event_Shrivel( float shrivel_time ) {
 
 	t = ( gameLocal.time - shrivel_start ) * shrivel_rate;
 	if ( t > 0.25f ) {
-		renderEntity.noShadow = true;
+		renderEntity->SetNoShadow( true );
 	}
 	if ( t > 1.0f ) {
 		t = 1.0f;
 		idThread::EndMultiFrameEvent( this, &AI_Shrivel );
 	}
 
-	renderEntity.shaderParms[ SHADERPARM_MD5_SKINSCALE ] = 1.0f - t * 0.5f;
+	renderEntity->SetShaderParm( SHADERPARM_MD5_SKINSCALE, 1.0f - t * 0.5f );
 	UpdateVisuals();
 }
 
@@ -1694,7 +1694,7 @@ void idAI::Event_PreBurn( void ) {
 	noGrab = true;
 
 	// for now this just turns shadows off
-	renderEntity.noShadow = true;
+	renderEntity->SetNoShadow( true );
 }
 
 /*
@@ -1703,7 +1703,7 @@ idAI::Event_Burn
 =====================
 */
 void idAI::Event_Burn( void ) {
-	renderEntity.shaderParms[ SHADERPARM_TIME_OF_DEATH ] = gameLocal.time * 0.001f;
+	renderEntity->SetShaderParm( SHADERPARM_TIME_OF_DEATH, gameLocal.time * 0.001f );
 	SpawnParticles( "smoke_burnParticleSystem" );
 	UpdateVisuals();
 }
@@ -1714,8 +1714,8 @@ idAI::Event_ClearBurn
 =====================
 */
 void idAI::Event_ClearBurn( void ) {
-	renderEntity.noShadow = spawnArgs.GetBool( "noshadows" );
-	renderEntity.shaderParms[ SHADERPARM_TIME_OF_DEATH ] = 0.0f;
+	renderEntity->SetNoShadow( spawnArgs.GetBool( "noshadows" ) );
+	renderEntity->SetShaderParm( SHADERPARM_TIME_OF_DEATH, 0.0f );
 	UpdateVisuals();
 }
 

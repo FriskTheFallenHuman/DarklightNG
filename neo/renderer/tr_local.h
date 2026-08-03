@@ -33,6 +33,8 @@ If you have questions concerning this license or the applicable additional terms
 #include "MegaTexture.h"
 #include "GlslProgram.h"
 #include "GpuProfiler.h"
+#include "RenderEntity.h"
+#include "RenderLight.h"
 
 class idRenderWorldLocal;
 
@@ -97,8 +99,68 @@ SURFACES
 #include "ModelDecal.h"
 #include "ModelOverlay.h"
 
-class idRenderEntityLocal;
-class idRenderLightLocal;
+class idRenderEntityLocal : public idRenderEntity {
+public:
+						idRenderEntityLocal();
+
+	virtual void			FreeRenderEntity();
+	virtual void			RemoveFromRenderWorld();
+	virtual void			UpdateRenderEntity( bool force = false );
+	virtual void			ForceUpdate();
+	virtual bool			IsInRenderWorld() const;
+	virtual int				GetIndex() const;
+	virtual void			ProjectOverlay( const idPlane localTextureAxis[2], const idMaterial *material );
+	virtual void			RemoveDecals();
+
+	float					modelMatrix[16];
+	idRenderWorldLocal *	world;
+	int						index;
+	int						lastModifiedFrameNum;
+	bool					archived;
+	bool					initialized;
+	idRenderModel *			dynamicModel;
+	int						dynamicModelFrameCount;
+	idRenderModel *			cachedDynamicModel;
+	idBounds				referenceBounds;
+	int						viewCount;
+	viewEntity_s *			viewEntity;
+	int						visibleCount;
+	idRenderModelDecal *	decals;
+	idRenderModelOverlay *	overlay;
+	areaReference_s *		entityRefs;
+	bool					needsPortalSky;
+};
+
+class idRenderLightLocal : public idRenderLight {
+public:
+						idRenderLightLocal();
+
+	virtual void			FreeRenderLight();
+	virtual void			RemoveFromRenderWorld();
+	virtual void			UpdateRenderLight( bool force = false );
+	virtual void			ForceUpdate();
+	virtual bool			IsInRenderWorld() const;
+	virtual int				GetIndex() const;
+
+	bool					lightHasMoved;
+	float					modelMatrix[16];
+	idRenderWorldLocal *	world;
+	int						index;
+	int						lastModifiedFrameNum;
+	bool					archived;
+	bool					initialized;
+	idPlane				lightProject[4];
+	const idMaterial *		lightShader;
+	idImage *				falloffImage;
+	idVec3					globalLightOrigin;
+	idPlane				frustum[6];
+	idWinding *			frustumWindings[6];
+	srfTriangles_t *		frustumTris;
+	int						viewCount;
+	viewLight_s *			viewLight;
+	areaReference_s *		references;
+	doublePortal_s *		foggedPortals;
+};
 
 
 // drawSurf_t structures command the back end to render surfaces
@@ -131,136 +193,6 @@ typedef struct areaReference_s {
 	idRenderLightLocal *	light;					// only one of entity / light will be non-NULL
 	struct portalArea_s	*	area;					// so owners can find all the areas they are in
 } areaReference_t;
-
-
-// idRenderLight should become the new public interface replacing the qhandle_t to light defs in the idRenderWorld interface
-class idRenderLight {
-public:
-	virtual					~idRenderLight() {}
-
-	virtual void			FreeRenderLight() = 0;
-	virtual void			UpdateRenderLight( const renderLight_t *re, bool forceUpdate = false ) = 0;
-	virtual void			GetRenderLight( renderLight_t *re ) = 0;
-	virtual void			ForceUpdate() = 0;
-	virtual int				GetIndex() = 0;
-};
-
-
-// idRenderEntity should become the new public interface replacing the qhandle_t to entity defs in the idRenderWorld interface
-class idRenderEntity {
-public:
-	virtual					~idRenderEntity() {}
-
-	virtual void			FreeRenderEntity() = 0;
-	virtual void			UpdateRenderEntity( const renderEntity_t *re, bool forceUpdate = false ) = 0;
-	virtual void			GetRenderEntity( renderEntity_t *re ) = 0;
-	virtual void			ForceUpdate() = 0;
-	virtual int				GetIndex() = 0;
-
-	// overlays are extra polygons that deform with animating models for blood and damage marks
-	virtual void			ProjectOverlay( const idPlane localTextureAxis[2], const idMaterial *material ) = 0;
-	virtual void			RemoveDecals() = 0;
-};
-
-
-class idRenderLightLocal : public idRenderLight {
-public:
-							idRenderLightLocal();
-
-	virtual void			FreeRenderLight();
-	virtual void			UpdateRenderLight( const renderLight_t *re, bool forceUpdate = false );
-	virtual void			GetRenderLight( renderLight_t *re );
-	virtual void			ForceUpdate();
-	virtual int				GetIndex();
-
-	renderLight_t			parms;					// specification
-
-	bool					lightHasMoved;			// the light has changed its position since it was
-													// first added, so the prelight model is not valid
-
-	float					modelMatrix[16];		// this is just a rearrangement of parms.axis and parms.origin
-
-	idRenderWorldLocal *	world;
-	int						index;					// in world lightdefs
-
-	int						lastModifiedFrameNum;	// to determine if it is constantly changing,
-													// and should go in the dynamic frame memory, or kept
-													// in the cached memory
-	bool					archived;				// for demo writing
-
-
-	// derived information
-	idPlane					lightProject[4];
-
-	const idMaterial *		lightShader;			// guaranteed to be valid, even if parms.shader isn't
-	idImage *				falloffImage;
-
-	idVec3					globalLightOrigin;		// accounting for lightCenter and parallel
-
-
-	idPlane					frustum[6];				// in global space, positive side facing out, last two are front/back
-	idWinding *				frustumWindings[6];		// used for culling
-	srfTriangles_t *		frustumTris;			// triangulated frustumWindings[]
-
-	int						viewCount;				// if == tr.viewCount, the light is on the viewDef->viewLights list
-	struct viewLight_s *	viewLight;
-
-	areaReference_t *		references;				// each area the light is present in will have a lightRef
-	struct doublePortal_s *	foggedPortals;
-};
-
-
-class idRenderEntityLocal : public idRenderEntity {
-public:
-							idRenderEntityLocal();
-
-	virtual void			FreeRenderEntity();
-	virtual void			UpdateRenderEntity( const renderEntity_t *re, bool forceUpdate = false );
-	virtual void			GetRenderEntity( renderEntity_t *re );
-	virtual void			ForceUpdate();
-	virtual int				GetIndex();
-
-	// overlays are extra polygons that deform with animating models for blood and damage marks
-	virtual void			ProjectOverlay( const idPlane localTextureAxis[2], const idMaterial *material );
-	virtual void			RemoveDecals();
-
-	renderEntity_t			parms;
-
-	float					modelMatrix[16];		// this is just a rearrangement of parms.axis and parms.origin
-
-	idRenderWorldLocal *	world;
-	int						index;					// in world entityDefs
-
-	int						lastModifiedFrameNum;	// to determine if it is constantly changing,
-													// and should go in the dynamic frame memory, or kept
-													// in the cached memory
-	bool					archived;				// for demo writing
-
-	idRenderModel *			dynamicModel;			// if parms.model->IsDynamicModel(), this is the generated data
-	int						dynamicModelFrameCount;	// continuously animating dynamic models will recreate
-													// dynamicModel if this doesn't == tr.viewCount
-	idRenderModel *			cachedDynamicModel;
-
-	idBounds				referenceBounds;		// the local bounds used to place entityRefs, either from parms or a model
-
-	// a viewEntity_t is created whenever a idRenderEntityLocal is considered for inclusion
-	// in a given view, even if it turns out to not be visible
-	int						viewCount;				// if tr.viewCount == viewCount, viewEntity is valid,
-													// but the entity may still be off screen
-	struct viewEntity_s *	viewEntity;				// in frame temporary memory
-
-	int						visibleCount;
-	// if tr.viewCount == visibleCount, at least one ambient
-	// surface has actually been added by R_AddAmbientDrawsurfs
-	// note that an entity could still be in the view frustum and not be visible due
-	// to portal passing
-
-	idRenderModelDecal *	decals;					// chain of decals that have been projected on this model
-	idRenderModelOverlay *	overlay;				// blood overlays on animated models
-
-	areaReference_t *		entityRefs;				// chain of all references
-	bool					needsPortalSky;
-};
 
 
 // viewLights are allocated on the frame temporary stack memory
@@ -1085,7 +1017,7 @@ idRenderModel *R_EntityDefDynamicModel( idRenderEntityLocal *def );
 viewEntity_t *R_SetEntityDefViewEntity( idRenderEntityLocal *def );
 viewLight_t *R_SetLightDefViewLight( idRenderLightLocal *def );
 
-void R_AddDrawSurf( const srfTriangles_t *tri, const viewEntity_t *space, const renderEntity_t *renderEntity,
+void R_AddDrawSurf( const srfTriangles_t *tri, const viewEntity_t *space, const idRenderEntity *renderEntity,
 					const idMaterial *shader, const idScreenRect &scissor );
 
 void R_LinkLightSurf( const drawSurf_t **link, const srfTriangles_t *tri, const viewEntity_t *space, 
@@ -1127,6 +1059,8 @@ void R_FreeEntityDefCachedDynamicModel( idRenderEntityLocal *def );
 void R_FreeEntityDefDecals( idRenderEntityLocal *def );
 void R_FreeEntityDefOverlay( idRenderEntityLocal *def );
 void R_FreeEntityDefFadedDecals( idRenderEntityLocal *def, int time );
+
+extern int c_callbackUpdate;
 
 void R_CreateLightDefFogPortals( idRenderLightLocal *ldef );
 

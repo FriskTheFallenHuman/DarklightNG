@@ -85,8 +85,7 @@ public:
 private:
 	bool						initialized;
 
-	renderEntity_t				renderEntity;			// used to present a model to the renderer
-	int							renderEntityHandle;		// handle to static renderer model
+	idRenderEntity *			renderEntity;			// renderer-owned model entity
 
 	static const int			MAX_SMOKE_PARTICLES = 10000;
 	singleSmoke_t				smokes[MAX_SMOKE_PARTICLES];
@@ -96,8 +95,8 @@ private:
 	int							numActiveSmokes;
 	int							currentParticleTime;	// don't need to recalculate if == view time
 
-	bool						UpdateRenderEntity( renderEntity_s *renderEntity, const renderView_t *renderView );
-	static bool					ModelCallback( renderEntity_s *renderEntity, const renderView_t *renderView );
+	bool						UpdateRenderEntity( idRenderEntity *renderEntity, const renderView_t *renderView );
+	static bool					ModelCallback( idRenderEntity *renderEntity, const renderView_t *renderView );
 };
 
 #endif /* !__SMOKEPARTICLES_H__ */

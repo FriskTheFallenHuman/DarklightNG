@@ -524,7 +524,7 @@ void idRenderModelDecal::AddDecalDrawSurf( viewEntity_t *space ) {
 	newTri->gpuSkinned = false;
 
 	// create the drawsurf
-	R_AddDrawSurf( newTri, space, &space->entityDef->parms, material, space->scissorRect );
+	R_AddDrawSurf( newTri, space, space->entityDef, material, space->scissorRect );
 }
 
 /*

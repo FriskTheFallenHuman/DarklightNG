@@ -68,7 +68,7 @@ void idRenderModelPrt::TouchData( void ) {
 idRenderModelPrt::InstantiateDynamicModel
 ====================
 */
-idRenderModel *idRenderModelPrt::InstantiateDynamicModel( const struct renderEntity_s *renderEntity, const struct viewDef_s *viewDef, idRenderModel *cachedModel ) {
+idRenderModel *idRenderModelPrt::InstantiateDynamicModel( const idRenderEntity *renderEntity, const struct viewDef_s *viewDef, idRenderModel *cachedModel ) {
 	idRenderModelStatic	*staticModel;
 
 	if ( cachedModel && !r_useCachedDynamicModels.GetBool() ) {
@@ -89,7 +89,7 @@ idRenderModel *idRenderModelPrt::InstantiateDynamicModel( const struct renderEnt
 
 	/*
 	// if the entire system has faded out
-	if ( renderEntity->shaderParms[SHADERPARM_PARTICLE_STOPTIME] && viewDef->renderView.time * 0.001f >= renderEntity->shaderParms[SHADERPARM_PARTICLE_STOPTIME] ) {
+	if ( renderEntity->GetShaderParm( SHADERPARM_PARTICLE_STOPTIME ) && viewDef->renderView.time * 0.001f >= renderEntity->GetShaderParm( SHADERPARM_PARTICLE_STOPTIME ) ) {
 		delete cachedModel;
 		return NULL;
 	}
@@ -131,13 +131,13 @@ idRenderModel *idRenderModelPrt::InstantiateDynamicModel( const struct renderEnt
 
 		idRandom steppingRandom, steppingRandom2;
 
-		int stageAge = g.renderView->time + renderEntity->shaderParms[SHADERPARM_TIMEOFFSET] * 1000 - stage->timeOffset * 1000;
+		int stageAge = g.renderView->time + renderEntity->GetShaderParm( SHADERPARM_TIMEOFFSET ) * 1000 - stage->timeOffset * 1000;
 		int	stageCycle = stageAge / stage->cycleMsec;
 		int	inCycleTime = stageAge - stageCycle * stage->cycleMsec;
 
 		// some particles will be in this cycle, some will be in the previous cycle
-		steppingRandom.SetSeed( (( stageCycle << 10 ) & idRandom::MAX_RAND) ^ (int)( renderEntity->shaderParms[SHADERPARM_DIVERSITY] * idRandom::MAX_RAND )  );
-		steppingRandom2.SetSeed( (( (stageCycle-1) << 10 ) & idRandom::MAX_RAND) ^ (int)( renderEntity->shaderParms[SHADERPARM_DIVERSITY] * idRandom::MAX_RAND )  );
+		steppingRandom.SetSeed( (( stageCycle << 10 ) & idRandom::MAX_RAND) ^ (int)( renderEntity->GetShaderParm( SHADERPARM_DIVERSITY ) * idRandom::MAX_RAND )  );
+		steppingRandom2.SetSeed( (( (stageCycle-1) << 10 ) & idRandom::MAX_RAND) ^ (int)( renderEntity->GetShaderParm( SHADERPARM_DIVERSITY ) * idRandom::MAX_RAND )  );
 
 		int	count = stage->totalParticles * stage->NumQuadsPerParticle();
 
@@ -190,8 +190,8 @@ idRenderModel *idRenderModelPrt::InstantiateDynamicModel( const struct renderEnt
 
 			int	inCycleTime = particleAge - particleCycle * stage->cycleMsec;
 
-			if ( renderEntity->shaderParms[SHADERPARM_PARTICLE_STOPTIME] && 
-				g.renderView->time - inCycleTime >= renderEntity->shaderParms[SHADERPARM_PARTICLE_STOPTIME]*1000 ) {
+			if ( renderEntity->GetShaderParm( SHADERPARM_PARTICLE_STOPTIME ) &&
+				g.renderView->time - inCycleTime >= renderEntity->GetShaderParm( SHADERPARM_PARTICLE_STOPTIME ) * 1000 ) {
 				// don't fire any more particles
 				continue;
 			}
@@ -256,7 +256,7 @@ dynamicModel_t idRenderModelPrt::IsDynamicModel() const {
 idRenderModelPrt::Bounds
 ====================
 */
-idBounds idRenderModelPrt::Bounds( const struct renderEntity_s *ent ) const {
+idBounds idRenderModelPrt::Bounds( const idRenderEntity *ent ) const {
 	return particleSystem->bounds;
 }
 

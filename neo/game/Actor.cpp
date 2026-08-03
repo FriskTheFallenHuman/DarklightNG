@@ -628,10 +628,10 @@ void idActor::SetupHead( void ) {
 		idAttachInfo &attach = attachments.Alloc();
 		attach.channel = animator.GetChannelForJoint( joint );
 		animator.GetJointTransform( joint, gameLocal.time, origin, axis );
-		origin = renderEntity.origin + ( origin + modelOffset ) * renderEntity.axis;
+		origin = renderEntity->GetOrigin() + ( origin + modelOffset ) * renderEntity->GetAxis();
 		attach.ent = headEnt;
 		headEnt->SetOrigin( origin );
-		headEnt->SetAxis( renderEntity.axis );
+		headEnt->SetAxis( renderEntity->GetAxis() );
 		headEnt->BindToJoint( this, joint, true );
 	}
 }
@@ -1474,9 +1474,9 @@ void idActor::SetCombatModel( void ) {
 	if ( !use_combat_bbox ) {
 		if ( combatModel ) {
 			combatModel->Unlink();
-			combatModel->LoadModel( modelDefHandle );
+			combatModel->LoadModel( renderEntity );
 		} else {
-			combatModel = new idClipModel( modelDefHandle );
+			combatModel = new idClipModel( renderEntity );
 		}
 
 		headEnt = head.GetEntity();
@@ -1508,7 +1508,7 @@ void idActor::LinkCombat( void ) {
 	}
 
 	if ( combatModel ) {
-		combatModel->Link( gameLocal.clip, this, 0, renderEntity.origin, renderEntity.axis, modelDefHandle );
+		combatModel->Link( gameLocal.clip, this, 0, renderEntity->GetOrigin(), renderEntity->GetAxis(), renderEntity );
 	}
 	headEnt = head.GetEntity();
 	if ( headEnt ) {
@@ -1667,7 +1667,7 @@ void idActor::Attach( idEntity *ent ) {
 	GetJointWorldTransform( joint, gameLocal.time, origin, axis );
 	attach.ent = ent;
 
-	ent->SetOrigin( origin + originOffset * renderEntity.axis );
+	ent->SetOrigin( origin + originOffset * renderEntity->GetAxis() );
 	idMat3 rotate = angleOffset.ToMat3();
 	idMat3 newAxis = rotate * axis;
 	ent->SetAxis( newAxis );

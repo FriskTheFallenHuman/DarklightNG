@@ -644,7 +644,7 @@ void idGrabber::UpdateBeams( void ) {
 	jointHandle_t	muzzle_joint;
 	idVec3	muzzle_origin;
 	idMat3	muzzle_axis;
-	renderEntity_t *re;
+	idRenderEntity *re;
 
 	if ( !beam ) {
 		return;
@@ -666,7 +666,7 @@ void idGrabber::UpdateBeams( void ) {
 
 		beam->SetOrigin( muzzle_origin );
 		re = beam->GetRenderEntity();
-		re->origin = muzzle_origin;
+		re->SetOrigin( muzzle_origin );
 
 		beam->UpdateVisuals();
 		beam->Present();

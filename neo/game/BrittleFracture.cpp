@@ -85,7 +85,7 @@ idBrittleFracture::~idBrittleFracture( void ) {
 
 	// make sure the render entity is freed before the model is freed
 	FreeModelDef();
-	renderModelManager->FreeModel( renderEntity.hModel );
+	renderModelManager->FreeModel( renderEntity->GetModel() );
 }
 
 /*
@@ -163,12 +163,12 @@ idBrittleFracture::Restore
 void idBrittleFracture::Restore( idRestoreGame *savefile ) {
 	int i, j , num;
 
-	renderEntity.hModel = renderModelManager->AllocModel();
-	renderEntity.hModel->InitEmpty( brittleFracture_SnapshotName );
-	renderEntity.callback = idBrittleFracture::ModelCallback;
-	renderEntity.noShadow = true;
-	renderEntity.noSelfShadow = true;
-	renderEntity.noDynamicInteractions = false;
+	renderEntity->SetModel( renderModelManager->AllocModel() );
+	renderEntity->GetModel()->InitEmpty( brittleFracture_SnapshotName );
+	renderEntity->SetCallback( idBrittleFracture::ModelCallback );
+	renderEntity->SetNoShadow( true );
+	renderEntity->SetNoSelfShadow( true );
+	renderEntity->SetNoDynamicInteractions( false );
 
 	savefile->ReadInt( health );
 	savefile->Read( &fl, sizeof( fl ) );
@@ -283,7 +283,7 @@ void idBrittleFracture::Spawn( void ) {
 
 	// check for xray surface
 	if ( 1 ) {
-		const idRenderModel *model = renderEntity.hModel;
+		const idRenderModel *model = renderEntity->GetModel();
 
 		isXraySurface = false;
 
@@ -297,16 +297,16 @@ void idBrittleFracture::Spawn( void ) {
 		}
 	}
 
-	CreateFractures( renderEntity.hModel );
+	CreateFractures( renderEntity->GetModel() );
 
 	FindNeighbours();
 
-	renderEntity.hModel = renderModelManager->AllocModel();
-	renderEntity.hModel->InitEmpty( brittleFracture_SnapshotName );
-	renderEntity.callback = idBrittleFracture::ModelCallback;
-	renderEntity.noShadow = true;
-	renderEntity.noSelfShadow = true;
-	renderEntity.noDynamicInteractions = false;
+	renderEntity->SetModel( renderModelManager->AllocModel() );
+	renderEntity->GetModel()->InitEmpty( brittleFracture_SnapshotName );
+	renderEntity->SetCallback( idBrittleFracture::ModelCallback );
+	renderEntity->SetNoShadow( true );
+	renderEntity->SetNoSelfShadow( true );
+	renderEntity->SetNoDynamicInteractions( false );
 }
 
 /*
@@ -348,7 +348,7 @@ void idBrittleFracture::RemoveShard( int index ) {
 idBrittleFracture::UpdateRenderEntity
 ================
 */
-bool idBrittleFracture::UpdateRenderEntity( renderEntity_s *renderEntity, const renderView_t *renderView ) const {
+bool idBrittleFracture::UpdateRenderEntity( idRenderEntity *renderEntity, const renderView_t *renderView ) const {
 	int i, j, k, n, msec, numTris, numDecalTris;
 	float fade;
 	dword packedColor;
@@ -388,11 +388,11 @@ bool idBrittleFracture::UpdateRenderEntity( renderEntity_s *renderEntity, const 
 	}
 
 	// FIXME: re-use model surfaces
-	renderEntity->hModel->InitEmpty( brittleFracture_SnapshotName );
+	renderEntity->GetModel()->InitEmpty( brittleFracture_SnapshotName );
 
 	// allocate triangle surfaces for the fractures and decals
-	tris = renderEntity->hModel->AllocSurfaceTriangles( numTris * 3, material->ShouldCreateBackSides() ? numTris * 6 : numTris * 3 );
-	decalTris = renderEntity->hModel->AllocSurfaceTriangles( numDecalTris * 3, decalMaterial->ShouldCreateBackSides() ? numDecalTris * 6 : numDecalTris * 3 );
+	tris = renderEntity->GetModel()->AllocSurfaceTriangles( numTris * 3, material->ShouldCreateBackSides() ? numTris * 6 : numTris * 3 );
+	decalTris = renderEntity->GetModel()->AllocSurfaceTriangles( numDecalTris * 3, decalMaterial->ShouldCreateBackSides() ? numDecalTris * 6 : numDecalTris * 3 );
 
 	for ( i = 0; i < shards.Num(); i++ ) {
 		const idVec3 &origin = shards[i]->clipModel->GetOrigin();
@@ -405,9 +405,9 @@ bool idBrittleFracture::UpdateRenderEntity( renderEntity_s *renderEntity, const 
 				fade = 1.0f - (float) msec / ( SHARD_ALIVE_TIME - SHARD_FADE_START );
 			}
 		}
-		packedColor = PackColor( idVec4( renderEntity->shaderParms[ SHADERPARM_RED ] * fade,
-										renderEntity->shaderParms[ SHADERPARM_GREEN ] * fade,
-                                        renderEntity->shaderParms[ SHADERPARM_BLUE ] * fade,
+		packedColor = PackColor( idVec4( renderEntity->GetShaderParm( SHADERPARM_RED ) * fade,
+										renderEntity->GetShaderParm( SHADERPARM_GREEN ) * fade,
+										renderEntity->GetShaderParm( SHADERPARM_BLUE ) * fade,
 										fade ) );
 
 		const idWinding &winding = shards[i]->winding;
@@ -518,13 +518,13 @@ bool idBrittleFracture::UpdateRenderEntity( renderEntity_s *renderEntity, const 
 	surface.shader = material;
 	surface.id = 0;
 	surface.geometry = tris;
-	renderEntity->hModel->AddSurface( surface );
+	renderEntity->GetModel()->AddSurface( surface );
 
 	memset( &surface, 0, sizeof( surface ) );
 	surface.shader = decalMaterial;
 	surface.id = 1;
 	surface.geometry = decalTris;
-	renderEntity->hModel->AddSurface( surface );
+	renderEntity->GetModel()->AddSurface( surface );
 
 	return true;
 }
@@ -534,10 +534,10 @@ bool idBrittleFracture::UpdateRenderEntity( renderEntity_s *renderEntity, const 
 idBrittleFracture::ModelCallback
 ================
 */
-bool idBrittleFracture::ModelCallback( renderEntity_s *renderEntity, const renderView_t *renderView ) {
+bool idBrittleFracture::ModelCallback( idRenderEntity *renderEntity, const renderView_t *renderView ) {
 	const idBrittleFracture *ent;
 
-	ent = static_cast<idBrittleFracture *>(gameLocal.entities[ renderEntity->entityNum ]);
+	ent = static_cast<idBrittleFracture *>(gameLocal.entities[ renderEntity->GetEntityNum() ]);
 	if ( !ent ) {
 		gameLocal.Error( "idBrittleFracture::ModelCallback: callback with NULL game entity" );
 	}
@@ -557,20 +557,19 @@ void idBrittleFracture::Present() {
 		return;
 	}
 	BecomeInactive( TH_UPDATEVISUALS );
+	if ( renderEntity == NULL ) {
+		renderEntity = gameRenderWorld->AllocRenderEntity();
+	}
 
-	renderEntity.bounds = bounds;
-	renderEntity.origin.Zero();
-	renderEntity.axis.Identity();
+	renderEntity->SetBounds( bounds );
+	renderEntity->SetOrigin( vec3_origin );
+	renderEntity->SetAxis( mat3_identity );
 
 	// force an update because the bounds/origin/axis may stay the same while the model changes
-	renderEntity.forceUpdate = true;
+	renderEntity->SetForceUpdate( true );
 
 	// add to refresh list
-	if ( modelDefHandle == -1 ) {
-		modelDefHandle = gameRenderWorld->AddEntityDef( &renderEntity );
-	} else {
-		gameRenderWorld->UpdateEntityDef( modelDefHandle, &renderEntity );
-	}
+	renderEntity->UpdateRenderEntity();
 
 	changed = true;
 }

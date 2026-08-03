@@ -105,7 +105,7 @@ void idTestModel::Spawn( void ) {
 	const idKeyValue	*kv;
 	copyJoints_t		copyJoint;
 
-	if ( renderEntity.hModel && renderEntity.hModel->IsDefaultModel() && !animator.ModelDef() ) {
+	if ( renderEntity->GetModel() && renderEntity->GetModel()->IsDefaultModel() && !animator.ModelDef() ) {
 		gameLocal.Warning( "Unable to create testmodel for '%s' : model defaulted", spawnArgs.GetString( "model" ) );
 		PostEventMS( &EV_Remove, 0 );
 		return;
@@ -186,7 +186,7 @@ void idTestModel::Spawn( void ) {
 	}
 
 	// start any shader effects based off of the spawn time
-	renderEntity.shaderParms[ SHADERPARM_TIMEOFFSET ] = -MS2SEC( gameLocal.time );
+	renderEntity->SetShaderParm( SHADERPARM_TIMEOFFSET, -MS2SEC( gameLocal.time ) );
 
 	SetPhysics( &physicsObj );
 
@@ -201,8 +201,8 @@ idTestModel::~idTestModel
 */
 idTestModel::~idTestModel() {
 	StopSound( SND_CHANNEL_ANY, false );
-	if ( renderEntity.hModel ) {
-		gameLocal.Printf( "Removing testmodel %s\n", renderEntity.hModel->Name() );
+	if ( renderEntity->GetModel() ) {
+		gameLocal.Printf( "Removing testmodel %s\n", renderEntity->GetModel()->Name() );
 	} else {
 		gameLocal.Printf( "Removing testmodel\n" );
 	}
@@ -636,7 +636,7 @@ void idTestModel::KeepTestModel_f( const idCmdArgs &args ) {
 		return;
 	}
 
-	gameLocal.Printf( "modelDef %p kept\n", gameLocal.testmodel->renderEntity.hModel );
+	gameLocal.Printf( "modelDef %p kept\n", gameLocal.testmodel->renderEntity->GetModel() );
 
 	gameLocal.testmodel = NULL;
 }
@@ -779,7 +779,7 @@ void idTestModel::TestModel_f( const idCmdArgs &args ) {
 	dict.Set( "origin", offset.ToString() );
 	dict.Set( "angle", va( "%f", player->viewAngles.yaw + 180.0f ) );
 	gameLocal.testmodel = ( idTestModel * )gameLocal.SpawnEntityType( idTestModel::Type, &dict );
-	gameLocal.testmodel->renderEntity.shaderParms[SHADERPARM_TIMEOFFSET] = -MS2SEC( gameLocal.time );
+	gameLocal.testmodel->renderEntity->SetShaderParm( SHADERPARM_TIMEOFFSET, -MS2SEC( gameLocal.time ) );
 }
 
 /*
@@ -812,7 +812,7 @@ void idTestModel::TestParticleStopTime_f( const idCmdArgs &args ) {
 		return;
 	}
 
-	gameLocal.testmodel->renderEntity.shaderParms[SHADERPARM_PARTICLE_STOPTIME] = MS2SEC( gameLocal.time );
+	gameLocal.testmodel->renderEntity->SetShaderParm( SHADERPARM_PARTICLE_STOPTIME, MS2SEC( gameLocal.time ) );
 	gameLocal.testmodel->UpdateVisuals();
 }
 

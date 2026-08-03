@@ -51,8 +51,7 @@ public:
 
 public:
 	playerIconType_t	iconType;
-	renderEntity_t		renderEnt;
-	qhandle_t			iconHandle;
+	idRenderEntity *	renderEnt;
 
 public:
 	void	FreeIcon( void );

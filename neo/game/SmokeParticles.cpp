@@ -40,8 +40,7 @@ idSmokeParticles::idSmokeParticles
 */
 idSmokeParticles::idSmokeParticles( void ) {
 	initialized = false;
-	memset( &renderEntity, 0, sizeof( renderEntity ) );
-	renderEntityHandle = -1;
+	renderEntity = NULL;
 	memset( smokes, 0, sizeof( smokes ) );
 	freeSmokes = NULL;
 	numActiveSmokes = 0;
@@ -68,28 +67,28 @@ void idSmokeParticles::Init( void ) {
 
 	activeStages.Clear();
 
-	memset( &renderEntity, 0, sizeof( renderEntity ) );
+	renderEntity = gameRenderWorld->AllocRenderEntity();
+	idBounds bounds;
+	bounds.Clear();
+	renderEntity->SetAxis( mat3_identity );
+	for ( int i = 0; i < 4; i++ ) {
+		renderEntity->SetShaderParm( i, 1.0f );
+	}
 
-	renderEntity.bounds.Clear();
-	renderEntity.axis = mat3_identity;
-	renderEntity.shaderParms[ SHADERPARM_RED ]		= 1;
-	renderEntity.shaderParms[ SHADERPARM_GREEN ]	= 1;
-	renderEntity.shaderParms[ SHADERPARM_BLUE ]		= 1;
-	renderEntity.shaderParms[3] = 1;
-
-	renderEntity.hModel = renderModelManager->AllocModel();
-	renderEntity.hModel->InitEmpty( smokeParticle_SnapshotName );
+	renderEntity->SetModel( renderModelManager->AllocModel() );
+	renderEntity->GetModel()->InitEmpty( smokeParticle_SnapshotName );
 
 	// we certainly don't want particle shadows
-	renderEntity.noShadow = 1;
+	renderEntity->SetNoShadow( true );
 
 	// huge bounds, so it will be present in every world area
-	renderEntity.bounds.AddPoint( idVec3(-100000, -100000, -100000) );
-	renderEntity.bounds.AddPoint( idVec3( 100000,  100000,  100000) );
+	bounds.AddPoint( idVec3(-100000, -100000, -100000) );
+	bounds.AddPoint( idVec3( 100000,  100000,  100000) );
+	renderEntity->SetBounds( bounds );
 
-	renderEntity.callback = idSmokeParticles::ModelCallback;
+	renderEntity->SetCallback( idSmokeParticles::ModelCallback );
 	// add to renderer list
-	renderEntityHandle = gameRenderWorld->AddEntityDef( &renderEntity );
+	renderEntity->UpdateRenderEntity();
 
 	currentParticleTime = -1;
 
@@ -103,13 +102,13 @@ idSmokeParticles::Shutdown
 */
 void idSmokeParticles::Shutdown( void ) {
 	// make sure the render entity is freed before the model is freed
-	if ( renderEntityHandle != -1 ) {
-		gameRenderWorld->FreeEntityDef( renderEntityHandle );
-		renderEntityHandle = -1;
-	}
-	if ( renderEntity.hModel != NULL ) {
-		renderModelManager->FreeModel( renderEntity.hModel );
-		renderEntity.hModel = NULL;
+	if ( renderEntity != NULL ) {
+		idRenderModel *model = renderEntity->GetModel();
+		renderEntity->FreeRenderEntity();
+		renderEntity = NULL;
+		if ( model != NULL ) {
+			renderModelManager->FreeModel( model );
+		}
 	}
 	initialized = false;
 }
@@ -294,10 +293,10 @@ bool idSmokeParticles::EmitSmoke( const idDeclParticle *smoke, const int systemS
 idSmokeParticles::UpdateRenderEntity
 ================
 */
-bool idSmokeParticles::UpdateRenderEntity( renderEntity_s *renderEntity, const renderView_t *renderView ) {
+bool idSmokeParticles::UpdateRenderEntity( idRenderEntity *renderEntity, const renderView_t *renderView ) {
 
 	// FIXME: re-use model surfaces
-	renderEntity->hModel->InitEmpty( smokeParticle_SnapshotName );
+	renderEntity->GetModel()->InitEmpty( smokeParticle_SnapshotName );
 
 	// this may be triggered by a model trace or other non-view related source,
 	// to which we should look like an empty model
@@ -332,7 +331,7 @@ bool idSmokeParticles::UpdateRenderEntity( renderEntity_s *renderEntity, const r
 			count++;
 		}
 		int	quads = count * stage->NumQuadsPerParticle();
-		srfTriangles_t *tri = renderEntity->hModel->AllocSurfaceTriangles( quads * 4, quads * 6 );
+		srfTriangles_t *tri = renderEntity->GetModel()->AllocSurfaceTriangles( quads * 4, quads * 6 );
 		tri->isParticle = true;
 		tri->numIndexes = quads * 6;
 		tri->numVerts = quads * 4;
@@ -389,7 +388,7 @@ bool idSmokeParticles::UpdateRenderEntity( renderEntity_s *renderEntity, const r
 		if ( tri->numVerts == 0 ) {
 
 			// they were all removed
-			renderEntity->hModel->FreeSurfaceTriangles( tri );
+			renderEntity->GetModel()->FreeSurfaceTriangles( tri );
 
 			if ( !active->smokes ) {
 				// remove this from the activeStages list
@@ -415,7 +414,7 @@ bool idSmokeParticles::UpdateRenderEntity( renderEntity_s *renderEntity, const r
 			surf.shader = stage->material;
 			surf.id = 0;
 
-			renderEntity->hModel->AddSurface( surf );
+			renderEntity->GetModel()->AddSurface( surf );
 		}
 	}
 	return true;
@@ -426,7 +425,7 @@ bool idSmokeParticles::UpdateRenderEntity( renderEntity_s *renderEntity, const r
 idSmokeParticles::ModelCallback
 ================
 */
-bool idSmokeParticles::ModelCallback( renderEntity_s *renderEntity, const renderView_t *renderView ) {
+bool idSmokeParticles::ModelCallback( idRenderEntity *renderEntity, const renderView_t *renderView ) {
 	// update the particles
 	if ( gameLocal.smokeParticles ) {
 		return gameLocal.smokeParticles->UpdateRenderEntity( renderEntity, renderView );

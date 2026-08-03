@@ -60,7 +60,7 @@ protected:
 
 private:
 	idList<idRenderModel *>	modelHandles;
-	idList<int>				modelDefHandles;
+	idList<idRenderEntity *>	modelDefs;
 };
 
 
@@ -240,7 +240,7 @@ public:
 
 protected:
 	idRenderModel *			skeletonModel;
-	int						skeletonModelDefHandle;
+	idRenderEntity *		skeletonModelDef;
 	bool					gibbed;
 
 	bool					wasThrown;
@@ -505,8 +505,7 @@ private:
 	float					steamForce;
 	float					steamUpForce;
 	idForce_Constant		force;
-	renderEntity_t			steamRenderEntity;
-	qhandle_t				steamModelDefHandle;
+	idRenderEntity *		steamRenderEntity;
 
 	void					InitSteamRenderEntity( void );
 };

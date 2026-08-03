@@ -385,8 +385,7 @@ protected:
 	bool					useBoneAxis;				// use the bone vs the model axis
 	idList<particleEmitter_t> particles;				// particle data
 
-	renderLight_t			worldMuzzleFlash;			// positioned on world weapon bone
-	int						worldMuzzleFlashHandle;
+	idRenderLight *			worldMuzzleFlash;			// positioned on world weapon bone
 	jointHandle_t			flashJointWorld;
 	int						muzzleFlashEnd;
 	int						flashTime;

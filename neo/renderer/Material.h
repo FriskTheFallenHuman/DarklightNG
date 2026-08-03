@@ -622,7 +622,7 @@ private:
 
 	idImage	*			lightFalloffImage;
 
-	int					entityGui;			// draw a gui with the idUserInterface from the renderEntity_t
+	int					entityGui;			// draw a gui with the idUserInterface from the idRenderEntity
 											// non zero will draw gui, gui2, or gui3 from renderEnitty_t
 	mutable idUserInterface	*gui;			// non-custom guis are shared by all users of a material
 

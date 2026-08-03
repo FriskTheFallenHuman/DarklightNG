@@ -330,7 +330,7 @@ void idSecurityCamera::SetAlertMode( int alert ) {
 	if (alert >= SCANNING && alert <= ACTIVATED) {
 		alertMode = alert;
 	}
-	renderEntity.shaderParms[ SHADERPARM_MODE ] = alertMode;
+	renderEntity->SetShaderParm( SHADERPARM_MODE, alertMode );
 	UpdateVisuals();
 }
 
@@ -556,21 +556,20 @@ void idSecurityCamera::Present( void ) {
 		return;
 	}
 	BecomeInactive( TH_UPDATEVISUALS );
+	if ( renderEntity == NULL ) {
+		renderEntity = gameRenderWorld->AllocRenderEntity();
+	}
 
 	// camera target for remote render views
 	if ( cameraTarget ) {
-		renderEntity.remoteRenderView = cameraTarget->GetRenderView();
+		renderEntity->SetRemoteRenderView( cameraTarget->GetRenderView() );
 	}
 
 	// if set to invisible, skip
-	if ( !renderEntity.hModel || IsHidden() ) {
+	if ( !renderEntity->GetModel() || IsHidden() ) {
 		return;
 	}
 
 	// add to refresh list
-	if ( modelDefHandle == -1 ) {
-		modelDefHandle = gameRenderWorld->AddEntityDef( &renderEntity );
-	} else {
-		gameRenderWorld->UpdateEntityDef( modelDefHandle, &renderEntity );
-	}
+	renderEntity->UpdateRenderEntity();
 }

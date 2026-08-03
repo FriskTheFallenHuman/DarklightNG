@@ -109,7 +109,7 @@ bool idRenderWorldLocal::PortalIsFoggedOut( const portal_t *p ) {
 	int		size = sizeof( float ) *lightShader->GetNumRegisters();
 	float	*regs =(float *)_alloca( size );
 
-	lightShader->EvaluateRegisters( regs, ldef->parms.shaderParms, tr.viewDef, ldef->parms.referenceSound );
+	lightShader->EvaluateRegisters( regs, ldef->GetShaderParms(), tr.viewDef, ldef->GetReferenceSound() );
 
 	const shaderStage_t	*stage = lightShader->GetStage(0);
 
@@ -381,12 +381,12 @@ void idRenderWorldLocal::AddAreaEntityRefs( int areaNum, const portalStack_t *ps
 
 		// check for completely suppressing the model
 		if ( !r_skipSuppress.GetBool() ) {
-			if ( entity->parms.suppressSurfaceInViewID
-					&& entity->parms.suppressSurfaceInViewID == tr.viewDef->renderView.viewID ) {
+			if ( entity->GetSuppressSurfaceInViewID()
+					&& entity->GetSuppressSurfaceInViewID() == tr.viewDef->renderView.viewID ) {
 				continue;
 			}
-			if ( entity->parms.allowSurfaceInViewID 
-					&& entity->parms.allowSurfaceInViewID != tr.viewDef->renderView.viewID ) {
+			if ( entity->GetAllowSurfaceInViewID()
+					&& entity->GetAllowSurfaceInViewID() != tr.viewDef->renderView.viewID ) {
 				continue;
 			}
 		}

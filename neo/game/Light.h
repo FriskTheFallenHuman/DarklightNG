@@ -81,7 +81,7 @@ public:
 	void			FadeIn( float time );
 	void			Killed( idEntity *inflictor, idEntity *attacker, int damage, const idVec3 &dir, int location );
 	void			BecomeBroken( idEntity *activator );
-	qhandle_t		GetLightDefHandle( void ) const { return lightDefHandle; }
+	idRenderLight *	GetRenderLightDef( void ) const { return renderLight != NULL && renderLight->IsInRenderWorld() ? renderLight : NULL; }
 	void			SetLightParent( idEntity *lparent ) { lightParent = lparent; }
 	void			SetLightLevel( void );
 
@@ -98,12 +98,13 @@ public:
 	virtual bool	ClientReceiveEvent( int event, int time, const idBitMsg &msg );
 
 private:
-	renderLight_t	renderLight;				// light presented to the renderer
+	idRenderLight *	renderLight;				// renderer-owned light
 	idVec3			localLightOrigin;			// light origin relative to the physics origin
 	idMat3			localLightAxis;				// light axis relative to physics axis
-	qhandle_t		lightDefHandle;				// handle to renderer light def
 	idVec3			previousLightOrigin;
 	idMat3			previousLightAxis;
+	idVec3			currentLightOrigin;
+	idMat3			currentLightAxis;
 	bool			lightInterpolationValid;
 	bool			lightInterpolationApplied;
 	idStr			brokenModel;

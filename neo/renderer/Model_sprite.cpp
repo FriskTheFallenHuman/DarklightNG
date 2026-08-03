@@ -64,7 +64,7 @@ bool idRenderModelSprite::IsLoaded() const {
 idRenderModelSprite::InstantiateDynamicModel
 ===============
 */
-idRenderModel *	idRenderModelSprite::InstantiateDynamicModel( const struct renderEntity_s *renderEntity, const struct viewDef_s *viewDef, idRenderModel *cachedModel ) {
+idRenderModel *	idRenderModelSprite::InstantiateDynamicModel( const idRenderEntity *renderEntity, const struct viewDef_s *viewDef, idRenderModel *cachedModel ) {
 	idRenderModelStatic *staticModel;
 	srfTriangles_t *tri;
 	modelSurface_t surf;
@@ -141,13 +141,13 @@ idRenderModel *	idRenderModelSprite::InstantiateDynamicModel( const struct rende
 		staticModel->AddSurface( surf );
 	}
 
-	int	red			= idMath::FtoiFast( renderEntity->shaderParms[ SHADERPARM_RED ] * 255.0f );
-	int green		= idMath::FtoiFast( renderEntity->shaderParms[ SHADERPARM_GREEN ] * 255.0f );
-	int	blue		= idMath::FtoiFast( renderEntity->shaderParms[ SHADERPARM_BLUE ] * 255.0f );
-	int	alpha		= idMath::FtoiFast( renderEntity->shaderParms[ SHADERPARM_ALPHA ] * 255.0f );
+	int	red			= idMath::FtoiFast( renderEntity->GetShaderParm( SHADERPARM_RED ) * 255.0f );
+	int green		= idMath::FtoiFast( renderEntity->GetShaderParm( SHADERPARM_GREEN ) * 255.0f );
+	int	blue		= idMath::FtoiFast( renderEntity->GetShaderParm( SHADERPARM_BLUE ) * 255.0f );
+	int	alpha		= idMath::FtoiFast( renderEntity->GetShaderParm( SHADERPARM_ALPHA ) * 255.0f );
 
-	idVec3 right	= idVec3( 0.0f, renderEntity->shaderParms[ SHADERPARM_SPRITE_WIDTH ] * 0.5f, 0.0f );
-	idVec3 up		= idVec3( 0.0f, 0.0f, renderEntity->shaderParms[ SHADERPARM_SPRITE_HEIGHT ] * 0.5f );
+	idVec3 right	= idVec3( 0.0f, renderEntity->GetShaderParm( SHADERPARM_SPRITE_WIDTH ) * 0.5f, 0.0f );
+	idVec3 up		= idVec3( 0.0f, 0.0f, renderEntity->GetShaderParm( SHADERPARM_SPRITE_HEIGHT ) * 0.5f );
 
 	tri->verts[ 0 ].xyz = up + right;
 	tri->verts[ 0 ].color[ 0 ] = red;
@@ -185,14 +185,14 @@ idRenderModel *	idRenderModelSprite::InstantiateDynamicModel( const struct rende
 idRenderModelSprite::Bounds
 ===============
 */
-idBounds idRenderModelSprite::Bounds( const struct renderEntity_s *renderEntity ) const {
+idBounds idRenderModelSprite::Bounds( const idRenderEntity *renderEntity ) const {
 	idBounds b;
 
 	b.Zero();
 	if ( renderEntity == NULL ) {
 		b.ExpandSelf( 8.0f );
 	} else {
-		b.ExpandSelf( Max( renderEntity->shaderParms[ SHADERPARM_SPRITE_WIDTH ], renderEntity->shaderParms[ SHADERPARM_SPRITE_HEIGHT ] ) * 0.5f );
+		b.ExpandSelf( Max( renderEntity->GetShaderParm( SHADERPARM_SPRITE_WIDTH ), renderEntity->GetShaderParm( SHADERPARM_SPRITE_HEIGHT ) ) * 0.5f );
 	}
 	return b;
 }

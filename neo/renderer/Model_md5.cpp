@@ -364,7 +364,7 @@ void idMD5Mesh::TransformVerts( idDrawVert *verts, const idJointMat *entJoints )
 idMD5Mesh::UpdateSurface
 ====================
 */
-void idMD5Mesh::UpdateSurface( const struct renderEntity_s *ent, const idJointMat *entJoints,
+void idMD5Mesh::UpdateSurface( const idRenderEntity *ent, const idJointMat *entJoints,
 		const idJointMat *relativeJoints, int numJoints, modelSurface_t *surf ) {
 	srfTriangles_t *tri;
 
@@ -770,7 +770,7 @@ This calculates a rough bounds by using the joint radii without
 transforming all the points
 ====================
 */
-idBounds idRenderModelMD5::Bounds( const renderEntity_t *ent ) const {
+idBounds idRenderModelMD5::Bounds( const idRenderEntity *ent ) const {
 #if 0
 	// we can't calculate a rational bounds without an entity,
 	// because joints could be positioned to deform it into an
@@ -785,7 +785,7 @@ idBounds idRenderModelMD5::Bounds( const renderEntity_t *ent ) const {
 		return bounds;
 	}
 
-	return ent->bounds;
+	return ent->GetBounds();
 }
 
 /*
@@ -793,7 +793,7 @@ idBounds idRenderModelMD5::Bounds( const renderEntity_t *ent ) const {
 idRenderModelMD5::DrawJoints
 ====================
 */
-void idRenderModelMD5::DrawJoints( const renderEntity_t *ent, const struct viewDef_s *view ) const {
+void idRenderModelMD5::DrawJoints( const idRenderEntity *ent, const struct viewDef_s *view ) const {
 	int					i;
 	int					num;
 	idVec3				pos;
@@ -801,35 +801,35 @@ void idRenderModelMD5::DrawJoints( const renderEntity_t *ent, const struct viewD
 	const idMD5Joint	*md5Joint;
 	int					parentNum;
 
-	num = ent->numJoints;
-	joint = ent->joints;
+	num = ent->GetNumJoints();
+	joint = ent->GetJoints();
 	md5Joint = joints.Ptr();	
 	for( i = 0; i < num; i++, joint++, md5Joint++ ) {
-		pos = ent->origin + joint->ToVec3() * ent->axis;
+		pos = ent->GetOrigin() + joint->ToVec3() * ent->GetAxis();
 		if ( md5Joint->parent ) {
 			parentNum = md5Joint->parent - joints.Ptr();
-			session->rw->DebugLine( colorWhite, ent->origin + ent->joints[ parentNum ].ToVec3() * ent->axis, pos );
+			session->rw->DebugLine( colorWhite, ent->GetOrigin() + ent->GetJoints()[ parentNum ].ToVec3() * ent->GetAxis(), pos );
 		}
 
-		session->rw->DebugLine( colorRed,	pos, pos + joint->ToMat3()[ 0 ] * 2.0f * ent->axis );
-		session->rw->DebugLine( colorGreen,	pos, pos + joint->ToMat3()[ 1 ] * 2.0f * ent->axis );
-		session->rw->DebugLine( colorBlue,	pos, pos + joint->ToMat3()[ 2 ] * 2.0f * ent->axis );
+		session->rw->DebugLine( colorRed,	pos, pos + joint->ToMat3()[ 0 ] * 2.0f * ent->GetAxis() );
+		session->rw->DebugLine( colorGreen,	pos, pos + joint->ToMat3()[ 1 ] * 2.0f * ent->GetAxis() );
+		session->rw->DebugLine( colorBlue,	pos, pos + joint->ToMat3()[ 2 ] * 2.0f * ent->GetAxis() );
 	}
 
 	idBounds bounds;
 
-	bounds.FromTransformedBounds( ent->bounds, vec3_zero, ent->axis );
-	session->rw->DebugBounds( colorMagenta, bounds, ent->origin );
+	bounds.FromTransformedBounds( ent->GetBounds(), vec3_zero, ent->GetAxis() );
+	session->rw->DebugBounds( colorMagenta, bounds, ent->GetOrigin() );
 
-	if ( ( r_jointNameScale.GetFloat() != 0.0f ) && ( bounds.Expand( 128.0f ).ContainsPoint( view->renderView.vieworg - ent->origin ) ) ) {
+	if ( ( r_jointNameScale.GetFloat() != 0.0f ) && ( bounds.Expand( 128.0f ).ContainsPoint( view->renderView.vieworg - ent->GetOrigin() ) ) ) {
 		idVec3	offset( 0, 0, r_jointNameOffset.GetFloat() );
 		float	scale;
 
 		scale = r_jointNameScale.GetFloat();
-		joint = ent->joints;
-		num = ent->numJoints;
+		joint = ent->GetJoints();
+		num = ent->GetNumJoints();
 		for( i = 0; i < num; i++, joint++ ) {
-			pos = ent->origin + joint->ToVec3() * ent->axis;
+			pos = ent->GetOrigin() + joint->ToVec3() * ent->GetAxis();
 			session->rw->DrawText( joints[ i ].name, pos + offset, scale, colorWhite, view->renderView.viewaxis, 1 );
 		}
 	}
@@ -840,7 +840,7 @@ void idRenderModelMD5::DrawJoints( const renderEntity_t *ent, const struct viewD
 idRenderModelMD5::InstantiateDynamicModel
 ====================
 */
-idRenderModel *idRenderModelMD5::InstantiateDynamicModel( const struct renderEntity_s *ent, const struct viewDef_s *view, idRenderModel *cachedModel ) {
+idRenderModel *idRenderModelMD5::InstantiateDynamicModel( const idRenderEntity *ent, const struct viewDef_s *view, idRenderModel *cachedModel ) {
 	int					i, surfaceNum;
 	idMD5Mesh			*mesh;
 	idRenderModelStatic	*staticModel;
@@ -855,11 +855,11 @@ idRenderModel *idRenderModelMD5::InstantiateDynamicModel( const struct renderEnt
 		LoadModel();
 	}
 
-	if ( !ent->joints ) {
+	if ( !ent->GetJoints() ) {
 		common->Printf( "idRenderModelMD5::InstantiateDynamicModel: NULL joints on renderEntity for '%s'\n", Name() );
 		delete cachedModel;
 		return NULL;
-	} else if ( ent->numJoints != joints.Num() ) {
+	} else if ( ent->GetNumJoints() != joints.Num() ) {
 		common->Printf( "idRenderModelMD5::InstantiateDynamicModel: renderEntity has different number of joints than model for '%s'\n", Name() );
 		delete cachedModel;
 		return NULL;
@@ -874,7 +874,7 @@ idRenderModel *idRenderModelMD5::InstantiateDynamicModel( const struct renderEnt
 
 	idJointMat *relativeJoints = (idJointMat *)_alloca16( joints.Num() * sizeof( relativeJoints[0] ) );
 	for ( i = 0; i < joints.Num(); i++ ) {
-		R_MultiplyJointMatrices( relativeJoints[i], ent->joints[i], referenceJoints[i] );
+		R_MultiplyJointMatrices( relativeJoints[i], ent->GetJoints()[i], referenceJoints[i] );
 	}
 
 	tr.pc.c_generateMd5++;
@@ -891,7 +891,7 @@ idRenderModel *idRenderModelMD5::InstantiateDynamicModel( const struct renderEnt
 	staticModel->bounds.Clear();
 
 	if ( r_showSkel.GetInteger() ) {
-		if ( ( view != NULL ) && ( !r_skipSuppress.GetBool() || !ent->suppressSurfaceInViewID || ( ent->suppressSurfaceInViewID != view->renderView.viewID ) ) ) {
+		if ( ( view != NULL ) && ( !r_skipSuppress.GetBool() || !ent->GetSuppressSurfaceInViewID() || ( ent->GetSuppressSurfaceInViewID() != view->renderView.viewID ) ) ) {
 			// only draw the skeleton
 			DrawJoints( ent, view );
 		}
@@ -909,7 +909,7 @@ idRenderModel *idRenderModelMD5::InstantiateDynamicModel( const struct renderEnt
 		// FIXME: may have to still deform clipping hulls
 		const idMaterial *shader = mesh->shader;
 		
-		shader = R_RemapShaderBySkin( shader, ent->customSkin, ent->customShader );
+		shader = R_RemapShaderBySkin( shader, ent->GetCustomSkin(), ent->GetCustomShader() );
 		
 		if ( !shader || ( !shader->IsDrawn() && !shader->SurfaceCastsShadow() ) ) {
 			staticModel->DeleteSurfaceWithId( i );
@@ -934,7 +934,7 @@ idRenderModel *idRenderModelMD5::InstantiateDynamicModel( const struct renderEnt
 			surf->id = i;
 		}
 
-		mesh->UpdateSurface( ent, ent->joints, relativeJoints, joints.Num(), surf );
+		mesh->UpdateSurface( ent, ent->GetJoints(), relativeJoints, joints.Num(), surf );
 
 		staticModel->bounds.AddPoint( surf->geometry->bounds[0] );
 		staticModel->bounds.AddPoint( surf->geometry->bounds[1] );

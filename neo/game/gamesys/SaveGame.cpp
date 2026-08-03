@@ -494,55 +494,55 @@ void idSaveGame::WriteUserInterface( const idUserInterface *ui, bool unique ) {
 idSaveGame::WriteRenderEntity
 ================
 */
-void idSaveGame::WriteRenderEntity( const renderEntity_t &renderEntity ) {
+void idSaveGame::WriteRenderEntity( const idRenderEntity &renderEntity ) {
 	int i;
 
-	WriteModel( renderEntity.hModel );
+	WriteModel( renderEntity.GetModel() );
 
-	WriteInt( renderEntity.entityNum );
-	WriteInt( renderEntity.bodyId );
+	WriteInt( renderEntity.GetEntityNum() );
+	WriteInt( renderEntity.GetBodyId() );
 
-	WriteBounds( renderEntity.bounds );
+	WriteBounds( renderEntity.GetBounds() );
 
 	// callback is set by class's Restore function
 
-	WriteInt( renderEntity.suppressSurfaceInViewID );
-	WriteInt( renderEntity.suppressShadowInViewID );
-	WriteInt( renderEntity.suppressShadowInLightID );
-	WriteInt( renderEntity.allowSurfaceInViewID );
+	WriteInt( renderEntity.GetSuppressSurfaceInViewID() );
+	WriteInt( renderEntity.GetSuppressShadowInViewID() );
+	WriteInt( renderEntity.GetSuppressShadowInLightID() );
+	WriteInt( renderEntity.GetAllowSurfaceInViewID() );
 
-	WriteVec3( renderEntity.origin );
-	WriteMat3( renderEntity.axis );
+	WriteVec3( renderEntity.GetOrigin() );
+	WriteMat3( renderEntity.GetAxis() );
 
-	WriteMaterial( renderEntity.customShader );
-	WriteMaterial( renderEntity.referenceShader );
-	WriteSkin( renderEntity.customSkin );
+	WriteMaterial( renderEntity.GetCustomShader() );
+	WriteMaterial( renderEntity.GetReferenceShader() );
+	WriteSkin( renderEntity.GetCustomSkin() );
 
-	if ( renderEntity.referenceSound != NULL ) {
-		WriteInt( renderEntity.referenceSound->Index() );
+	if ( renderEntity.GetReferenceSound() != NULL ) {
+		WriteInt( renderEntity.GetReferenceSound()->Index() );
 	} else {
 		WriteInt( 0 );
 	}
 
 	for( i = 0; i < MAX_ENTITY_SHADER_PARMS; i++ ) {
-		WriteFloat( renderEntity.shaderParms[ i ] );
+		WriteFloat( renderEntity.GetShaderParm( i ) );
 	}
 
 	for( i = 0; i < MAX_RENDERENTITY_GUI; i++ ) {
-		WriteUserInterface( renderEntity.gui[ i ], renderEntity.gui[ i ] ? renderEntity.gui[ i ]->IsUniqued() : false );
+		WriteUserInterface( renderEntity.GetGui( i ), renderEntity.GetGui( i ) ? renderEntity.GetGui( i )->IsUniqued() : false );
 	}
 
-	WriteFloat( renderEntity.modelDepthHack );
+	WriteFloat( renderEntity.GetModelDepthHack() );
 
-	WriteBool( renderEntity.noSelfShadow );
-	WriteBool( renderEntity.noShadow );
-	WriteBool( renderEntity.noDynamicInteractions );
-	WriteBool( renderEntity.weaponDepthHack );
+	WriteBool( renderEntity.GetNoSelfShadow() );
+	WriteBool( renderEntity.GetNoShadow() );
+	WriteBool( renderEntity.GetNoDynamicInteractions() );
+	WriteBool( renderEntity.GetWeaponDepthHack() );
 
-	WriteInt( renderEntity.forceUpdate );
+	WriteInt( renderEntity.GetForceUpdate() );
 
-	WriteInt( renderEntity.timeGroup );
-	WriteInt( renderEntity.xrayIndex );
+	WriteInt( renderEntity.GetTimeGroup() );
+	WriteInt( renderEntity.GetXrayIndex() );
 }
 
 /*
@@ -550,41 +550,42 @@ void idSaveGame::WriteRenderEntity( const renderEntity_t &renderEntity ) {
 idSaveGame::WriteRenderLight
 ================
 */
-void idSaveGame::WriteRenderLight( const renderLight_t &renderLight ) {
+void idSaveGame::WriteRenderLight( const idRenderLight &renderLight ) {
 	int i;
 
-	WriteMat3( renderLight.axis );
-	WriteVec3( renderLight.origin );
+	WriteMat3( renderLight.GetAxis() );
+	WriteVec3( renderLight.GetOrigin() );
 
-	WriteInt( renderLight.suppressLightInViewID );
-	WriteInt( renderLight.allowLightInViewID );
-	WriteBool( renderLight.noShadows );
-	WriteBool( renderLight.noSpecular );
-	WriteBool( renderLight.pointLight );
-	WriteBool( renderLight.parallel );
+	WriteInt( renderLight.GetSuppressLightInViewID() );
+	WriteInt( renderLight.GetAllowLightInViewID() );
+	WriteBool( renderLight.GetNoShadows() );
+	WriteBool( renderLight.GetNoSpecular() );
+	WriteBool( renderLight.GetPointLight() );
+	WriteBool( renderLight.GetParallel() );
+	WriteBool( renderLight.GetBakedLight() );
 
-	WriteVec3( renderLight.lightRadius );
-	WriteVec3( renderLight.lightCenter );
+	WriteVec3( renderLight.GetLightRadius() );
+	WriteVec3( renderLight.GetLightCenter() );
 
-	WriteVec3( renderLight.target );
-	WriteVec3( renderLight.right );
-	WriteVec3( renderLight.up );
-	WriteVec3( renderLight.start );
-	WriteVec3( renderLight.end );
+	WriteVec3( renderLight.GetTarget() );
+	WriteVec3( renderLight.GetRight() );
+	WriteVec3( renderLight.GetUp() );
+	WriteVec3( renderLight.GetStart() );
+	WriteVec3( renderLight.GetEnd() );
 
 	// only idLight has a prelightModel and it's always based on the entityname, so we'll restore it there
 	// WriteModel( renderLight.prelightModel );
 
-	WriteInt( renderLight.lightId );
+	WriteInt( renderLight.GetLightId() );
 
-	WriteMaterial( renderLight.shader );
+	WriteMaterial( renderLight.GetShader() );
 
 	for( i = 0; i < MAX_ENTITY_SHADER_PARMS; i++ ) {
-		WriteFloat( renderLight.shaderParms[ i ] );
+		WriteFloat( renderLight.GetShaderParm( i ) );
 	}
 
-	if ( renderLight.referenceSound != NULL ) {
-		WriteInt( renderLight.referenceSound->Index() );
+	if ( renderLight.GetReferenceSound() != NULL ) {
+		WriteInt( renderLight.GetReferenceSound()->Index() );
 	} else {
 		WriteInt( 0 );
 	}
@@ -1264,61 +1265,70 @@ void idRestoreGame::ReadUserInterface( idUserInterface *&ui ) {
 idRestoreGame::ReadRenderEntity
 ================
 */
-void idRestoreGame::ReadRenderEntity( renderEntity_t &renderEntity ) {
-	int i;
-	int index;
-
-	ReadModel( renderEntity.hModel );
-
-	ReadInt( renderEntity.entityNum );
-	ReadInt( renderEntity.bodyId );
-
-	ReadBounds( renderEntity.bounds );
-
-	// callback is set by class's Restore function
-	renderEntity.callback = NULL;
-	renderEntity.callbackData = NULL;
-
-	ReadInt( renderEntity.suppressSurfaceInViewID );
-	ReadInt( renderEntity.suppressShadowInViewID );
-	ReadInt( renderEntity.suppressShadowInLightID );
-	ReadInt( renderEntity.allowSurfaceInViewID );
-
-	ReadVec3( renderEntity.origin );
-	ReadMat3( renderEntity.axis );
-
-	ReadMaterial( renderEntity.customShader );
-	ReadMaterial( renderEntity.referenceShader );
-	ReadSkin( renderEntity.customSkin );
-
-	ReadInt( index );
-	renderEntity.referenceSound = gameSoundWorld->EmitterForIndex( index );
-
-	for( i = 0; i < MAX_ENTITY_SHADER_PARMS; i++ ) {
-		ReadFloat( renderEntity.shaderParms[ i ] );
+void idRestoreGame::ReadRenderEntity( idRenderEntity &renderEntity ) {
+	renderEntity.Reset();
+	idRenderModel *model;
+	ReadModel( model );
+	renderEntity.SetModel( model );
+	int integerValue;
+	ReadInt( integerValue );
+	renderEntity.SetEntityNum( integerValue );
+	ReadInt( integerValue );
+	renderEntity.SetBodyId( integerValue );
+	idBounds bounds;
+	ReadBounds( bounds );
+	renderEntity.SetBounds( bounds );
+	ReadInt( integerValue );
+	renderEntity.SetSuppressSurfaceInViewID( integerValue );
+	ReadInt( integerValue );
+	renderEntity.SetSuppressShadowInViewID( integerValue );
+	ReadInt( integerValue );
+	renderEntity.SetSuppressShadowInLightID( integerValue );
+	ReadInt( integerValue );
+	renderEntity.SetAllowSurfaceInViewID( integerValue );
+	idVec3 origin;
+	ReadVec3( origin );
+	renderEntity.SetOrigin( origin );
+	idMat3 axis;
+	ReadMat3( axis );
+	renderEntity.SetAxis( axis );
+	const idMaterial *material;
+	ReadMaterial( material );
+	renderEntity.SetCustomShader( material );
+	ReadMaterial( material );
+	renderEntity.SetReferenceShader( material );
+	const idDeclSkin *skin;
+	ReadSkin( skin );
+	renderEntity.SetCustomSkin( skin );
+	ReadInt( integerValue );
+	renderEntity.SetReferenceSound( gameSoundWorld->EmitterForIndex( integerValue ) );
+	float floatValue;
+	for ( int i = 0; i < MAX_ENTITY_SHADER_PARMS; i++ ) {
+		ReadFloat( floatValue );
+		renderEntity.SetShaderParm( i, floatValue );
 	}
-
-	for( i = 0; i < MAX_RENDERENTITY_GUI; i++ ) {
-		ReadUserInterface( renderEntity.gui[ i ] );
+	for ( int i = 0; i < MAX_RENDERENTITY_GUI; i++ ) {
+		idUserInterface *gui;
+		ReadUserInterface( gui );
+		renderEntity.SetGui( i, gui );
 	}
-
-	// idEntity will restore "cameraTarget", which will be used in idEntity::Present to restore the remoteRenderView
-	renderEntity.remoteRenderView = NULL;
-
-	renderEntity.joints = NULL;
-	renderEntity.numJoints = 0;
-
-	ReadFloat( renderEntity.modelDepthHack );
-
-	ReadBool( renderEntity.noSelfShadow );
-	ReadBool( renderEntity.noShadow );
-	ReadBool( renderEntity.noDynamicInteractions );
-	ReadBool( renderEntity.weaponDepthHack );
-
-	ReadInt( renderEntity.forceUpdate );
-
-	ReadInt( renderEntity.timeGroup );
-	ReadInt( renderEntity.xrayIndex );
+	ReadFloat( floatValue );
+	renderEntity.SetModelDepthHack( floatValue );
+	bool boolValue;
+	ReadBool( boolValue );
+	renderEntity.SetNoSelfShadow( boolValue );
+	ReadBool( boolValue );
+	renderEntity.SetNoShadow( boolValue );
+	ReadBool( boolValue );
+	renderEntity.SetNoDynamicInteractions( boolValue );
+	ReadBool( boolValue );
+	renderEntity.SetWeaponDepthHack( boolValue );
+	ReadInt( integerValue );
+	renderEntity.SetForceUpdate( integerValue );
+	ReadInt( integerValue );
+	renderEntity.SetTimeGroup( integerValue );
+	ReadInt( integerValue );
+	renderEntity.SetXrayIndex( integerValue );
 }
 
 /*
@@ -1326,43 +1336,56 @@ void idRestoreGame::ReadRenderEntity( renderEntity_t &renderEntity ) {
 idRestoreGame::ReadRenderLight
 ================
 */
-void idRestoreGame::ReadRenderLight( renderLight_t &renderLight ) {
-	int index;
-	int i;
-
-	ReadMat3( renderLight.axis );
-	ReadVec3( renderLight.origin );
-
-	ReadInt( renderLight.suppressLightInViewID );
-	ReadInt( renderLight.allowLightInViewID );
-	ReadBool( renderLight.noShadows );
-	ReadBool( renderLight.noSpecular );
-	ReadBool( renderLight.pointLight );
-	ReadBool( renderLight.parallel );
-
-	ReadVec3( renderLight.lightRadius );
-	ReadVec3( renderLight.lightCenter );
-
-	ReadVec3( renderLight.target );
-	ReadVec3( renderLight.right );
-	ReadVec3( renderLight.up );
-	ReadVec3( renderLight.start );
-	ReadVec3( renderLight.end );
-
-	// only idLight has a prelightModel and it's always based on the entityname, so we'll restore it there
-	// ReadModel( renderLight.prelightModel );
-	renderLight.prelightModel = NULL;
-
-	ReadInt( renderLight.lightId );
-
-	ReadMaterial( renderLight.shader );
-
-	for( i = 0; i < MAX_ENTITY_SHADER_PARMS; i++ ) {
-		ReadFloat( renderLight.shaderParms[ i ] );
+void idRestoreGame::ReadRenderLight( idRenderLight &renderLight ) {
+	renderLight.Reset();
+	idMat3 axis;
+	ReadMat3( axis );
+	renderLight.SetAxis( axis );
+	idVec3 vector;
+	ReadVec3( vector );
+	renderLight.SetOrigin( vector );
+	int integerValue;
+	ReadInt( integerValue );
+	renderLight.SetSuppressLightInViewID( integerValue );
+	ReadInt( integerValue );
+	renderLight.SetAllowLightInViewID( integerValue );
+	bool boolValue;
+	ReadBool( boolValue );
+	renderLight.SetNoShadows( boolValue );
+	ReadBool( boolValue );
+	renderLight.SetNoSpecular( boolValue );
+	ReadBool( boolValue );
+	renderLight.SetPointLight( boolValue );
+	ReadBool( boolValue );
+	renderLight.SetParallel( boolValue );
+	ReadBool( boolValue );
+	renderLight.SetBakedLight( boolValue );
+	ReadVec3( vector );
+	renderLight.SetLightRadius( vector );
+	ReadVec3( vector );
+	renderLight.SetLightCenter( vector );
+	ReadVec3( vector );
+	renderLight.SetTarget( vector );
+	ReadVec3( vector );
+	renderLight.SetRight( vector );
+	ReadVec3( vector );
+	renderLight.SetUp( vector );
+	ReadVec3( vector );
+	renderLight.SetStart( vector );
+	ReadVec3( vector );
+	renderLight.SetEnd( vector );
+	ReadInt( integerValue );
+	renderLight.SetLightId( integerValue );
+	const idMaterial *material;
+	ReadMaterial( material );
+	renderLight.SetShader( material );
+	float floatValue;
+	for ( int i = 0; i < MAX_ENTITY_SHADER_PARMS; i++ ) {
+		ReadFloat( floatValue );
+		renderLight.SetShaderParm( i, floatValue );
 	}
-
-	ReadInt( index );
-	renderLight.referenceSound = gameSoundWorld->EmitterForIndex( index );
+	ReadInt( integerValue );
+	renderLight.SetReferenceSound( gameSoundWorld->EmitterForIndex( integerValue ) );
 }
 
 /*

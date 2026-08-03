@@ -547,7 +547,7 @@ void idRenderWorldLocal::FreeDefs() {
 
 		light = lightDefs[i];
 		if ( light && light->world == this ) {
-			FreeLightDef( i );
+			FreeRenderLight( light );
 			lightDefs[i] = NULL;
 		}
 	}
@@ -558,7 +558,7 @@ void idRenderWorldLocal::FreeDefs() {
 
 		mod = entityDefs[i];
 		if ( mod && mod->world == this ) {
-			FreeEntityDef( i );
+			FreeRenderEntity( mod );
 			entityDefs[i] = NULL;
 		}
 	}
@@ -777,7 +777,7 @@ void idRenderWorldLocal::AddWorldModelEntities() {
 	int		i;
 
 	// add the world model for each portal area
-	// we can't just call AddEntityDef, because that would place the references
+		// We create these directly because a regular renderer allocation would place the references
 	// based on the bounding box, rather than explicitly into the correct area
 	for ( i = 0 ; i < numPortalAreas ; i++ ) {
 		idRenderEntityLocal	*def;
@@ -796,12 +796,12 @@ void idRenderWorldLocal::AddWorldModelEntities() {
 		def->index = index;
 		def->world = this;
 
-		def->parms.hModel = renderModelManager->FindModel( va("_area%i", i ) );
-		if ( def->parms.hModel->IsDefaultModel() || !def->parms.hModel->IsStaticWorldModel() ) {
+		def->SetModel( renderModelManager->FindModel( va("_area%i", i ) ) );
+		if ( def->GetModel()->IsDefaultModel() || !def->GetModel()->IsStaticWorldModel() ) {
 			common->Error( "idRenderWorldLocal::InitFromMap: bad area model lookup" );
 		}
 
-		idRenderModel *hModel = def->parms.hModel;
+		idRenderModel *hModel = def->GetModel();
 
 		for ( int j = 0; j < hModel->NumSurfaces(); j++ ) {
 			const modelSurface_t *surf = hModel->Surface( j );
@@ -811,20 +811,18 @@ void idRenderWorldLocal::AddWorldModelEntities() {
 			}
 		}
 
-		def->referenceBounds = def->parms.hModel->Bounds();
+		def->referenceBounds = def->GetModel()->Bounds();
 
-		def->parms.axis[0][0] = 1;
-		def->parms.axis[1][1] = 1;
-		def->parms.axis[2][2] = 1;
+		def->SetAxis( mat3_identity );
 
-		R_AxisToModelMatrix( def->parms.axis, def->parms.origin, def->modelMatrix );
+		R_AxisToModelMatrix( def->GetAxis(), def->GetOrigin(), def->modelMatrix );
 
 		// in case an explicit shader is used on the world, we don't
 		// want it to have a 0 alpha or color
-		def->parms.shaderParms[0] =
-		def->parms.shaderParms[1] =
-		def->parms.shaderParms[2] =
-		def->parms.shaderParms[3] = 1;
+		for ( int j = 0; j < 4; j++ ) {
+			def->SetShaderParm( j, 1.0f );
+		}
+		def->initialized = true;
 
 		AddEntityRefToArea( def, &portalAreas[i] );
 	}

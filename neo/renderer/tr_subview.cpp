@@ -298,7 +298,7 @@ static void R_RemoteRender( drawSurf_t *surf, textureStage_t *stage ) {
 	}
 
 	// if the entity doesn't have a remoteRenderView, do nothing
-	if ( !surf->space->entityDef->parms.remoteRenderView ) {
+	if ( !surf->space->entityDef->GetRemoteRenderView() ) {
 		return;
 	}
 
@@ -309,7 +309,7 @@ static void R_RemoteRender( drawSurf_t *surf, textureStage_t *stage ) {
 	parms->isSubview = true;
 	parms->isMirror = false;
 
-	parms->renderView = *surf->space->entityDef->parms.remoteRenderView;
+	parms->renderView = *surf->space->entityDef->GetRemoteRenderView();
 	parms->renderView.viewID = 0;	// clear to allow player bodies to show up, and suppress view weapons
 	parms->initialViewAreaOrigin = parms->renderView.vieworg;
 

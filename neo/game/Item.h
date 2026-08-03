@@ -83,7 +83,7 @@ private:
 	bool					canPickUp;
 
 	// for item pulse effect
-	int						itemShellHandle;
+	idRenderEntity *		itemShellDef;
 	const idMaterial *		shellMaterial;
 
 	// used to update the item pulse effect
@@ -92,8 +92,8 @@ private:
 	mutable int				lastCycle;
 	mutable int				lastRenderViewTime;
 
-	bool					UpdateRenderEntity( renderEntity_s *renderEntity, const renderView_t *renderView ) const;
-	static bool				ModelCallback( renderEntity_s *renderEntity, const renderView_t *renderView );
+	bool					UpdateRenderEntity( idRenderEntity *renderEntity, const renderView_t *renderView ) const;
+	static bool				ModelCallback( idRenderEntity *renderEntity, const renderView_t *renderView );
 
 	D3_EVENT( EV_DropToFloor, "<dropToFloor>", void )
 	void					Event_DropToFloor( void );
@@ -257,8 +257,7 @@ private:
 	const function_t *		scriptReturned;
 	const function_t *		scriptCaptured;
 
-    renderLight_t           itemGlow;           // Used by flags when they are picked up
-    int                     itemGlowHandle;
+    idRenderLight *         itemGlowDef;
 
 	int						lastNuggetDrop;
 	const char *			nuggetName;

@@ -639,9 +639,9 @@ static void RB_ShowSurfaceInfo( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	float	matrix[16];
 
 	// transform the object verts into global space
-	R_AxisToModelMatrix( mt.entity->axis, mt.entity->origin, matrix );
+	R_AxisToModelMatrix( mt.entity->GetAxis(), mt.entity->GetOrigin(), matrix );
 
-	tr.primaryWorld->DrawText( mt.entity->hModel->Name(), mt.point + tr.primaryView->renderView.viewaxis[2] * 12,
+	tr.primaryWorld->DrawText( mt.entity->GetModel()->Name(), mt.point + tr.primaryView->renderView.viewaxis[2] * 12,
 		0.35f, colorRed, tr.primaryView->renderView.viewaxis );
 	tr.primaryWorld->DrawText( mt.material->GetName(), mt.point, 
 		0.35f, colorBlue, tr.primaryView->renderView.viewaxis );
@@ -710,7 +710,7 @@ static void RB_ShowViewEntitys( viewEntity_t *vModels ) {
 		if ( !model ) {
 			continue;	// particles won't instantiate without a current view
 		}
-		b = model->Bounds( &vModels->entityDef->parms );
+		b = model->Bounds( vModels->entityDef );
 		RB_DrawBounds( b );
 	}
 

@@ -160,8 +160,7 @@ public:
 
 	bool					noGrab;
 
-	renderEntity_t			xrayEntity;
-	qhandle_t				xrayEntityHandle;
+	idRenderEntity *		xrayEntity;
 	const idDeclSkin *		xraySkin;
 
 	void					DetermineTimeGroup( bool slowmo );
@@ -204,8 +203,8 @@ public:
 	virtual void			SnapshotRenderTransform( void );
 	virtual void			PresentRenderInterpolation( float interpolation );
 	virtual void			ResetRenderInterpolation( void );
-	virtual renderEntity_t *GetRenderEntity( void );
-	virtual int				GetModelDefHandle( void );
+	virtual idRenderEntity *GetRenderEntity( void );
+	virtual idRenderEntity *GetRenderEntityDef( void );
 	virtual void			SetModel( const char *modelname );
 	void					SetSkin( const idDeclSkin *skin );
 	const idDeclSkin *		GetSkin( void ) const;
@@ -231,8 +230,8 @@ public:
 
 	// animation
 	virtual bool			UpdateAnimationControllers( void );
-	bool					UpdateRenderEntity( renderEntity_s *renderEntity, const renderView_t *renderView );
-	static bool				ModelCallback( renderEntity_s *renderEntity, const renderView_t *renderView );
+	bool					UpdateRenderEntity( idRenderEntity *renderEntity, const renderView_t *renderView );
+	static bool				ModelCallback( idRenderEntity *renderEntity, const renderView_t *renderView );
 	virtual idAnimator *	GetAnimator( void );	// returns animator object used by this entity
 
 	// sound
@@ -376,10 +375,11 @@ public:
 	void					ClientSendEvent( int eventId, const idBitMsg *msg ) const;
 
 protected:
-	renderEntity_t			renderEntity;						// used to present a model to the renderer
-	int						modelDefHandle;						// handle to static renderer model
+	idRenderEntity *		renderEntity;						// renderer-owned presentation object
 	idVec3					previousRenderOrigin;
 	idMat3					previousRenderAxis;
+	idVec3					currentRenderOrigin;
+	idMat3					currentRenderAxis;
 	bool					renderInterpolationValid;
 	bool					renderInterpolationApplied;
 	refSound_t				refSound;							// used to present sound to the audio engine

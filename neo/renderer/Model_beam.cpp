@@ -64,7 +64,7 @@ bool idRenderModelBeam::IsLoaded() const {
 idRenderModelBeam::InstantiateDynamicModel
 ===============
 */
-idRenderModel *idRenderModelBeam::InstantiateDynamicModel( const struct renderEntity_s *renderEntity, const struct viewDef_s *viewDef, idRenderModel *cachedModel ) {
+idRenderModel *idRenderModelBeam::InstantiateDynamicModel( const idRenderEntity *renderEntity, const struct viewDef_s *viewDef, idRenderModel *cachedModel ) {
 	idRenderModelStatic *staticModel;
 	srfTriangles_t *tri;
 	modelSurface_t surf;
@@ -129,13 +129,13 @@ idRenderModel *idRenderModelBeam::InstantiateDynamicModel( const struct renderEn
 		staticModel->AddSurface( surf );
 	}
 
-	idVec3	target = *reinterpret_cast<const idVec3 *>( &renderEntity->shaderParms[SHADERPARM_BEAM_END_X] );
+	idVec3	target = *reinterpret_cast<const idVec3 *>( &renderEntity->GetShaderParms()[SHADERPARM_BEAM_END_X] );
 
 	// we need the view direction to project the minor axis of the tube
 	// as the view changes
 	idVec3	localView, localTarget;
 	float	modelMatrix[16];
-	R_AxisToModelMatrix( renderEntity->axis, renderEntity->origin, modelMatrix );
+	R_AxisToModelMatrix( renderEntity->GetAxis(), renderEntity->GetOrigin(), modelMatrix );
 	R_GlobalPointToLocal( modelMatrix, viewDef->renderView.vieworg, localView ); 
 	R_GlobalPointToLocal( modelMatrix, target, localTarget ); 
 
@@ -146,14 +146,14 @@ idRenderModel *idRenderModelBeam::InstantiateDynamicModel( const struct renderEn
 	idVec3	dir = mid - localView;
 	minor.Cross( major, dir );
 	minor.Normalize();
-	if ( renderEntity->shaderParms[SHADERPARM_BEAM_WIDTH] != 0.0f ) {
-		minor *= renderEntity->shaderParms[SHADERPARM_BEAM_WIDTH] * 0.5f;
+	if ( renderEntity->GetShaderParm( SHADERPARM_BEAM_WIDTH ) != 0.0f ) {
+		minor *= renderEntity->GetShaderParm( SHADERPARM_BEAM_WIDTH ) * 0.5f;
 	}
 
-	int red		= idMath::FtoiFast( renderEntity->shaderParms[SHADERPARM_RED] * 255.0f );
-	int green	= idMath::FtoiFast( renderEntity->shaderParms[SHADERPARM_GREEN] * 255.0f );
-	int blue	= idMath::FtoiFast( renderEntity->shaderParms[SHADERPARM_BLUE] * 255.0f );
-	int alpha	= idMath::FtoiFast( renderEntity->shaderParms[SHADERPARM_ALPHA] * 255.0f );
+	int red		= idMath::FtoiFast( renderEntity->GetShaderParm( SHADERPARM_RED ) * 255.0f );
+	int green	= idMath::FtoiFast( renderEntity->GetShaderParm( SHADERPARM_GREEN ) * 255.0f );
+	int blue	= idMath::FtoiFast( renderEntity->GetShaderParm( SHADERPARM_BLUE ) * 255.0f );
+	int alpha	= idMath::FtoiFast( renderEntity->GetShaderParm( SHADERPARM_ALPHA ) * 255.0f );
 
 	tri->verts[0].xyz = minor;
 	tri->verts[0].color[0] = red;
@@ -191,22 +191,22 @@ idRenderModel *idRenderModelBeam::InstantiateDynamicModel( const struct renderEn
 idRenderModelBeam::Bounds
 ===============
 */
-idBounds idRenderModelBeam::Bounds( const struct renderEntity_s *renderEntity ) const {
+idBounds idRenderModelBeam::Bounds( const idRenderEntity *renderEntity ) const {
 	idBounds	b;
 
 	b.Zero();
 	if ( !renderEntity ) {
 		b.ExpandSelf( 8.0f );
 	} else {
-		idVec3	target = *reinterpret_cast<const idVec3 *>( &renderEntity->shaderParms[SHADERPARM_BEAM_END_X] );
+		idVec3	target = *reinterpret_cast<const idVec3 *>( &renderEntity->GetShaderParms()[SHADERPARM_BEAM_END_X] );
 		idVec3	localTarget;
 		float	modelMatrix[16];
-		R_AxisToModelMatrix( renderEntity->axis, renderEntity->origin, modelMatrix );
+		R_AxisToModelMatrix( renderEntity->GetAxis(), renderEntity->GetOrigin(), modelMatrix );
 		R_GlobalPointToLocal( modelMatrix, target, localTarget ); 
 
 		b.AddPoint( localTarget );
-		if ( renderEntity->shaderParms[SHADERPARM_BEAM_WIDTH] != 0.0f ) {
-			b.ExpandSelf( renderEntity->shaderParms[SHADERPARM_BEAM_WIDTH] * 0.5f );
+		if ( renderEntity->GetShaderParm( SHADERPARM_BEAM_WIDTH ) != 0.0f ) {
+			b.ExpandSelf( renderEntity->GetShaderParm( SHADERPARM_BEAM_WIDTH ) * 0.5f );
 		}
 	}
 	return b;

@@ -26,6 +26,9 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
+class idRenderEntity;
+class idRenderLight;
+
 void		Eclass_InitForSourceDirectory( const char *path );
 eclass_t *	Eclass_ForName( const char *name, bool has_brushes );
 bool		Eclass_hasModel(eclass_t *e, idVec3 &vMin, idVec3 &vMax);
@@ -35,8 +38,8 @@ typedef struct entity_s {
 	brush_t		brushes;					// head/tail of list
 	int			undoId, redoId, entityId;	// used for undo/redo
 	idVec3		origin;
-	qhandle_t	lightDef;
-	qhandle_t	modelDef;
+	idRenderLight *lightDef;
+	idRenderEntity *modelDef;
 	idSoundEmitter *soundEmitter;
 	eclass_t *	eclass;
 	idDict		epairs;

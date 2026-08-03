@@ -81,6 +81,7 @@ CCamWnd::CCamWnd() {
 	m_bClipMode = false;
 	worldDirty = true;
 	worldModel = NULL;
+	worldModelDef = NULL;
 	renderMode = false;
 	rebuildMode = false;
 	entityMode = false;
@@ -1289,14 +1290,14 @@ void CCamWnd::BuildEntityRenderState( entity_t *ent, bool update) {
 
 	// delete the existing def if we aren't creating a brand new world
 	if ( !update ) {
-		if ( ent->lightDef >= 0 ) {
-			g_qeglobals.rw->FreeLightDef( ent->lightDef );
-			ent->lightDef = -1;
+		if ( ent->lightDef != NULL ) {
+			g_qeglobals.rw->FreeRenderLight( ent->lightDef );
+			ent->lightDef = NULL;
 		}
 
-		if ( ent->modelDef >= 0 ) {
-			g_qeglobals.rw->FreeEntityDef( ent->modelDef );
-			ent->modelDef = -1;
+		if ( ent->modelDef != NULL ) {
+			g_qeglobals.rw->FreeRenderEntity( ent->modelDef );
+			ent->modelDef = NULL;
 		}
 	}
 
@@ -1319,9 +1320,19 @@ void CCamWnd::BuildEntityRenderState( entity_t *ent, bool update) {
 	name = ValueForKey( ent, "name" );
 	v = spawnArgs.GetString("model");
 	if ( v && *v ) {
-		renderEntity_t	refent;
-
-		refent.referenceSound = ent->soundEmitter;
+		idRenderEntity *refent = ent->modelDef;
+		if ( refent == NULL ) {
+			refent = ent->modelDef = g_qeglobals.rw->AllocRenderEntity();
+		} else {
+			if ( refent->GetCallbackData() != NULL ) {
+				Mem_Free( refent->GetCallbackData() );
+				refent->SetCallbackData( NULL );
+			}
+			if ( refent->GetJoints() != NULL ) {
+				Mem_Free16( refent->GetJoints() );
+				refent->SetJoints( 0, NULL );
+			}
+		}
 
 		if ( !stricmp( name, v ) ) {
 			// build the model from brushes
@@ -1330,11 +1341,6 @@ void CCamWnd::BuildEntityRenderState( entity_t *ent, bool update) {
 
 			for (brush_t *b = ent->brushes.onext; b != &ent->brushes; b = b->onext) {
 				Brush_ToTris( b, &tris, &mats, false, true);
-			}
-
-			if ( ent->modelDef >= 0 ) {
-				g_qeglobals.rw->FreeEntityDef( ent->modelDef );
-				ent->modelDef = -1;
 			}
 
 			idRenderModel *bmodel = renderModelManager->FindModel( name );
@@ -1361,35 +1367,31 @@ void CCamWnd::BuildEntityRenderState( entity_t *ent, bool update) {
 			renderModelManager->AddModel( bmodel );
 
 			// FIXME: brush entities
-			gameEdit->ParseSpawnArgsToRenderEntity( &spawnArgs, &refent );
-
-			ent->modelDef = g_qeglobals.rw->AddEntityDef( &refent );
+			gameEdit->ParseSpawnArgsToRenderEntity( &spawnArgs, refent );
+			refent->SetReferenceSound( ent->soundEmitter );
+			refent->UpdateRenderEntity();
 
 		} else {
 			// use the game's epair parsing code so
 			// we can use the same renderEntity generation
-			gameEdit->ParseSpawnArgsToRenderEntity( &spawnArgs, &refent );
-			idRenderModelMD5 *md5 = dynamic_cast<idRenderModelMD5 *>( refent.hModel );
+			gameEdit->ParseSpawnArgsToRenderEntity( &spawnArgs, refent );
+			refent->SetReferenceSound( ent->soundEmitter );
+			idRenderModelMD5 *md5 = dynamic_cast<idRenderModelMD5 *>( refent->GetModel() );
 			if (md5) {
 				idStr str;
 				spawnArgs.GetString("anim", "idle", str);
-				refent.numJoints = md5->NumJoints();
-				if ( update && refent.joints ) {
-					Mem_Free16( refent.joints );
-				}
-				refent.joints = ( idJointMat * )Mem_Alloc16( refent.numJoints * sizeof( *refent.joints ) );
+				const int numJoints = md5->NumJoints();
+				idJointMat *joints = ( idJointMat * )Mem_Alloc16( numJoints * sizeof( *joints ) );
 				const idMD5Anim *anim = gameEdit->ANIM_GetAnimFromEntityDef(spawnArgs.GetString("classname"), str);
 				int frame = spawnArgs.GetInt("frame") + 1;
 				if ( frame < 1 ) {
 					frame = 1;
 				}
 				const idVec3 &offset = gameEdit->ANIM_GetModelOffsetFromEntityDef( spawnArgs.GetString("classname") );
-				gameEdit->ANIM_CreateAnimFrame( md5, anim, refent.numJoints, refent.joints, ( frame * 1000 ) / 24, offset, false );
+				gameEdit->ANIM_CreateAnimFrame( md5, anim, numJoints, joints, ( frame * 1000 ) / 24, offset, false );
+				refent->SetJoints( numJoints, joints );
 			}
-			if (ent->modelDef >= 0) {
-				g_qeglobals.rw->FreeEntityDef( ent->modelDef );
-			}
-			ent->modelDef = g_qeglobals.rw->AddEntityDef( &refent );
+			refent->UpdateRenderEntity();
 		}
 	}
 
@@ -1399,24 +1401,21 @@ void CCamWnd::BuildEntityRenderState( entity_t *ent, bool update) {
 	}
 
 	if ( spawnArgs.GetBool( "start_off" ) ) {
+		if ( ent->lightDef != NULL ) {
+			g_qeglobals.rw->FreeRenderLight( ent->lightDef );
+			ent->lightDef = NULL;
+		}
 		return;
 	}
 	// use the game's epair parsing code so
 	// we can use the same renderLight generation
 
-	renderLight_t	lightParms;
-
-	gameEdit->ParseSpawnArgsToRenderLight( &spawnArgs, &lightParms );
-	lightParms.referenceSound = ent->soundEmitter;
-
-	if (update && ent->lightDef >= 0) {
-		g_qeglobals.rw->UpdateLightDef( ent->lightDef, &lightParms );
-	} else {
-		if (ent->lightDef >= 0) {
-			g_qeglobals.rw->FreeLightDef(ent->lightDef);
-		}
-		ent->lightDef = g_qeglobals.rw->AddLightDef( &lightParms );
+	if ( ent->lightDef == NULL ) {
+		ent->lightDef = g_qeglobals.rw->AllocRenderLight();
 	}
+	gameEdit->ParseSpawnArgsToRenderLight( &spawnArgs, ent->lightDef );
+	ent->lightDef->SetReferenceSound( ent->soundEmitter );
+	ent->lightDef->UpdateRenderLight();
 
 }
 
@@ -1751,7 +1750,6 @@ so it can be rendered by the game renderSystem
 =================
 */
 void CCamWnd::BuildRendererState() {
-	renderEntity_t	worldEntity;
 	entity_t	*ent;
 	brush_t		*brush;
 
@@ -1812,16 +1810,15 @@ void CCamWnd::BuildRendererState() {
 	// bound and clean the triangles
 	worldModel->FinishSurfaces();
 
-	// the worldEntity just has the handle for the worldModel
-	memset( &worldEntity, 0, sizeof( worldEntity ) );
-	worldEntity.hModel = worldModel;
-	worldEntity.axis = mat3_default;
-	worldEntity.shaderParms[0] = 1;
-	worldEntity.shaderParms[1] = 1;
-	worldEntity.shaderParms[2] = 1;
-	worldEntity.shaderParms[3] = 1;
-
-	worldModelDef = g_qeglobals.rw->AddEntityDef( &worldEntity );
+	// the world entity just references the editor's generated world model
+	worldModelDef = g_qeglobals.rw->AllocRenderEntity();
+	worldModelDef->SetModel( worldModel );
+	worldModelDef->SetAxis( mat3_default );
+	worldModelDef->SetShaderParm( SHADERPARM_RED, 1.0f );
+	worldModelDef->SetShaderParm( SHADERPARM_GREEN, 1.0f );
+	worldModelDef->SetShaderParm( SHADERPARM_BLUE, 1.0f );
+	worldModelDef->SetShaderParm( SHADERPARM_ALPHA, 1.0f );
+	worldModelDef->UpdateRenderEntity();
 
 	// create the light and model entities exactly the way the game code would
 	for ( ent = entities.next ; ent != &entities ; ent = ent->next ) {
@@ -1865,7 +1862,7 @@ bool CCamWnd::UpdateRenderEntities() {
 
 	bool ret = false;
 	for ( entity_t *ent = entities.next ; ent != &entities ; ent = ent->next ) {
-		BuildEntityRenderState( ent, (ent->lightDef != -1 || ent->modelDef != -1 || ent->soundEmitter ) ? true : false );
+		BuildEntityRenderState( ent, (ent->lightDef != NULL || ent->modelDef != NULL || ent->soundEmitter ) ? true : false );
 		if (ret == false && ent->modelDef || ent->lightDef) {
 			ret = true;
 		}
@@ -1883,26 +1880,31 @@ CCamWnd::FreeRendererState
 void CCamWnd::FreeRendererState() {
 
 	for ( entity_t *ent = entities.next ; ent != &entities ; ent = ent->next ) {
-		if (ent->lightDef >= 0) {
-			g_qeglobals.rw->FreeLightDef( ent->lightDef );
-			ent->lightDef = -1;
+		if (ent->lightDef != NULL) {
+			g_qeglobals.rw->FreeRenderLight( ent->lightDef );
+			ent->lightDef = NULL;
 		}
 
-		if (ent->modelDef >= 0) {
-			renderEntity_t *refent = const_cast<renderEntity_t *>(g_qeglobals.rw->GetRenderEntity( ent->modelDef ));
+		if (ent->modelDef != NULL) {
+			idRenderEntity *refent = ent->modelDef;
 			if ( refent ) {
-				if ( refent->callbackData ) {
-					Mem_Free( refent->callbackData );
-					refent->callbackData = NULL;
+				if ( refent->GetCallbackData() ) {
+					Mem_Free( refent->GetCallbackData() );
+					refent->SetCallbackData( NULL );
 				}
-				if ( refent->joints ) {
-					Mem_Free16(refent->joints);
-					refent->joints = NULL;
+				if ( refent->GetJoints() ) {
+					Mem_Free16( refent->GetJoints() );
+					refent->SetJoints( 0, NULL );
 				}
 			}
-			g_qeglobals.rw->FreeEntityDef( ent->modelDef );
-			ent->modelDef = -1;
+			g_qeglobals.rw->FreeRenderEntity( ent->modelDef );
+			ent->modelDef = NULL;
 		}
+	}
+
+	if ( worldModelDef != NULL ) {
+		g_qeglobals.rw->FreeRenderEntity( worldModelDef );
+		worldModelDef = NULL;
 	}
 
 	if ( worldModel ) {
@@ -2085,7 +2087,7 @@ void CCamWnd::DrawEntityData() {
 				continue;
 			}
 
-			if ((pass == 1 && selectMode) || (entityMode && pass == 0 && brush->owner->lightDef >= 0)) {
+			if ((pass == 1 && selectMode) || (entityMode && pass == 0 && brush->owner->lightDef != NULL)) {
 				Brush_DrawXY(brush, 0, true, true);
 			}
 

@@ -59,16 +59,16 @@ void idEntityFx::Save( idSaveGame *savefile ) const {
 
 	for ( i = 0; i < actions.Num(); i++ ) {
 
-		if ( actions[i].lightDefHandle >= 0 ) {
+		if ( actions[i].renderLight != NULL ) {
 			savefile->WriteBool( true );
-			savefile->WriteRenderLight( actions[i].renderLight );
+			savefile->WriteRenderLight( *actions[i].renderLight );
 		} else {
 			savefile->WriteBool( false );
 		}
 
-		if ( actions[i].modelDefHandle >= 0 ) {
+		if ( actions[i].renderEntity != NULL ) {
 			savefile->WriteBool( true );
-			savefile->WriteRenderEntity( actions[i].renderEntity );
+			savefile->WriteRenderEntity( *actions[i].renderEntity );
 		} else {
 			savefile->WriteBool( false );
 		}
@@ -104,20 +104,20 @@ void idEntityFx::Restore( idRestoreGame *savefile ) {
 
 		savefile->ReadBool( hasObject );
 		if ( hasObject ) {
-			savefile->ReadRenderLight( actions[i].renderLight );
-			actions[i].lightDefHandle = gameRenderWorld->AddLightDef( &actions[i].renderLight );
+			actions[i].renderLight = gameRenderWorld->AllocRenderLight();
+			savefile->ReadRenderLight( *actions[i].renderLight );
+			actions[i].renderLight->UpdateRenderLight();
 		} else {
-			memset( &actions[i].renderLight, 0, sizeof( renderLight_t ) );
-			actions[i].lightDefHandle = -1;
+			actions[i].renderLight = NULL;
 		}
 
 		savefile->ReadBool( hasObject );
 		if ( hasObject ) {
-			savefile->ReadRenderEntity( actions[i].renderEntity );
-			actions[i].modelDefHandle = gameRenderWorld->AddEntityDef( &actions[i].renderEntity );
+			actions[i].renderEntity = gameRenderWorld->AllocRenderEntity();
+			savefile->ReadRenderEntity( *actions[i].renderEntity );
+			actions[i].renderEntity->UpdateRenderEntity();
 		} else {
-			memset( &actions[i].renderEntity, 0, sizeof( renderEntity_t ) );
-			actions[i].modelDefHandle = -1;
+			actions[i].renderEntity = NULL;
 		}
 
 		savefile->ReadFloat( actions[i].delay );
@@ -157,8 +157,6 @@ void idEntityFx::Setup( const char *fx ) {
 	if ( fxEffect ) {
 		idFXLocalAction localAction;
 
-		memset( &localAction, 0, sizeof( idFXLocalAction ) );
-
 		actions.AssureSize( fxEffect->events.Num(), localAction );
 
 		for( int i = 0; i<fxEffect->events.Num(); i++ ) {
@@ -171,8 +169,8 @@ void idEntityFx::Setup( const char *fx ) {
 				laction.delay = fxaction.delay;
 			}
 			laction.start = -1;
-			laction.lightDefHandle = -1;
-			laction.modelDefHandle = -1;
+			laction.renderLight = NULL;
+			laction.renderEntity = NULL;
 			laction.particleSystem = -1;
 			laction.shakeStarted = false;
 			laction.decalDropped = false;
@@ -221,13 +219,13 @@ idEntityFx::CleanUpSingleAction
 ================
 */
 void idEntityFx::CleanUpSingleAction( const idFXSingleAction& fxaction, idFXLocalAction& laction ) {
-	if ( laction.lightDefHandle != -1 && fxaction.sibling == -1 && fxaction.type != FX_ATTACHLIGHT ) {
-		gameRenderWorld->FreeLightDef( laction.lightDefHandle );
-		laction.lightDefHandle = -1;
+	if ( laction.renderLight != NULL && fxaction.sibling == -1 && fxaction.type != FX_ATTACHLIGHT ) {
+		laction.renderLight->FreeRenderLight();
+		laction.renderLight = NULL;
 	}
-	if ( laction.modelDefHandle != -1 && fxaction.sibling == -1 && fxaction.type != FX_ATTACHENTITY ) {
-		gameRenderWorld->FreeEntityDef( laction.modelDefHandle );
-		laction.modelDefHandle = -1;
+	if ( laction.renderEntity != NULL && fxaction.sibling == -1 && fxaction.type != FX_ATTACHENTITY ) {
+		laction.renderEntity->FreeRenderEntity();
+		laction.renderEntity = NULL;
 	}
 	laction.start = -1;
 }
@@ -309,19 +307,19 @@ void idEntityFx::ApplyFade( const idFXSingleAction& fxaction, idFXLocalAction& l
 		if (fadePct > 1.0) {
 			fadePct = 1.0;
 		}
-		if ( laction.modelDefHandle != -1 ) {
-			laction.renderEntity.shaderParms[SHADERPARM_RED] = (fxaction.fadeInTime) ? fadePct : 1.0f - fadePct;
-			laction.renderEntity.shaderParms[SHADERPARM_GREEN] = (fxaction.fadeInTime) ? fadePct : 1.0f - fadePct;
-			laction.renderEntity.shaderParms[SHADERPARM_BLUE] = (fxaction.fadeInTime) ? fadePct : 1.0f - fadePct;
-	
-			gameRenderWorld->UpdateEntityDef( laction.modelDefHandle, &laction.renderEntity );
+		if ( laction.renderEntity != NULL ) {
+			const float fade = (fxaction.fadeInTime) ? fadePct : 1.0f - fadePct;
+			laction.renderEntity->SetShaderParm( SHADERPARM_RED, fade );
+			laction.renderEntity->SetShaderParm( SHADERPARM_GREEN, fade );
+			laction.renderEntity->SetShaderParm( SHADERPARM_BLUE, fade );
+			laction.renderEntity->UpdateRenderEntity();
 		}
-		if ( laction.lightDefHandle != -1 ) {
-			laction.renderLight.shaderParms[SHADERPARM_RED] = fxaction.lightColor.x * ( (fxaction.fadeInTime) ? fadePct : 1.0f - fadePct );
-			laction.renderLight.shaderParms[SHADERPARM_GREEN] = fxaction.lightColor.y * ( (fxaction.fadeInTime) ? fadePct : 1.0f - fadePct );
-			laction.renderLight.shaderParms[SHADERPARM_BLUE] = fxaction.lightColor.z * ( (fxaction.fadeInTime) ? fadePct : 1.0f - fadePct );
-
-			gameRenderWorld->UpdateLightDef( laction.lightDefHandle, &laction.renderLight );
+		if ( laction.renderLight != NULL ) {
+			const float fade = (fxaction.fadeInTime) ? fadePct : 1.0f - fadePct;
+			laction.renderLight->SetShaderParm( SHADERPARM_RED, fxaction.lightColor.x * fade );
+			laction.renderLight->SetShaderParm( SHADERPARM_GREEN, fxaction.lightColor.y * fade );
+			laction.renderLight->SetShaderParm( SHADERPARM_BLUE, fxaction.lightColor.z * fade );
+			laction.renderLight->UpdateRenderLight();
 		}
 	}
 }
@@ -400,32 +398,30 @@ void idEntityFx::Run( int time ) {
 		switch( fxaction.type ) {
 			case FX_ATTACHLIGHT:
 			case FX_LIGHT: {
-				if ( useAction->lightDefHandle == -1 ) {
+				if ( useAction->renderLight == NULL ) {
 					if ( fxaction.type == FX_LIGHT ) {
-						memset( &useAction->renderLight, 0, sizeof( renderLight_t ) );
-						useAction->renderLight.origin = GetPhysics()->GetOrigin() + fxaction.offset;
-						useAction->renderLight.axis = GetPhysics()->GetAxis();
-						useAction->renderLight.lightRadius[0] = fxaction.lightRadius;
-						useAction->renderLight.lightRadius[1] = fxaction.lightRadius;
-						useAction->renderLight.lightRadius[2] = fxaction.lightRadius;
-						useAction->renderLight.shader = declManager->FindMaterial( fxaction.data, false );
-						useAction->renderLight.shaderParms[ SHADERPARM_RED ]	= fxaction.lightColor.x;
-						useAction->renderLight.shaderParms[ SHADERPARM_GREEN ]	= fxaction.lightColor.y;
-						useAction->renderLight.shaderParms[ SHADERPARM_BLUE ]	= fxaction.lightColor.z;
-						useAction->renderLight.shaderParms[ SHADERPARM_TIMESCALE ]	= 1.0f;
-						useAction->renderLight.shaderParms[ SHADERPARM_TIMEOFFSET ] = -MS2SEC( time );
-						useAction->renderLight.referenceSound = refSound.referenceSound;
-						useAction->renderLight.pointLight = true;
+						useAction->renderLight = gameRenderWorld->AllocRenderLight();
+						useAction->renderLight->SetOrigin( GetPhysics()->GetOrigin() + fxaction.offset );
+						useAction->renderLight->SetAxis( GetPhysics()->GetAxis() );
+						useAction->renderLight->SetLightRadius( idVec3( fxaction.lightRadius, fxaction.lightRadius, fxaction.lightRadius ) );
+						useAction->renderLight->SetShader( declManager->FindMaterial( fxaction.data, false ) );
+						useAction->renderLight->SetShaderParm( SHADERPARM_RED, fxaction.lightColor.x );
+						useAction->renderLight->SetShaderParm( SHADERPARM_GREEN, fxaction.lightColor.y );
+						useAction->renderLight->SetShaderParm( SHADERPARM_BLUE, fxaction.lightColor.z );
+						useAction->renderLight->SetShaderParm( SHADERPARM_TIMESCALE, 1.0f );
+						useAction->renderLight->SetShaderParm( SHADERPARM_TIMEOFFSET, -MS2SEC( time ) );
+						useAction->renderLight->SetReferenceSound( refSound.referenceSound );
+						useAction->renderLight->SetPointLight( true );
 						if ( fxaction.noshadows ) {
-							useAction->renderLight.noShadows = true;
+							useAction->renderLight->SetNoShadows( true );
 						}
-						useAction->lightDefHandle = gameRenderWorld->AddLightDef( &useAction->renderLight );
+						useAction->renderLight->UpdateRenderLight();
 					}
 					if ( fxaction.noshadows ) {
 						for( j = 0; j < fxEffect->events.Num(); j++ ) {
 							idFXLocalAction& laction2 = actions[j];
-							if ( laction2.modelDefHandle != -1 ) {
-								laction2.renderEntity.noShadow = true;
+							if ( laction2.renderEntity != NULL ) {
+								laction2.renderEntity->SetNoShadow( true );
 							}
 						}
 					}
@@ -440,9 +436,9 @@ void idEntityFx::Run( int time ) {
 					StartSoundShader( shader, SND_CHANNEL_ANY, 0, false, NULL );
 					for( j = 0; j < fxEffect->events.Num(); j++ ) {
 						idFXLocalAction& laction2 = actions[j];
-						if ( laction2.lightDefHandle != -1 ) {
-							laction2.renderLight.referenceSound = refSound.referenceSound;
-							gameRenderWorld->UpdateLightDef( laction2.lightDefHandle, &laction2.renderLight );
+						if ( laction2.renderLight != NULL ) {
+							laction2.renderLight->SetReferenceSound( refSound.referenceSound );
+							laction2.renderLight->UpdateRenderLight();
 						}
 					}
 				}
@@ -487,26 +483,24 @@ void idEntityFx::Run( int time ) {
 			case FX_ATTACHENTITY:
 			case FX_PARTICLE:
 			case FX_MODEL: {
-				if ( useAction->modelDefHandle == -1 ) {
-					memset( &useAction->renderEntity, 0, sizeof( renderEntity_t ) );
-					useAction->renderEntity.origin = GetPhysics()->GetOrigin() + fxaction.offset;
-					useAction->renderEntity.axis = (fxaction.explicitAxis) ? fxaction.axis : GetPhysics()->GetAxis();
-					useAction->renderEntity.hModel = renderModelManager->FindModel( fxaction.data );
-					useAction->renderEntity.shaderParms[ SHADERPARM_RED ]		= 1.0f;
-					useAction->renderEntity.shaderParms[ SHADERPARM_GREEN ]		= 1.0f;
-					useAction->renderEntity.shaderParms[ SHADERPARM_BLUE ]		= 1.0f;
-					useAction->renderEntity.shaderParms[ SHADERPARM_TIMEOFFSET ] = -MS2SEC( time );
-					useAction->renderEntity.shaderParms[3] = 1.0f;
-					useAction->renderEntity.shaderParms[5] = 0.0f;
-					if ( useAction->renderEntity.hModel ) {
-						useAction->renderEntity.bounds = useAction->renderEntity.hModel->Bounds( &useAction->renderEntity );
+				if ( useAction->renderEntity == NULL ) {
+					useAction->renderEntity = gameRenderWorld->AllocRenderEntity();
+					useAction->renderEntity->SetOrigin( GetPhysics()->GetOrigin() + fxaction.offset );
+					useAction->renderEntity->SetAxis( (fxaction.explicitAxis) ? fxaction.axis : GetPhysics()->GetAxis() );
+					useAction->renderEntity->SetModel( renderModelManager->FindModel( fxaction.data ) );
+					for ( int parm = 0; parm < 4; parm++ ) {
+						useAction->renderEntity->SetShaderParm( parm, 1.0f );
 					}
-					useAction->modelDefHandle = gameRenderWorld->AddEntityDef( &useAction->renderEntity );
+					useAction->renderEntity->SetShaderParm( SHADERPARM_TIMEOFFSET, -MS2SEC( time ) );
+					useAction->renderEntity->SetShaderParm( 5, 0.0f );
+					if ( useAction->renderEntity->GetModel() ) {
+						useAction->renderEntity->SetBounds( useAction->renderEntity->GetModel()->Bounds( useAction->renderEntity ) );
+					}
 				} else if ( fxaction.trackOrigin ) {
-					useAction->renderEntity.origin = GetPhysics()->GetOrigin() + fxaction.offset;
-					useAction->renderEntity.axis = fxaction.explicitAxis ? fxaction.axis : GetPhysics()->GetAxis();
-					gameRenderWorld->UpdateEntityDef( useAction->modelDefHandle, &useAction->renderEntity );
+					useAction->renderEntity->SetOrigin( GetPhysics()->GetOrigin() + fxaction.offset );
+					useAction->renderEntity->SetAxis( fxaction.explicitAxis ? fxaction.axis : GetPhysics()->GetAxis() );
 				}
+				useAction->renderEntity->UpdateRenderEntity();
 				ApplyFade( fxaction, *useAction, time, actualStart );
 				break;
 			}

@@ -473,8 +473,8 @@ entity_t *Entity_New() {
 	ent->lightRotation.Identity();
 	ent->trackLightOrigin = false;
 	ent->rotation.Identity();
-	ent->lightDef = -1;
-	ent->modelDef = -1;
+	ent->lightDef = NULL;
+	ent->modelDef = NULL;
 	ent->soundEmitter = NULL;
 	ent->curve = NULL;
 	return ent;
@@ -1398,4 +1398,3 @@ void Entity_UpdateSoundEmitter( entity_t *ent ) {
 	}
 
 }
-

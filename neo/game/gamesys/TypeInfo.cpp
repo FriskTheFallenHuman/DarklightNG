@@ -319,17 +319,6 @@ bool IsAllowedToChangedFromSaveGames( const char *varName, const char *varType, 
 		}
 	} else if ( idStr::Icmp( scope, "idPhysics_AF" ) == 0 ) {
 		return true;
-	} else if ( idStr::Icmp( scope, "renderEntity_t" ) == 0 ) {
-		// These get fixed up when UpdateVisuals is called
-		if ( idStr::Icmp( varName, "origin" ) == 0 ) {
-			return true;
-		}
-		if ( idStr::Icmp( varName, "axis" ) == 0 ) {
-			return true;
-		}
-		if ( idStr::Icmp( varName, "bounds" ) == 0 ) {
-			return true;
-		}
 	}
 
 	if ( idStr::Icmpn( prefix, "idAFEntity_Base::af.idAF::physicsObj.idPhysics_AF", 49) == 0 ) {
@@ -345,71 +334,8 @@ IsRenderHandleVariable
 ================
 */
 bool IsRenderHandleVariable( const char *varName, const char *varType, const char *scope, const char *prefix, const char *postfix, const char *value ) {
-	if ( idStr::Icmp( scope, "idClipModel" ) == 0 ) {
-		if ( idStr::Icmp( varName, "renderModelHandle" ) == 0 ) {
-			return true;
-		}
-	} else if ( idStr::Icmp( scope, "idFXLocalAction" ) == 0 ) {
-		if ( idStr::Icmp( varName, "lightDefHandle" ) == 0 ) {
-			return true;
-		}
-		if ( idStr::Icmp( varName, "modelDefHandle" ) == 0 ) {
-			return true;
-		}
-	} else if ( idStr::Icmp( scope, "idEntity" ) == 0 ) {
-		if ( idStr::Icmp( varName, "modelDefHandle" ) == 0 ) {
-			return true;
-		}
-	} else if ( idStr::Icmp( scope, "idLight" ) == 0 ) {
-		if ( idStr::Icmp( varName, "lightDefHandle" ) == 0 ) {
-			return true;
-		}
-	} else if ( idStr::Icmp( scope, "idAFEntity_Gibbable" ) == 0 ) {
-		if ( idStr::Icmp( varName, "skeletonModelDefHandle" ) == 0 ) {
-			return true;
-		}
-	} else if ( idStr::Icmp( scope, "idAFEntity_SteamPipe" ) == 0 ) {
-		if ( idStr::Icmp( varName, "steamModelHandle" ) == 0 ) {
-			return true;
-		}
-	} else if ( idStr::Icmp( scope, "idItem" ) == 0 ) {
-		if ( idStr::Icmp( varName, "itemShellHandle" ) == 0 ) {
-			return true;
-		}
-	} else if ( idStr::Icmp( scope, "idExplodingBarrel" ) == 0 ) {
-		if ( idStr::Icmp( varName, "particleModelDefHandle" ) == 0 ) {
-			return true;
-		}
-		if ( idStr::Icmp( varName, "lightDefHandle" ) == 0 ) {
-			return true;
-		}
-	} else if ( idStr::Icmp( scope, "idProjectile" ) == 0 ) {
-		if ( idStr::Icmp( varName, "lightDefHandle" ) == 0 ) {
-			return true;
-		}
-	} else if ( idStr::Icmp( scope, "idBFGProjectile" ) == 0 ) {
-		if ( idStr::Icmp( varName, "secondModelDefHandle" ) == 0 ) {
-			return true;
-		}
-	} else if ( idStr::Icmp( scope, "idSmokeParticles" ) == 0 ) {
-		if ( idStr::Icmp( varName, "renderEntityHandle" ) == 0 ) {
-			return true;
-		}
-	} else if ( idStr::Icmp( scope, "idWeapon" ) == 0 ) {
-		if ( idStr::Icmp( varName, "muzzleFlashHandle" ) == 0 ) {
-			return true;
-		}
-		if ( idStr::Icmp( varName, "worldMuzzleFlashHandle" ) == 0 ) {
-			return true;
-		}
-		if ( idStr::Icmp( varName, "guiLightHandle" ) == 0 ) {
-			return true;
-		}
-		if ( idStr::Icmp( varName, "nozzleGlowHandle" ) == 0 ) {
-			return true;
-		}
-	}
-	return false;
+	return strchr( varType, '*' ) != NULL &&
+		( strstr( varType, "idRenderEntity" ) != NULL || strstr( varType, "idRenderLight" ) != NULL );
 }
 
 /*

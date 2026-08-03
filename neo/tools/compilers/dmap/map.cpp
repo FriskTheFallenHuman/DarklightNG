@@ -574,8 +574,8 @@ static void CreateMapLight( const idMapEntity *mapEnt ) {
 	// parse parms exactly as the game do
 	// use the game's epair parsing code so
 	// we can use the same renderLight generation
-	gameEdit->ParseSpawnArgsToRenderLight( &mapEnt->epairs, &light->def.parms );
-	light->bake = light->def.parms.bakedLight;
+	gameEdit->ParseSpawnArgsToRenderLight( &mapEnt->epairs, &light->def );
+	light->bake = light->def.GetBakedLight();
 
 	R_DeriveLightData( &light->def );
 
@@ -587,13 +587,13 @@ static void CreateMapLight( const idMapEntity *mapEnt ) {
 	idStr::Copynz( light->name, name, sizeof( light->name ) );
 	if ( !light->name[0] ) {
 		common->Error( "Light at (%f,%f,%f) didn't have a name",
-			light->def.parms.origin[0], light->def.parms.origin[1], light->def.parms.origin[2] );
+			light->def.GetOrigin()[0], light->def.GetOrigin()[1], light->def.GetOrigin()[2] );
 	}
 #if 0
 	// use the renderer code to get the bounding planes for the light
 	// based on all the parameters
-	R_RenderLightFrustum( light->parms, light->frustum );
-	light->lightShader = light->parms.shader;
+	R_RenderLightFrustum( light->def, light->def.frustum );
+	light->def.lightShader = light->def.GetShader();
 #endif
 
 	dmapGlobals.mapLights.Append( light );

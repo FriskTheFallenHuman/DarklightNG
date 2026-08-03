@@ -351,8 +351,8 @@ void idMoveable::Killed( idEntity *inflictor, idEntity *attacker, int damage, co
 		}
 	}
 
-	if ( renderEntity.gui[ 0 ] ) {
-		renderEntity.gui[ 0 ] = NULL;
+	if ( renderEntity->GetGui( 0 ) ) {
+		renderEntity->SetGui( 0, NULL );
 	}
 
 	ActivateTargets( this );
@@ -464,11 +464,11 @@ idMoveable::GetRenderModelMaterial
 ================
 */
 const idMaterial *idMoveable::GetRenderModelMaterial( void ) const {
-	if ( renderEntity.customShader ) {
-		return renderEntity.customShader;
+	if ( renderEntity->GetCustomShader() ) {
+		return renderEntity->GetCustomShader();
 	}
-	if ( renderEntity.hModel && renderEntity.hModel->NumSurfaces() ) {
-		 return renderEntity.hModel->Surface( 0 )->shader;
+	if ( renderEntity->GetModel() && renderEntity->GetModel()->NumSurfaces() ) {
+		 return renderEntity->GetModel()->Surface( 0 )->shader;
 	}
 	return NULL;
 }
@@ -788,10 +788,8 @@ idExplodingBarrel::idExplodingBarrel() {
 	spawnAxis.Zero();
 	state = NORMAL;
 	isStable = true;
-	particleModelDefHandle = -1;
-	lightDefHandle = -1;
-	memset( &particleRenderEntity, 0, sizeof( particleRenderEntity ) );
-	memset( &light, 0, sizeof( light ) );
+	particleRenderEntity = NULL;
+	light = NULL;
 	particleTime = 0;
 	lightTime = 0;
 	time = 0.0f;
@@ -803,11 +801,11 @@ idExplodingBarrel::~idExplodingBarrel
 ================
 */
 idExplodingBarrel::~idExplodingBarrel() {
-	if ( particleModelDefHandle >= 0 ){
-		gameRenderWorld->FreeEntityDef( particleModelDefHandle );
+	if ( particleRenderEntity != NULL ){
+		particleRenderEntity->FreeRenderEntity();
 	}
-	if ( lightDefHandle >= 0 ) {
-		gameRenderWorld->FreeLightDef( lightDefHandle );
+	if ( light != NULL ) {
+		light->FreeRenderLight();
 	}
 }
 
@@ -821,11 +819,15 @@ void idExplodingBarrel::Save( idSaveGame *savefile ) const {
 	savefile->WriteMat3( spawnAxis );
 
 	savefile->WriteInt( state );
-	savefile->WriteInt( particleModelDefHandle );
-	savefile->WriteInt( lightDefHandle );
+	savefile->WriteBool( particleRenderEntity != NULL );
+	savefile->WriteBool( light != NULL );
 
-	savefile->WriteRenderEntity( particleRenderEntity );
-	savefile->WriteRenderLight( light );
+	if ( particleRenderEntity != NULL ) {
+		savefile->WriteRenderEntity( *particleRenderEntity );
+	}
+	if ( light != NULL ) {
+		savefile->WriteRenderLight( *light );
+	}
 
 	savefile->WriteInt( particleTime );
 	savefile->WriteInt( lightTime );
@@ -844,11 +846,22 @@ void idExplodingBarrel::Restore( idRestoreGame *savefile ) {
 	savefile->ReadMat3( spawnAxis );
 
 	savefile->ReadInt( (int &)state );
-	savefile->ReadInt( (int &)particleModelDefHandle );
-	savefile->ReadInt( (int &)lightDefHandle );
-
-	savefile->ReadRenderEntity( particleRenderEntity );
-	savefile->ReadRenderLight( light );
+	bool hadParticleModelDef;
+	bool hadLightDef;
+	savefile->ReadBool( hadParticleModelDef );
+	savefile->ReadBool( hadLightDef );
+	light = NULL;
+	particleRenderEntity = NULL;
+	if ( hadParticleModelDef ) {
+		particleRenderEntity = gameRenderWorld->AllocRenderEntity();
+		savefile->ReadRenderEntity( *particleRenderEntity );
+		particleRenderEntity->UpdateRenderEntity();
+	}
+	if ( hadLightDef ) {
+		light = gameRenderWorld->AllocRenderLight();
+		savefile->ReadRenderLight( *light );
+		light->UpdateRenderLight();
+	}
 
 	savefile->ReadInt( particleTime );
 	savefile->ReadInt( lightTime );
@@ -856,12 +869,6 @@ void idExplodingBarrel::Restore( idRestoreGame *savefile ) {
 
 	savefile->ReadBool( isStable );
 
-	if ( lightDefHandle != -1 ) {
-		lightDefHandle = gameRenderWorld->AddLightDef( &light );
-	}
-	if ( particleModelDefHandle != -1 ) {
-		particleModelDefHandle = gameRenderWorld->AddEntityDef( &particleRenderEntity );
-	}
 }
 
 /*
@@ -877,13 +884,11 @@ void idExplodingBarrel::Spawn( void ) {
 	spawnOrigin = GetPhysics()->GetOrigin();
 	spawnAxis = GetPhysics()->GetAxis();
 	state = NORMAL;
-	particleModelDefHandle = -1;
-	lightDefHandle = -1;
+	particleRenderEntity = NULL;
+	light = NULL;
 	lightTime = 0;
 	particleTime = 0;
 	time = spawnArgs.GetFloat( "time" );
-	memset( &particleRenderEntity, 0, sizeof( particleRenderEntity ) );
-	memset( &light, 0, sizeof( light ) );
 }
 
 /*
@@ -894,24 +899,23 @@ idExplodingBarrel::Think
 void idExplodingBarrel::Think( void ) {
 	idBarrel::BarrelThink();
 
-	if ( lightDefHandle >= 0 ){
+	if ( light != NULL ){
 		if ( state == BURNING ) {
 			// ramp the color up over 250 ms
 			float pct = (gameLocal.time - lightTime) / 250.f;
 			if ( pct > 1.0f ) {
 				pct = 1.0f;
 			}
-			light.origin = physicsObj.GetAbsBounds().GetCenter();
-			light.axis = mat3_identity;
-			light.shaderParms[ SHADERPARM_RED ] = pct;
-			light.shaderParms[ SHADERPARM_GREEN ] = pct;
-			light.shaderParms[ SHADERPARM_BLUE ] = pct;
-			light.shaderParms[ SHADERPARM_ALPHA ] = pct;
-			gameRenderWorld->UpdateLightDef( lightDefHandle, &light );
+			light->SetOrigin( physicsObj.GetAbsBounds().GetCenter() );
+			light->SetAxis( mat3_identity );
+			for ( int parm = 0; parm < 4; parm++ ) {
+				light->SetShaderParm( parm, pct );
+			}
+			light->UpdateRenderLight();
 		} else {
 			if ( gameLocal.time - lightTime > 250 ) {
-				gameRenderWorld->FreeLightDef( lightDefHandle );
-				lightDefHandle = -1;
+				light->FreeRenderLight();
+				light = NULL;
 			}
 			return;
 		}
@@ -922,10 +926,10 @@ void idExplodingBarrel::Think( void ) {
 		return;
 	}
 
-	if ( particleModelDefHandle >= 0 ){
-		particleRenderEntity.origin = physicsObj.GetAbsBounds().GetCenter();
-		particleRenderEntity.axis = mat3_identity;
-		gameRenderWorld->UpdateEntityDef( particleModelDefHandle, &particleRenderEntity );
+	if ( particleRenderEntity != NULL ){
+		particleRenderEntity->SetOrigin( physicsObj.GetAbsBounds().GetCenter() );
+		particleRenderEntity->SetAxis( mat3_identity );
+		particleRenderEntity->UpdateRenderEntity();
 	}
 }
 
@@ -965,12 +969,11 @@ idExplodingBarrel::StartBurning
 void idExplodingBarrel::StopBurning( void ) {
 	state = NORMAL;
 
-	if ( particleModelDefHandle >= 0 ){
-		gameRenderWorld->FreeEntityDef( particleModelDefHandle );
-		particleModelDefHandle = -1;
+	if ( particleRenderEntity != NULL ){
+		particleRenderEntity->FreeRenderEntity();
+		particleRenderEntity = NULL;
 
 		particleTime = 0;
-		memset( &particleRenderEntity, 0, sizeof( particleRenderEntity ) );
 	}
 }
 
@@ -983,27 +986,27 @@ void idExplodingBarrel::AddParticles( const char *name, bool burn ) {
 	if ( name && *name ) {
 		int explicitTimeGroup = timeGroup;
 		SetTimeState explicitTS( explicitTimeGroup );
-		if ( particleModelDefHandle >= 0 ){
-			gameRenderWorld->FreeEntityDef( particleModelDefHandle );
+		if ( particleRenderEntity != NULL ){
+			particleRenderEntity->FreeRenderEntity();
+			particleRenderEntity = NULL;
 		}
-		memset( &particleRenderEntity, 0, sizeof ( particleRenderEntity ) );
 		const idDeclModelDef *modelDef = static_cast<const idDeclModelDef *>( declManager->FindType( DECL_MODELDEF, name ) );
 		if ( modelDef ) {
-			particleRenderEntity.origin = physicsObj.GetAbsBounds().GetCenter();
-			particleRenderEntity.axis = mat3_identity;
-			particleRenderEntity.hModel = modelDef->ModelHandle();
+			particleRenderEntity = gameRenderWorld->AllocRenderEntity();
+			particleRenderEntity->SetOrigin( physicsObj.GetAbsBounds().GetCenter() );
+			particleRenderEntity->SetAxis( mat3_identity );
+			particleRenderEntity->SetModel( modelDef->ModelHandle() );
 			float rgb = ( burn ) ? 0.0f : 1.0f;
-			particleRenderEntity.shaderParms[ SHADERPARM_RED ] = rgb;
-			particleRenderEntity.shaderParms[ SHADERPARM_GREEN ] = rgb;
-			particleRenderEntity.shaderParms[ SHADERPARM_BLUE ] = rgb;
-			particleRenderEntity.shaderParms[ SHADERPARM_ALPHA ] = rgb;
-			particleRenderEntity.shaderParms[ SHADERPARM_TIMEOFFSET ] = -MS2SEC( gameLocal.realClientTime );
-			particleRenderEntity.shaderParms[ SHADERPARM_DIVERSITY ] = ( burn ) ? 1.0f : gameLocal.random.RandomInt( 90 );
-			particleRenderEntity.timeGroup = explicitTimeGroup;
-			if ( !particleRenderEntity.hModel ) {
-				particleRenderEntity.hModel = renderModelManager->FindModel( name );
+			for ( int parm = 0; parm < 4; parm++ ) {
+				particleRenderEntity->SetShaderParm( parm, rgb );
 			}
-			particleModelDefHandle = gameRenderWorld->AddEntityDef( &particleRenderEntity );
+			particleRenderEntity->SetShaderParm( SHADERPARM_TIMEOFFSET, -MS2SEC( gameLocal.realClientTime ) );
+			particleRenderEntity->SetShaderParm( SHADERPARM_DIVERSITY, ( burn ) ? 1.0f : gameLocal.random.RandomInt( 90 ) );
+			particleRenderEntity->SetTimeGroup( explicitTimeGroup );
+			if ( !particleRenderEntity->GetModel() ) {
+				particleRenderEntity->SetModel( renderModelManager->FindModel( name ) );
+			}
+			particleRenderEntity->UpdateRenderEntity();
 			if ( burn ) {
 				BecomeActive( TH_THINK );
 			}
@@ -1018,22 +1021,23 @@ idExplodingBarrel::AddLight
 ================
 */
 void idExplodingBarrel::AddLight( const char *name, bool burn ) {
-	if ( lightDefHandle >= 0 ){
-		gameRenderWorld->FreeLightDef( lightDefHandle );
+	if ( light != NULL ){
+		light->FreeRenderLight();
+		light = NULL;
 	}
-	memset( &light, 0, sizeof ( light ) );
-	light.axis = mat3_identity;
-	light.lightRadius.x = spawnArgs.GetFloat( "light_radius" );
-	light.lightRadius.y = light.lightRadius.z = light.lightRadius.x;
-	light.origin = physicsObj.GetOrigin();
-	light.origin.z += 128;
-	light.pointLight = true;
-	light.shader = declManager->FindMaterial( name );
-	light.shaderParms[ SHADERPARM_RED ] = 2.0f;
-	light.shaderParms[ SHADERPARM_GREEN ] = 2.0f;
-	light.shaderParms[ SHADERPARM_BLUE ] = 2.0f;
-	light.shaderParms[ SHADERPARM_ALPHA ] = 2.0f;
-	lightDefHandle = gameRenderWorld->AddLightDef( &light );
+	light = gameRenderWorld->AllocRenderLight();
+	light->SetAxis( mat3_identity );
+	const float radius = spawnArgs.GetFloat( "light_radius" );
+	light->SetLightRadius( idVec3( radius, radius, radius ) );
+	idVec3 origin = physicsObj.GetOrigin();
+	origin.z += 128;
+	light->SetOrigin( origin );
+	light->SetPointLight( true );
+	light->SetShader( declManager->FindMaterial( name ) );
+	for ( int parm = 0; parm < 4; parm++ ) {
+		light->SetShaderParm( parm, 2.0f );
+	}
+	light->UpdateRenderLight();
 	lightTime = gameLocal.realClientTime;
 	BecomeActive( TH_THINK );
 }
@@ -1138,7 +1142,7 @@ void idExplodingBarrel::Killed( idEntity *inflictor, idEntity *attacker, int dam
 			debris = static_cast<idDebris *>(ent);
 			debris->Create( this, physicsObj.GetOrigin(), dir.ToMat3() );
 			debris->Launch();
-			debris->GetRenderEntity()->shaderParms[ SHADERPARM_TIME_OF_DEATH ] = ( gameLocal.time + 1500 ) * 0.001f;
+			debris->GetRenderEntity()->SetShaderParm( SHADERPARM_TIME_OF_DEATH, ( gameLocal.time + 1500 ) * 0.001f );
 			debris->UpdateVisuals();
 			
 		}

@@ -179,9 +179,10 @@ void idGuiModel::EmitSurface( guiModelSurface_t *surf, float modelMatrix[16], fl
 	tri->verts = (idDrawVert *)R_FrameAlloc( tri->numVerts * sizeof( tri->verts[0] ) );
 	memcpy( tri->verts, &verts[surf->firstVert], tri->numVerts * sizeof( tri->verts[0] ) );
 
-	renderEntity_t renderEntity;
-	memset( &renderEntity, 0, sizeof( renderEntity ) );
-	memcpy( renderEntity.shaderParms, surf->color, sizeof( surf->color ) );
+	idRenderEntityLocal renderEntity;
+	for ( int i = 0; i < 4; i++ ) {
+		renderEntity.SetShaderParm( i, surf->color[i] );
+	}
 
 	viewEntity_t *guiSpace = (viewEntity_t *)R_ClearedFrameAlloc( sizeof( *guiSpace ) );
 	memcpy( guiSpace->modelMatrix, modelMatrix, sizeof( guiSpace->modelMatrix ) );

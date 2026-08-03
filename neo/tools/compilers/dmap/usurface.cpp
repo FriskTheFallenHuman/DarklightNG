@@ -638,9 +638,9 @@ void PutPrimitivesInAreas( uEntity_t *e ) {
 			if ( !modelName || !modelName[0] ) {
 				continue;
 			}
-			renderEntity_t renderEntity;
+			idRenderEntityLocal renderEntity;
 			gameEdit->ParseSpawnArgsToRenderEntity( &entity->mapEntity->epairs, &renderEntity );
-			idRenderModel *model = renderEntity.hModel;
+			idRenderModel *model = renderEntity.GetModel();
 			if ( !model || model->IsDefaultModel() || model->IsDynamicModel() != DM_STATIC ) {
 				continue;
 			}
@@ -651,7 +651,7 @@ void PutPrimitivesInAreas( uEntity_t *e ) {
 				const modelSurface_t *surface = model->Surface( i );
 				const srfTriangles_t *tri = surface->geometry;
 				const idMaterial *material = R_RemapShaderBySkin( surface->shader,
-					renderEntity.customSkin, renderEntity.customShader );
+					renderEntity.GetCustomSkin(), renderEntity.GetCustomShader() );
 				if ( !tri || !material ) {
 					continue;
 				}
@@ -667,9 +667,9 @@ void PutPrimitivesInAreas( uEntity_t *e ) {
 					for ( int k = 0 ; k < 3 ; k++ ) {
 						idVec3 v = tri->verts[tri->indexes[j+k]].xyz;
 
-						mapTri.v[k].xyz = v * renderEntity.axis + renderEntity.origin;
+						mapTri.v[k].xyz = v * renderEntity.GetAxis() + renderEntity.GetOrigin();
 
-						mapTri.v[k].normal = tri->verts[tri->indexes[j+k]].normal * renderEntity.axis;
+						mapTri.v[k].normal = tri->verts[tri->indexes[j+k]].normal * renderEntity.GetAxis();
 						mapTri.v[k].st = tri->verts[tri->indexes[j+k]].st;
 					}
 					AddMapTriToAreas( &mapTri, e );
@@ -807,7 +807,7 @@ static void CarveGroupsByLight( uEntity_t *e, mapLight_t *light ) {
 			// it won't get carved at all
 			if ( !light->def.lightShader->LightEffectsBackSides() &&
 				!group->material->ReceivesLightingOnBackSides() &&
-				dmapGlobals.mapPlanes[ group->planeNum ].Distance( light->def.parms.origin ) <= 0  ) {
+				dmapGlobals.mapPlanes[ group->planeNum ].Distance( light->def.GetOrigin() ) <= 0  ) {
 
 				group->nextGroup = carvedGroups;
 				carvedGroups = group;

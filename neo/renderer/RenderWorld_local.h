@@ -80,24 +80,19 @@ public:
 							idRenderWorldLocal();
 	virtual					~idRenderWorldLocal();
 
-	virtual	qhandle_t		AddEntityDef( const renderEntity_t *re );
-	virtual	void			UpdateEntityDef( qhandle_t entityHandle, const renderEntity_t *re );
-	virtual	void			FreeEntityDef( qhandle_t entityHandle );
-	virtual const renderEntity_t *GetRenderEntity( qhandle_t entityHandle ) const;
-
-	virtual	qhandle_t		AddLightDef( const renderLight_t *rlight );
-	virtual	void			UpdateLightDef( qhandle_t lightHandle, const renderLight_t *rlight );
-	virtual	void			FreeLightDef( qhandle_t lightHandle );
-	virtual const renderLight_t *GetRenderLight( qhandle_t lightHandle ) const;
+	virtual idRenderEntity *	AllocRenderEntity();
+	virtual void			FreeRenderEntity( idRenderEntity *entity );
+	virtual idRenderLight *	AllocRenderLight();
+	virtual void			FreeRenderLight( idRenderLight *light );
 
 	virtual bool			CheckAreaForPortalSky( int areaNum );
 
 	virtual void			RegenerateWorld();
 
 	virtual void			ProjectDecalOntoWorld( const idFixedWinding &winding, const idVec3 &projectionOrigin, const bool parallel, const float fadeDepth, const idMaterial *material, const int startTime );
-	virtual void			ProjectDecal( qhandle_t entityHandle, const idFixedWinding &winding, const idVec3 &projectionOrigin, const bool parallel, const float fadeDepth, const idMaterial *material, const int startTime );
-	virtual void			ProjectOverlay( qhandle_t entityHandle, const idPlane localTextureAxis[2], const idMaterial *material );
-	virtual void			RemoveDecals( qhandle_t entityHandle );
+	virtual void			ProjectDecal( idRenderEntity *entity, const idFixedWinding &winding, const idVec3 &projectionOrigin, const bool parallel, const float fadeDepth, const idMaterial *material, const int startTime );
+	virtual void			ProjectOverlay( idRenderEntity *entity, const idPlane localTextureAxis[2], const idMaterial *material );
+	virtual void			RemoveDecals( idRenderEntity *entity );
 
 	virtual void			SetRenderView( const renderView_t *renderView );
 	virtual	void			RenderScene( const renderView_t *renderView );
@@ -108,8 +103,8 @@ public:
 	virtual	int				NumPortalsInArea( int areaNum );
 	virtual exitPortal_t	GetPortal( int areaNum, int portalNum );
 
-	virtual	guiPoint_t		GuiTrace( qhandle_t entityHandle, const idVec3 start, const idVec3 end ) const;
-	virtual bool			ModelTrace( modelTrace_t &trace, qhandle_t entityHandle, const idVec3 &start, const idVec3 &end, const float radius ) const;
+	virtual	guiPoint_t		GuiTrace( idRenderEntity *entity, const idVec3 start, const idVec3 end ) const;
+	virtual bool			ModelTrace( modelTrace_t &trace, idRenderEntity *entity, const idVec3 &start, const idVec3 &end, const float radius ) const;
 	virtual bool			Trace( modelTrace_t &trace, const idVec3 &start, const idVec3 &end, const float radius, bool skipDynamic = true, bool skipPlayer = false ) const;
 	virtual bool			FastWorldTrace( modelTrace_t &trace, const idVec3 &start, const idVec3 &end ) const;
 
@@ -216,8 +211,8 @@ public:
 	void					WriteVisibleDefs( const viewDef_t *viewDef );
 	void					WriteFreeLight( qhandle_t handle );
 	void					WriteFreeEntity( qhandle_t handle );
-	void					WriteRenderLight( qhandle_t handle, const renderLight_t *light );
-	void					WriteRenderEntity( qhandle_t handle, const renderEntity_t *ent );
+	void					WriteRenderLight( const idRenderLightLocal *light );
+	void					WriteRenderEntity( const idRenderEntityLocal *ent );
 	void					ReadRenderEntity();
 	void					ReadRenderLight();
 	
