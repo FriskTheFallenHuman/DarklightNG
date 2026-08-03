@@ -42,6 +42,7 @@ If you have questions concerning this license or the applicable additional terms
 
 class idClip;
 class idClipModel;
+class idClipBroadPhase;
 class idEntity;
 
 
@@ -123,11 +124,10 @@ private:
 	int						traceModelIndex;		// trace model used for collision detection
 	idRenderEntity *		renderModel;			// renderer-owned model entity
 
-	struct clipLink_s *		clipLinks;				// links into sectors
-	int						touchCount;
+	idClip *				linkedClip;				// clip world this model is linked into
+	int						broadPhaseHandle;		// proxy in the dynamic broad phase
 
 	void					Init( void );			// initialize
-	void					Link_r( struct clipSector_s *node );
 
 	static int				AllocTraceModel( const idTraceModel &trm );
 	static void				FreeTraceModel( int traceModelIndex );
@@ -220,7 +220,7 @@ ID_INLINE bool idClipModel::IsTraceModel( void ) const {
 }
 
 ID_INLINE bool idClipModel::IsLinked( void ) const {
-	return ( clipLinks != NULL );
+	return ( broadPhaseHandle != -1 );
 }
 
 ID_INLINE bool idClipModel::IsEnabled( void ) const {
@@ -307,12 +307,10 @@ public:
 	bool					DrawModelContactFeature( const contactInfo_t &contact, const idClipModel *clipModel, int lifetime ) const;
 
 private:
-	int						numClipSectors;
-	struct clipSector_s *	clipSectors;
+	idClipBroadPhase *		broadPhase;
 	idBounds				worldBounds;
 	idClipModel				temporaryClipModel;
 	idClipModel				defaultClipModel;
-	mutable int				touchCount;
 							// statistics
 	int						numTranslations;
 	int						numRotations;
@@ -322,8 +320,6 @@ private:
 	int						numContacts;
 
 private:
-	struct clipSector_s *	CreateClipSectors_r( const int depth, const idBounds &bounds, idVec3 &maxSector );
-	void					ClipModelsTouchingBounds_r( const struct clipSector_s *node, struct listParms_s &parms ) const;
 	const idTraceModel *	TraceModelForClipModel( const idClipModel *mdl ) const;
 	int						GetTraceClipModels( const idBounds &bounds, int contentMask, const idEntity *passEntity, idClipModel **clipModelList ) const;
 	void					TraceRenderModel( trace_t &trace, const idVec3 &start, const idVec3 &end, const float radius, const idMat3 &axis, idClipModel *touch ) const;

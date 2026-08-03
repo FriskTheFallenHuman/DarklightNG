@@ -177,7 +177,7 @@ cm_string = ' \
 	CollisionModel_files.cpp \
 	CollisionModel_load.cpp \
 	CollisionModel_rotate.cpp \
-	CollisionModel_trace.cpp \
+	CollisionModel_bvh.cpp \
 	CollisionModel_translate.cpp'
 cm_list = scons_utils.BuildList( 'cm', cm_string )
 

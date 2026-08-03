@@ -535,6 +535,8 @@ bool idCollisionModelManagerLocal::ParseCollisionModel( idLexer *src ) {
 	CM_GetNodeBounds( &model->bounds, model->node );
 	// get model contents
 	model->contents = CM_GetNodeContents( model->node );
+	// the axial tree remains the file representation; runtime queries use BVHs
+	BuildModelBVHs( model );
 	// total memory used by this model
 	model->usedMemory = model->numVertices * sizeof(cm_vertex_t) +
 						model->numEdges * sizeof(cm_edge_t) +
@@ -542,7 +544,11 @@ bool idCollisionModelManagerLocal::ParseCollisionModel( idLexer *src ) {
 						model->brushMemory +
 						model->numNodes * sizeof(cm_node_t) +
 						model->numPolygonRefs * sizeof(cm_polygonRef_t) +
-						model->numBrushRefs * sizeof(cm_brushRef_t);
+						model->numBrushRefs * sizeof(cm_brushRef_t) +
+						model->polygonBvh.numNodes * sizeof(cm_bvhNode_t) +
+						model->polygonBvh.numPolygons * sizeof(cm_polygon_t *) +
+						model->brushBvh.numNodes * sizeof(cm_bvhNode_t) +
+						model->brushBvh.numBrushes * sizeof(cm_brush_t *);
 
 	return true;
 }

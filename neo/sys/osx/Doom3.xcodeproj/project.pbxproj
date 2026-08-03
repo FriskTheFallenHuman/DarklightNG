@@ -219,7 +219,7 @@
 		812259080912BC79005D34B9 /* CollisionModel_files.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 812258070912BC79005D34B9 /* CollisionModel_files.cpp */; };
 		812259090912BC79005D34B9 /* CollisionModel_load.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 812258080912BC79005D34B9 /* CollisionModel_load.cpp */; };
 		8122590A0912BC79005D34B9 /* CollisionModel_rotate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8122580A0912BC79005D34B9 /* CollisionModel_rotate.cpp */; };
-		8122590B0912BC79005D34B9 /* CollisionModel_trace.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8122580B0912BC79005D34B9 /* CollisionModel_trace.cpp */; };
+		8122590B0912BC79005D34B9 /* CollisionModel_bvh.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8122580B0912BC79005D34B9 /* CollisionModel_bvh.cpp */; };
 		8122590C0912BC79005D34B9 /* CollisionModel_translate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8122580C0912BC79005D34B9 /* CollisionModel_translate.cpp */; };
 		812259930912BF7F005D34B9 /* libidlib_nopic.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 812259820912BF1D005D34B9 /* libidlib_nopic.a */; };
 		812259940912BF87005D34B9 /* liboggVorbis_nopic.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8122598F0912BF38005D34B9 /* liboggVorbis_nopic.a */; };
@@ -654,7 +654,7 @@
 		812258080912BC79005D34B9 /* CollisionModel_load.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = CollisionModel_load.cpp; sourceTree = "<group>"; };
 		812258090912BC79005D34B9 /* CollisionModel_local.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = CollisionModel_local.h; sourceTree = "<group>"; };
 		8122580A0912BC79005D34B9 /* CollisionModel_rotate.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = CollisionModel_rotate.cpp; sourceTree = "<group>"; };
-		8122580B0912BC79005D34B9 /* CollisionModel_trace.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = CollisionModel_trace.cpp; sourceTree = "<group>"; };
+		8122580B0912BC79005D34B9 /* CollisionModel_bvh.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = CollisionModel_bvh.cpp; sourceTree = "<group>"; };
 		8122580C0912BC79005D34B9 /* CollisionModel_translate.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = CollisionModel_translate.cpp; sourceTree = "<group>"; };
 		812259790912BF1D005D34B9 /* idlib.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = idlib.xcodeproj; sourceTree = "<group>"; };
 		812259890912BF38005D34B9 /* oggVorbis.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = oggVorbis.xcodeproj; sourceTree = "<group>"; };
@@ -1283,7 +1283,7 @@
 				812258080912BC79005D34B9 /* CollisionModel_load.cpp */,
 				812258090912BC79005D34B9 /* CollisionModel_local.h */,
 				8122580A0912BC79005D34B9 /* CollisionModel_rotate.cpp */,
-				8122580B0912BC79005D34B9 /* CollisionModel_trace.cpp */,
+				8122580B0912BC79005D34B9 /* CollisionModel_bvh.cpp */,
 				8122580C0912BC79005D34B9 /* CollisionModel_translate.cpp */,
 			);
 			name = cm;
@@ -1676,7 +1676,7 @@
 				812259080912BC79005D34B9 /* CollisionModel_files.cpp in Sources */,
 				812259090912BC79005D34B9 /* CollisionModel_load.cpp in Sources */,
 				8122590A0912BC79005D34B9 /* CollisionModel_rotate.cpp in Sources */,
-				8122590B0912BC79005D34B9 /* CollisionModel_trace.cpp in Sources */,
+				8122590B0912BC79005D34B9 /* CollisionModel_bvh.cpp in Sources */,
 				8122590C0912BC79005D34B9 /* CollisionModel_translate.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
