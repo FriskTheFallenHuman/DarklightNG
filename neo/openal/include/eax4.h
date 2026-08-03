@@ -1,7 +1,7 @@
 /*******************************************************************\
 *                                                                   *
 *  EAX.H - Environmental Audio Extensions version 4.0               *
-*          for OpenAL and DirectSound3D                             *
+*          for OpenAL                                               *
 *                                                                   *
 *          File revision 1.0.0 (GDC Beta SDK Release)               *
 *                                                                   *
@@ -14,71 +14,33 @@
 extern "C" {
 #endif // __cplusplus
 
-#ifndef OPENAL
-    #include <dsound.h>
 
-    /*
-     * EAX Unified Interface (using Direct X 7) {4FF53B81-1CE0-11d3-AAB8-00A0C95949D5}
-     */
-    DEFINE_GUID(CLSID_EAXDirectSound, 
-        0x4ff53b81, 
-        0x1ce0, 
-        0x11d3,
-        0xaa, 0xb8, 0x0, 0xa0, 0xc9, 0x59, 0x49, 0xd5);
-        
-   /*
-    * EAX Unified Interface (using Direct X 8) {CA503B60-B176-11d4-A094-D0C0BF3A560C}
-    */
-    DEFINE_GUID(CLSID_EAXDirectSound8, 
-        0xca503b60,
-        0xb176,
-        0x11d4,
-        0xa0, 0x94, 0xd0, 0xc0, 0xbf, 0x3a, 0x56, 0xc);
+#ifndef GUID_DEFINED
+    #define GUID_DEFINED
+    typedef struct _GUID
+    {
+        unsigned long Data1;
+        unsigned short Data2;
+        unsigned short Data3;
+        unsigned char Data4[8];
+    } GUID;
+#endif // GUID_DEFINED
 
-    
+#ifndef DEFINE_GUID
+    #ifndef INITGUID
+        #define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
+                extern const GUID /*FAR*/ name
+    #else
+        #define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
+                extern const GUID name = { l, w1, w2, { b1, b2,  b3,  b4,  b5,  b6,  b7,  b8 } }
+    #endif // INITGUID
+#endif // DEFINE_GUID
 
-#ifdef DIRECTSOUND_VERSION        
-#if DIRECTSOUND_VERSION >= 0x0800
-    __declspec(dllimport) HRESULT WINAPI EAXDirectSoundCreate8(GUID*, LPDIRECTSOUND8*, IUnknown FAR *);
-    typedef HRESULT (FAR PASCAL *LPEAXDIRECTSOUNDCREATE8)(GUID*, LPDIRECTSOUND8*, IUnknown FAR*);
-#endif
-#endif
-    
-    __declspec(dllimport) HRESULT WINAPI EAXDirectSoundCreate(GUID*, LPDIRECTSOUND*, IUnknown FAR *);
-    typedef HRESULT (FAR PASCAL *LPEAXDIRECTSOUNDCREATE)(GUID*, LPDIRECTSOUND*, IUnknown FAR*);
-
-#else // OPENAL
-//    #include <al.h>
-    
-    #ifndef GUID_DEFINED
-        #define GUID_DEFINED
-        typedef struct _GUID
-        {
-            unsigned long Data1;
-            unsigned short Data2;
-            unsigned short Data3;
-            unsigned char Data4[8];
-        } GUID;
-    #endif // GUID_DEFINED
-
-    #ifndef DEFINE_GUID
-        #ifndef INITGUID
-            #define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
-                    extern const GUID /*FAR*/ name
-        #else
-            #define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
-                    extern const GUID name = { l, w1, w2, { b1, b2,  b3,  b4,  b5,  b6,  b7,  b8 } }
-        #endif // INITGUID
-    #endif // DEFINE_GUID
-
-    /*
-     * EAX OpenAL Extensions
-     */
-    typedef ALenum (*EAXSet)(const GUID*, ALuint, ALuint, ALvoid*, ALuint);
-    typedef ALenum (*EAXGet)(const GUID*, ALuint, ALuint, ALvoid*, ALuint);
+/* EAX OpenAL extensions. */
+typedef ALenum (*EAXSet)(const GUID*, ALuint, ALuint, ALvoid*, ALuint);
+typedef ALenum (*EAXGet)(const GUID*, ALuint, ALuint, ALvoid*, ALuint);
 	typedef ALboolean (*EAXSetBufferMode)(ALsizei, ALuint*, ALint);
 	typedef ALenum (*EAXGetBufferMode)(ALuint, ALint*);
-#endif
 
 #pragma pack(push, 4)
 

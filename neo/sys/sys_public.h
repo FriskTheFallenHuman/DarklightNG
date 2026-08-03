@@ -566,7 +566,4 @@ public:
 
 extern idSys *				sys;
 
-bool Sys_LoadOpenAL( void );
-void Sys_FreeOpenAL( void );
-
 #endif /* !__SYS_PUBLIC__ */

@@ -88,6 +88,31 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT doom3)
 
+# OpenAL Soft is the engine's only audio backend.  Build it into Doom3.exe so
+# there is no OpenAL DLL to deploy or load at runtime, and require the native
+# WASAPI backend.  Legacy EAX support is OpenAL Soft's software implementation
+# of the EAX 1-5 APIs used by the original Doom 3 sound code.
+set(LIBTYPE STATIC CACHE STRING "Build OpenAL Soft as a static library" FORCE)
+set(ALSOFT_EAX ON CACHE BOOL "Enable legacy EAX extensions" FORCE)
+set(ALSOFT_BACKEND_WASAPI ON CACHE BOOL "Enable WASAPI backend" FORCE)
+set(ALSOFT_REQUIRE_WASAPI ON CACHE BOOL "Require WASAPI backend" FORCE)
+set(ALSOFT_BACKEND_DSOUND OFF CACHE BOOL "Disable DirectSound backend" FORCE)
+set(ALSOFT_BACKEND_WINMM OFF CACHE BOOL "Disable WinMM backend" FORCE)
+set(ALSOFT_BACKEND_WAVE OFF CACHE BOOL "Disable wave writer backend" FORCE)
+set(ALSOFT_UTILS OFF CACHE BOOL "Do not build OpenAL Soft utilities" FORCE)
+set(ALSOFT_EXAMPLES OFF CACHE BOOL "Do not build OpenAL Soft examples" FORCE)
+set(ALSOFT_TESTS OFF CACHE BOOL "Do not build OpenAL Soft tests" FORCE)
+set(ALSOFT_INSTALL OFF CACHE BOOL "Do not install OpenAL Soft" FORCE)
+set(ALSOFT_INSTALL_CONFIG OFF CACHE BOOL "Do not install OpenAL Soft configuration" FORCE)
+set(ALSOFT_INSTALL_HRTF_DATA OFF CACHE BOOL "Do not install external HRTF data" FORCE)
+set(ALSOFT_INSTALL_AMBDEC_PRESETS OFF CACHE BOOL "Do not install AmbDec presets" FORCE)
+set(ALSOFT_INSTALL_EXAMPLES OFF CACHE BOOL "Do not install OpenAL Soft examples" FORCE)
+set(ALSOFT_INSTALL_UTILS OFF CACHE BOOL "Do not install OpenAL Soft utilities" FORCE)
+set(ALSOFT_UPDATE_BUILD_VERSION OFF CACHE BOOL "Use the vendored release version" FORCE)
+set(FORCE_STATIC_VCRT ON CACHE BOOL "Match Darklight's static MSVC runtime" FORCE)
+add_subdirectory(openal EXCLUDE_FROM_ALL)
+set_target_properties(OpenAL PROPERTIES FOLDER "Libraries/OpenAL Soft")
+
 function(darklight_target_defaults target)
 	set_target_properties(${target} PROPERTIES
 		VS_GLOBAL_VcpkgEnabled false
@@ -276,10 +301,9 @@ target_include_directories(doom3 PRIVATE
 )
 target_link_libraries(doom3 PRIVATE
 	idlib
-	"${CMAKE_CURRENT_SOURCE_DIR}/openal/lib/eaxguid.lib"
+	OpenAL::OpenAL
 	dbghelp
 	dinput8
-	dsound
 	dxguid
 	glu32
 	comctl32

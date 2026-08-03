@@ -349,20 +349,18 @@ void idSoundSample::MakeDefault( void ) {
 		ncd[i*2+1] = sample;
 	}
 
-	if ( idSoundSystemLocal::useOpenAL ) {
-		alGetError();
-		alGenBuffers( 1, &openalBuffer );
-		if ( alGetError() != AL_NO_ERROR ) {
-			common->Error( "idSoundCache: error generating OpenAL hardware buffer" );
-		}
+	alGetError();
+	alGenBuffers( 1, &openalBuffer );
+	if ( alGetError() != AL_NO_ERROR ) {
+		common->Error( "idSoundCache: error generating OpenAL hardware buffer" );
+	}
 		
-		alGetError();
-		alBufferData( openalBuffer, objectInfo.nChannels==1?AL_FORMAT_MONO16:AL_FORMAT_STEREO16, nonCacheData, objectMemSize, objectInfo.nSamplesPerSec );
-		if ( alGetError() != AL_NO_ERROR ) {
-			common->Error( "idSoundCache: error loading data into OpenAL hardware buffer" );
-		} else {
-			hardwareBuffer = true;
-		}
+	alGetError();
+	alBufferData( openalBuffer, objectInfo.nChannels==1?AL_FORMAT_MONO16:AL_FORMAT_STEREO16, nonCacheData, objectMemSize, objectInfo.nSamplesPerSec );
+	if ( alGetError() != AL_NO_ERROR ) {
+		common->Error( "idSoundCache: error loading data into OpenAL hardware buffer" );
+	} else {
+		hardwareBuffer = true;
 	}
 
 	defaultSound = true;
@@ -480,7 +478,6 @@ void idSoundSample::Load( void ) {
 	CheckForDownSample();
 
 	// create hardware audio buffers 
-	if ( idSoundSystemLocal::useOpenAL ) {
 		// PCM loads directly
 		if ( objectInfo.wFormatTag == WAVE_FORMAT_TAG_PCM ) {
 			alGetError();
@@ -522,11 +519,7 @@ void idSoundSample::Load( void ) {
 		
 		// OGG decompressed at load time (when smaller than s_decompressionLimit seconds, 6 seconds by default)
 		if ( objectInfo.wFormatTag == WAVE_FORMAT_TAG_OGG ) {
-#if defined(MACOS_X)
-			if ( ( objectSize < ( ( int ) objectInfo.nSamplesPerSec * idSoundSystemLocal::s_decompressionLimit.GetInteger() ) ) ) {
-#else
-			if ( ( alIsExtensionPresent( ID_ALCHAR "EAX-RAM" ) == AL_TRUE ) && ( objectSize < ( ( int ) objectInfo.nSamplesPerSec * idSoundSystemLocal::s_decompressionLimit.GetInteger() ) ) ) {
-#endif
+			if ( objectSize < ( int ) objectInfo.nSamplesPerSec * idSoundSystemLocal::s_decompressionLimit.GetInteger() ) {
 				alGetError();
 				alGenBuffers( 1, &openalBuffer );
 				if ( alGetError() != AL_NO_ERROR )
@@ -609,8 +602,6 @@ void idSoundSample::Load( void ) {
 			soundCacheAllocator.Free( nonCacheData );
 			nonCacheData = NULL;
 		}
-	}
-
 	fh.Close();
 }
 
@@ -622,7 +613,7 @@ idSoundSample::PurgeSoundSample
 void idSoundSample::PurgeSoundSample() {
 	purged = true;
 
-	if ( hardwareBuffer && idSoundSystemLocal::useOpenAL ) {
+	if ( hardwareBuffer ) {
 		alGetError();
 		alDeleteBuffers( 1, &openalBuffer );
 		if ( alGetError() != AL_NO_ERROR ) {

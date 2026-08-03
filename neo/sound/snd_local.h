@@ -23,13 +23,11 @@ GNU General Public License for more details.
 #ifndef __SND_LOCAL_H__
 #define __SND_LOCAL_H__
 
-// you need the OpenAL headers for build, even if AL is not enabled - http://www.openal.org/
+// OpenAL Soft is linked statically and is the only sound backend.
 #ifdef _WIN32
-#include "../openal/include/al.h"
-#include "../openal/include/alc.h"
-#include "../openal/idal.h"
-// broken OpenAL SDK ?
-#define ID_ALCHAR (ALubyte *)
+#include "../openal/include/AL/al.h"
+#include "../openal/include/AL/alc.h"
+#define ID_ALCHAR
 #elif defined( MACOS_X )
 #include <OpenAL/al.h>
 #include <OpenAL/alc.h>
@@ -40,6 +38,17 @@ GNU General Public License for more details.
 #define ID_ALCHAR
 #endif
 #include "../openal/include/efxlib.h"
+
+// The Creative EAX headers declare these GUIDs with C linkage, while OpenAL
+// Soft keeps its matching constants internal to the C++ implementation.  EAX
+// identifies property sets by GUID value, so keep the two values Doom 3 uses
+// locally instead of depending on the retired eaxguid import library.
+static const GUID ID_EAXPROPERTYID_EAX40_FXSlot0 = {
+	0xc4d79f1e, 0xf1ac, 0x436b, { 0xa8, 0x1d, 0xa7, 0x38, 0xe7, 0x04, 0x54, 0x69 }
+};
+static const GUID ID_EAXPROPERTYID_EAX40_Source = {
+	0x1b86b823, 0x22df, 0x4eae, { 0x8b, 0x3c, 0x12, 0x78, 0xce, 0x54, 0x42, 0x27 }
+};
 
 // demo sound commands
 typedef enum {
@@ -63,8 +72,6 @@ const float SND_EPSILON				= 1.0f / 32768.0f;	// if volume is below this, it wil
 
 const int ROOM_SLICES_IN_BUFFER		= 10;
 
-class idAudioHardware;
-class idAudioBuffer;
 class idWaveFile;
 class idSoundCache;
 class idSoundSample;
@@ -220,56 +227,6 @@ private:
 /*
 ===================================================================================
 
-idAudioHardware
-
-===================================================================================
-*/
-
-class idAudioHardware {
-public:
-	static idAudioHardware *Alloc();
-
-    virtual					~idAudioHardware();
-
-    virtual bool			Initialize( ) = 0;
-
-	virtual bool			Lock( void **pDSLockedBuffer, ulong *dwDSLockedBufferSize ) = 0;
-	virtual bool			Unlock( void *pDSLockedBuffer, dword dwDSLockedBufferSize ) = 0;
-	virtual bool			GetCurrentPosition( ulong *pdwCurrentWriteCursor ) = 0;
-	
-	// try to write as many sound samples to the device as possible without blocking and prepare for a possible new mixing call
-	// returns wether there is *some* space for writing available
-	virtual bool			Flush( void ) = 0;
-
-	virtual void			Write( bool flushing ) = 0;
-
-	virtual int				GetNumberOfSpeakers( void )= 0;
-	virtual int				GetMixBufferSize( void ) = 0;
-	virtual short*			GetMixBuffer( void ) = 0;
-};
-
-
-/*
-===================================================================================
-
-Encapsulates functionality of a DirectSound buffer.
-
-===================================================================================
-*/
-
-class idAudioBuffer {
-public:
-    virtual int 		Play( dword dwPriority=0, dword dwFlags=0 ) = 0;
-    virtual int			Stop( void ) = 0;
-    virtual int			Reset( void ) = 0;
-    virtual bool		IsSoundPlaying( void ) = 0;
-    virtual void	 	SetVolume( float x ) = 0;
-};
-
-
-/*
-===================================================================================
-
 idSoundEmitterLocal
 
 ===================================================================================
@@ -321,11 +278,6 @@ public:
 	void				SetParameter( float val )						{ param = val; };
 };
 
-class SoundFX_Lowpass : public SoundFX {
-public:
-	virtual void		ProcessSample( float* in, float* out );
-};
-
 class SoundFX_LowpassFast : public SoundFX {
 	float				freq;
 	float				res;
@@ -335,14 +287,6 @@ class SoundFX_LowpassFast : public SoundFX {
 public:
 	virtual void		ProcessSample( float* in, float* out );
 	void				SetParms( float p1 = 0, float p2 = 0, float p3 = 0 );
-};
-
-class SoundFX_Comb : public SoundFX {
-	int					currentTime;
-
-public:
-	virtual void		Initialize();
-	virtual void		ProcessSample( float* in, float* out );
 };
 
 class FracTime {
@@ -721,12 +665,9 @@ public:
 	int						SamplesToMilliseconds( int samples ) const;
 	int						MillisecondsToSamples( int ms ) const;
 
-	void					DoEnviroSuit( float* samples, int numSamples, int numSpeakers );
-
 	ALuint					AllocOpenALSource( idSoundChannel *chan, bool looping, bool stereo );
 	void					FreeOpenALSource( ALuint handle );
 
-	idAudioHardware *		snd_audio_hw;
 	idSoundCache *			soundCache;
 
 	idSoundWorldLocal *		currentSoundWorld;	// the one to mix each async tic
@@ -753,8 +694,6 @@ public:
 
 	float					volumesDB[1200];		// dB to float volume conversion
 
-	idList<SoundFX*>		fxList;
-
 	ALCdevice				*openalDevice;
 	ALCcontext				*openalContext;
 	ALsizei					openalSourceCount;
@@ -766,12 +705,8 @@ public:
 	idEFXFile				EFXDatabase;
 	bool					efxloaded;
 							// latches
-	static bool				useOpenAL;
-	static bool				useEAXReverb;
-							// mark available during initialization, or through an explicit test
-	static int				EAXAvailable;
-
-
+	static const bool		useOpenAL;
+	static const bool		useEAXReverb;
 	static idCVar			s_noSound;
 	static idCVar			s_quadraticFalloff;
 	static idCVar			s_drawSounds;
@@ -797,7 +732,6 @@ public:
 	static idCVar			s_force22kHz;
 	static idCVar			s_clipVolumes;
 	static idCVar			s_realTimeDecoding;
-	static idCVar			s_libOpenAL;
 	static idCVar			s_useOpenAL;
 	static idCVar			s_useEAXReverb;
 	static idCVar			s_muteEAXReverb;
@@ -805,14 +739,6 @@ public:
 
 	static idCVar			s_slowAttenuate;
 
-	static idCVar			s_enviroSuitCutoffFreq;
-	static idCVar			s_enviroSuitCutoffQ;
-	static idCVar			s_enviroSuitSkipLowpass;
-	static idCVar			s_enviroSuitSkipReverb;
-
-	static idCVar			s_reverbTime;
-	static idCVar			s_reverbFeedback;
-	static idCVar			s_enviroSuitVolumeScale;
 	static idCVar			s_skipHelltimeFX;
 };
 
