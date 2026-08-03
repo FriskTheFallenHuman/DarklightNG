@@ -29,6 +29,8 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef __GAME_H__
 #define __GAME_H__
 
+class idAnimManager;
+
 /*
 ===============================================================================
 
@@ -324,7 +326,7 @@ extern idGameEdit *				gameEdit;
 ===============================================================================
 */
 
-const int GAME_API_VERSION		= 10;
+const int GAME_API_VERSION		= 11;
 
 typedef struct {
 
@@ -341,6 +343,7 @@ typedef struct {
 	idUserInterfaceManager *	uiManager;				// user interface manager
 	idDeclManager *				declManager;			// declaration manager
 	idCollisionModelManager *	collisionModelManager;	// collision model manager
+	idAnimManager *				animManager;			// engine-owned animation manager
 	idAAS *					(*AAS_Alloc)( void );	// allocate an engine-owned AAS instance
 	void					(*AAS_Free)( idAAS *aas );	// free an engine-owned AAS instance
 

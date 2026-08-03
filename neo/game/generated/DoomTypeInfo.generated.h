@@ -1431,12 +1431,6 @@ CLASS_DECLARATION( idAI, idAI_Vagary )
 	EVENT( AI_Vagary_ThrowObjectAtEnemy, idAI_Vagary::Event_ThrowObjectAtEnemy )
 END_CLASS
 
-// anim/Anim_Testmodel.h
-CLASS_DECLARATION( idAnimatedEntity, idTestModel )
-	EVENT( EV_FootstepLeft, idTestModel::Event_Footstep )
-	EVENT( EV_FootstepRight, idTestModel::Event_Footstep )
-END_CLASS
-
 // BrittleFracture.h
 CLASS_DECLARATION( idEntity, idBrittleFracture )
 	EVENT( EV_Activate, idBrittleFracture::Event_Activate )
@@ -2255,6 +2249,12 @@ END_CLASS
 CLASS_DECLARATION( idTarget, idTarget_FadeSoundClass )
 	EVENT( EV_Activate, idTarget_FadeSoundClass::Event_Activate )
 	EVENT( EV_RestoreVolume, idTarget_FadeSoundClass::Event_RestoreVolume )
+END_CLASS
+
+// Testmodel.h
+CLASS_DECLARATION( idAnimatedEntity, idTestModel )
+	EVENT( EV_FootstepLeft, idTestModel::Event_Footstep )
+	EVENT( EV_FootstepRight, idTestModel::Event_Footstep )
 END_CLASS
 
 // Trigger.h

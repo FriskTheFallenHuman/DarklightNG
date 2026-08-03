@@ -26,12 +26,13 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
-#include "../../idlib/precompiled.h"
+#include "../idlib/precompiled.h"
 #pragma hdrstop
 
-#include "../Game_local.h"
+#include "Anim_local.h"
 
-bool idAnimManager::forceExport = false;
+static idAnimManagerLocal		animationLibLocal;
+idAnimManager *				animationLib = &animationLibLocal;
 
 /***********************************************************************
 
@@ -215,7 +216,7 @@ bool idMD5Anim::LoadAnim( const char *filename ) {
 	parser.ExpectTokenString( "{" );
 	for( i = 0; i < numJoints; i++ ) {
 		parser.ReadToken( &token );
-		jointInfo[ i ].nameIndex = animationLib.JointIndex( token );
+		jointInfo[ i ].nameIndex = animationLib->JointIndex( token );
 		
 		// parse parent num
 		jointInfo[ i ].parentNum = parser.ParseInt();
@@ -891,14 +892,14 @@ void idMD5Anim::CheckModelHierarchy( const idRenderModel *model ) const {
 	int	parent;
 
 	if ( jointInfo.Num() != model->NumJoints() ) {
-		gameLocal.Error( "Model '%s' has different # of joints than anim '%s'", model->Name(), name.c_str() );
+		common->Error( "Model '%s' has different # of joints than anim '%s'", model->Name(), name.c_str() );
 	}
 
 	const idMD5Joint *modelJoints = model->GetJoints();
 	for( i = 0; i < jointInfo.Num(); i++ ) {
 		jointNum = jointInfo[ i ].nameIndex;
-		if ( modelJoints[ i ].name != animationLib.JointName( jointNum ) ) {
-			gameLocal.Error( "Model '%s''s joint names don't match anim '%s''s", model->Name(), name.c_str() );
+		if ( modelJoints[ i ].name != animationLib->JointName( jointNum ) ) {
+			common->Error( "Model '%s''s joint names don't match anim '%s''s", model->Name(), name.c_str() );
 		}
 		if ( modelJoints[ i ].parent ) {
 			parent = modelJoints[ i ].parent - modelJoints;
@@ -906,7 +907,7 @@ void idMD5Anim::CheckModelHierarchy( const idRenderModel *model ) const {
 			parent = -1;
 		}
 		if ( parent != jointInfo[ i ].parentNum ) {
-			gameLocal.Error( "Model '%s' has different joint hierarchy than anim '%s'", model->Name(), name.c_str() );
+			common->Error( "Model '%s' has different joint hierarchy than anim '%s'", model->Name(), name.c_str() );
 		}
 	}
 }
@@ -919,38 +920,50 @@ void idMD5Anim::CheckModelHierarchy( const idRenderModel *model ) const {
 
 /*
 ====================
-idAnimManager::idAnimManager
+idAnimManagerLocal::idAnimManagerLocal
 ====================
 */
-idAnimManager::idAnimManager() {
+idAnimManagerLocal::idAnimManagerLocal() {
+	notify = NULL;
+	forceExport = false;
 }
 
 /*
 ====================
-idAnimManager::~idAnimManager
+idAnimManagerLocal::~idAnimManagerLocal
 ====================
 */
-idAnimManager::~idAnimManager() {
+idAnimManagerLocal::~idAnimManagerLocal() {
 	Shutdown();
 }
 
 /*
 ====================
-idAnimManager::Shutdown
+idAnimManagerLocal::Shutdown
 ====================
 */
-void idAnimManager::Shutdown( void ) {
+void idAnimManagerLocal::Shutdown( void ) {
 	animations.DeleteContents();
 	jointnames.Clear();
 	jointnamesHash.Free();
+	frameCommands.Clear();
+	notify = NULL;
+}
+
+void idAnimManagerLocal::RegisterDeclTypes( void ) {
+	declManager->RegisterDeclType( "model", DECL_MODELDEF, idDeclAllocator<idDeclModelDef> );
+}
+
+idAnimator *idAnimManagerLocal::AllocAnimator( void *owner ) {
+	return new idAnimatorLocal( owner );
 }
 
 /*
 ====================
-idAnimManager::GetAnim
+idAnimManagerLocal::GetAnim
 ====================
 */
-idMD5Anim *idAnimManager::GetAnim( const char *name ) {
+idMD5Anim *idAnimManagerLocal::GetAnim( const char *name ) {
 	idMD5Anim **animptrptr;
 	idMD5Anim *anim;
 
@@ -969,7 +982,7 @@ idMD5Anim *idAnimManager::GetAnim( const char *name ) {
 
 		anim = new idMD5Anim();
 		if ( !anim->LoadAnim( filename ) ) {
-			gameLocal.Warning( "Couldn't load anim: '%s'", filename.c_str() );
+			common->Warning( "Couldn't load anim: '%s'", filename.c_str() );
 			delete anim;
 			anim = NULL;
 		}
@@ -981,10 +994,10 @@ idMD5Anim *idAnimManager::GetAnim( const char *name ) {
 
 /*
 ================
-idAnimManager::ReloadAnims
+idAnimManagerLocal::ReloadAnims
 ================
 */
-void idAnimManager::ReloadAnims( void ) {
+void idAnimManagerLocal::ReloadAnims( void ) {
 	int			i;
 	idMD5Anim	**animptr;
 
@@ -998,10 +1011,10 @@ void idAnimManager::ReloadAnims( void ) {
 
 /*
 ================
-idAnimManager::JointIndex
+idAnimManagerLocal::JointIndex
 ================
 */
-int	idAnimManager::JointIndex( const char *name ) {
+int	idAnimManagerLocal::JointIndex( const char *name ) {
 	int i, hash;
 
 	hash = jointnamesHash.GenerateKey( name );
@@ -1018,19 +1031,19 @@ int	idAnimManager::JointIndex( const char *name ) {
 
 /*
 ================
-idAnimManager::JointName
+idAnimManagerLocal::JointName
 ================
 */
-const char *idAnimManager::JointName( int index ) const {
+const char *idAnimManagerLocal::JointName( int index ) const {
 	return jointnames[ index ];
 }
 
 /*
 ================
-idAnimManager::ListAnims
+idAnimManagerLocal::ListAnims
 ================
 */
-void idAnimManager::ListAnims( void ) const {
+void idAnimManagerLocal::ListAnims( void ) const {
 	int			i;
 	idMD5Anim	**animptr;
 	idMD5Anim	*anim;
@@ -1046,7 +1059,7 @@ void idAnimManager::ListAnims( void ) const {
 		if ( animptr && *animptr ) {
 			anim = *animptr;
 			s = anim->Size();
-			gameLocal.Printf( "%8d bytes : %2d refs : %s\n", s, anim->NumRefs(), anim->Name() );
+			common->Printf( "%8d bytes : %2d refs : %s\n", s, anim->NumRefs(), anim->Name() );
 			size += s;
 			num++;
 		}
@@ -1057,16 +1070,49 @@ void idAnimManager::ListAnims( void ) const {
 		namesize += jointnames[ i ].Size();
 	}
 
-	gameLocal.Printf( "\n%d memory used in %d anims\n", size, num );
-	gameLocal.Printf( "%d memory used in %d joint names\n", namesize, jointnames.Num() );
+	common->Printf( "\n%d memory used in %d anims\n", size, num );
+	common->Printf( "%d memory used in %d joint names\n", namesize, jointnames.Num() );
+}
+
+void idAnimManagerLocal::ClearAnimsInUse( void ) {
+}
+
+void idAnimManagerLocal::ClearFrameCommands( void ) {
+	frameCommands.Clear();
+}
+
+void idAnimManagerLocal::RegisterFrameCommand( const char *name, int commandType ) {
+	frameCommands.Set( name, commandType );
+}
+
+int idAnimManagerLocal::FindFrameCommand( const char *name ) const {
+	int *commandType = NULL;
+	if ( frameCommands.Get( name, &commandType ) && commandType ) {
+		return *commandType;
+	}
+	return -1;
+}
+
+void idAnimManagerLocal::ShutdownModelExporter( void ) {
+	idModelExport::Shutdown();
+}
+
+int idAnimManagerLocal::ExportDefFile( const char *filename ) {
+	idModelExport exporter;
+	return exporter.ExportDefFile( filename );
+}
+
+int idAnimManagerLocal::ExportModels( const char *pathname, const char *extension ) {
+	idModelExport exporter;
+	return exporter.ExportModels( pathname, extension );
 }
 
 /*
 ================
-idAnimManager::FlushUnusedAnims
+idAnimManagerLocal::FlushUnusedAnims
 ================
 */
-void idAnimManager::FlushUnusedAnims( void ) {
+void idAnimManagerLocal::FlushUnusedAnims( void ) {
 	int						i;
 	idMD5Anim				**animptr;
 	idList<idMD5Anim *>		removeAnims;

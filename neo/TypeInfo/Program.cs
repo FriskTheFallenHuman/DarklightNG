@@ -79,6 +79,7 @@ internal sealed class ToolOptions
 {
     public required ToolCommand Command { get; init; }
     public required string SourceRoot { get; init; }
+    public required IReadOnlyList<string> AdditionalSourceRoots { get; init; }
     public string? HeaderPath { get; init; }
     public string? ScriptPath { get; init; }
     public string? NodesPath { get; init; }
@@ -90,7 +91,7 @@ internal sealed class ToolOptions
         if (args.Length == 0 || args[0] is "-h" or "--help")
         {
             throw new ToolException(
-                "usage: DoomTypeInfo <generate|verify> --source <game-dir> " +
+                "usage: DoomTypeInfo <generate|verify> --source <game-dir> [--extra-source <dir>] " +
                 "--header <file> --script <file> --nodes <file> " +
                 "[--stamp <file>] [--exclude <relative-file>]");
         }
@@ -108,6 +109,7 @@ internal sealed class ToolOptions
         string? nodes = null;
         string? stamp = null;
         HashSet<string> excludes = new(StringComparer.OrdinalIgnoreCase);
+        List<string> additionalSources = new();
 
         for (int index = 1; index < args.Length; index++)
         {
@@ -126,6 +128,9 @@ internal sealed class ToolOptions
             {
                 case "--source":
                     source = Value();
+                    break;
+                case "--extra-source":
+                    additionalSources.Add(Value());
                     break;
                 case "--header":
                     header = Value();
@@ -158,6 +163,15 @@ internal sealed class ToolOptions
             throw new ToolException($"source directory does not exist: {source}");
         }
 
+        for (int index = 0; index < additionalSources.Count; index++)
+        {
+            additionalSources[index] = Path.GetFullPath(additionalSources[index]);
+            if (!Directory.Exists(additionalSources[index]))
+            {
+                throw new ToolException($"source directory does not exist: {additionalSources[index]}");
+            }
+        }
+
         if (command is ToolCommand.Generate or ToolCommand.Verify &&
             (header is null || script is null || nodes is null))
         {
@@ -168,6 +182,7 @@ internal sealed class ToolOptions
         {
             Command = command,
             SourceRoot = source,
+            AdditionalSourceRoots = additionalSources,
             HeaderPath = header is null ? null : Path.GetFullPath(header),
             ScriptPath = script is null ? null : Path.GetFullPath(script),
             NodesPath = nodes is null ? null : Path.GetFullPath(nodes),

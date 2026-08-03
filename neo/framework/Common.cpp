@@ -30,6 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 #pragma hdrstop
 
 #include "../aas/AAS.h"
+#include "../anim/Anim.h"
 #include "../renderer/Image.h"
 
 #define	MAX_PRINT_MSG_SIZE	4096
@@ -2658,6 +2659,7 @@ void idCommonLocal::LoadGameDLL( void ) {
 	gameImport.uiManager				= ::uiManager;
 	gameImport.declManager				= ::declManager;
 	gameImport.collisionModelManager	= ::collisionModelManager;
+	gameImport.animManager				= ::animationLib;
 	gameImport.AAS_Alloc					= ::AAS_Alloc;
 	gameImport.AAS_Free					= ::AAS_Free;
 

@@ -26,11 +26,11 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
-#include "../../idlib/precompiled.h"
+#include "../idlib/precompiled.h"
 #pragma hdrstop
 
-#include "../Game_local.h"
-#include "../../MayaImport/maya_main.h"
+#include "Anim_local.h"
+#include "../MayaImport/maya_main.h"
 
 /***********************************************************************
 
@@ -148,7 +148,7 @@ void idModelExport::LoadMayaDll( void ) {
 		Maya_Shutdown = NULL;
 		sys->DLL_Unload( importDLL );
 		importDLL = 0;
-		gameLocal.Error( "Invalid interface on export DLL." );
+		common->Error( "Invalid interface on export DLL." );
 		return;
 	}
 
@@ -159,7 +159,7 @@ void idModelExport::LoadMayaDll( void ) {
 		Maya_Shutdown = NULL;
 		sys->DLL_Unload( importDLL );
 		importDLL = 0;
-		gameLocal.Error( "Export DLL init failed." );
+		common->Error( "Export DLL init failed." );
 		return;
 	}
 }
@@ -185,8 +185,8 @@ bool idModelExport::ConvertMayaToMD5( void ) {
 		return false;
 	}
 
-	// if idAnimManager::forceExport is set then we always reexport Maya models
-	if ( idAnimManager::forceExport ) {
+	// if force export is set then we always reexport Maya models
+	if ( animationLib->GetForceExport() ) {
 		force = true;
 	}
 
@@ -291,7 +291,7 @@ bool idModelExport::ExportModel( const char *model ) {
 
 	sprintf( commandLine, "mesh %s -dest %s -game %s", src.c_str(), dest.c_str(), game );
 	if ( !ConvertMayaToMD5() ) {
-		gameLocal.Printf( "Failed to export '%s' : %s", src.c_str(), Maya_Error.c_str() );
+		common->Printf( "Failed to export '%s' : %s", src.c_str(), Maya_Error.c_str() );
 		return false;
 	}
 
@@ -316,7 +316,7 @@ bool idModelExport::ExportAnim( const char *anim ) {
 
 	sprintf( commandLine, "anim %s -dest %s -game %s", src.c_str(), dest.c_str(), game );
 	if ( !ConvertMayaToMD5() ) {
-		gameLocal.Printf( "Failed to export '%s' : %s", src.c_str(), Maya_Error.c_str() );
+		common->Printf( "Failed to export '%s' : %s", src.c_str(), Maya_Error.c_str() );
 		return false;
 	}
 
@@ -409,14 +409,14 @@ int idModelExport::ParseExportSection( idParser &parser ) {
 	}
 
 	// only export sections that match our export mask
-	if ( g_exportMask.GetString()[ 0 ] ) {
+	if ( cvarSystem->GetCVarString( "g_exportMask" )[ 0 ] ) {
 		if ( parser.CheckTokenString( "{" ) ) {
 			parser.SkipBracedSection( false );
 			return 0;
 		}
 
         parser.ReadToken( &token );
-		if ( token.Icmp( g_exportMask.GetString() ) ) {
+		if ( token.Icmp( cvarSystem->GetCVarString( "g_exportMask" ) ) ) {
 			parser.SkipBracedSection();
 			return 0;
 		}
@@ -514,7 +514,7 @@ int idModelExport::ExportDefFile( const char *filename ) {
 	count = 0;
 
 	if ( !parser.LoadFile( filename ) ) {
-		gameLocal.Printf( "Could not load '%s'\n", filename );
+		common->Printf( "Could not load '%s'\n", filename );
 		return 0;
 	}
 
@@ -548,9 +548,9 @@ int idModelExport::ExportModels( const char *pathname, const char *extension ) {
 		return 0;
 	}
 
-	gameLocal.Printf( "--------- Exporting models --------\n" );
-	if ( !g_exportMask.GetString()[ 0 ] ) {
-		gameLocal.Printf( "  Export mask: '%s'\n", g_exportMask.GetString() );
+	common->Printf( "--------- Exporting models --------\n" );
+	if ( !cvarSystem->GetCVarString( "g_exportMask" )[ 0 ] ) {
+		common->Printf( "  Export mask: '%s'\n", cvarSystem->GetCVarString( "g_exportMask" ) );
 	}
 
 	count = 0;
@@ -561,8 +561,8 @@ int idModelExport::ExportModels( const char *pathname, const char *extension ) {
 	}
 	fileSystem->FreeFileList( files );
 
-	gameLocal.Printf( "...%d models exported.\n", count );
-	gameLocal.Printf( "-----------------------------------\n" );
+	common->Printf( "...%d models exported.\n", count );
+	common->Printf( "-----------------------------------\n" );
 
 	return count;
 }

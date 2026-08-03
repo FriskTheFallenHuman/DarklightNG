@@ -191,31 +191,35 @@ internal static class SourceScanner
     private static List<SourceDocument> LoadDocuments(ToolOptions options)
     {
         List<SourceDocument> documents = new();
-        IEnumerable<string> files = Directory
-            .EnumerateFiles(options.SourceRoot, "*.*", SearchOption.AllDirectories)
-            .Where(path => path.EndsWith(".cpp", StringComparison.OrdinalIgnoreCase) ||
-                           path.EndsWith(".h", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(
-                path => ToolOptions.NormalizeRelativePath(Path.GetRelativePath(options.SourceRoot, path)),
-                StringComparer.OrdinalIgnoreCase);
-
-        foreach (string path in files)
+        IEnumerable<string> sourceRoots = new[] { options.SourceRoot }.Concat(options.AdditionalSourceRoots);
+        foreach (string sourceRoot in sourceRoots)
         {
-            string relative = ToolOptions.NormalizeRelativePath(Path.GetRelativePath(options.SourceRoot, path));
-            if (relative.StartsWith("generated/", StringComparison.OrdinalIgnoreCase) ||
-                options.IsExcluded(relative))
-            {
-                continue;
-            }
+            IEnumerable<string> files = Directory
+                .EnumerateFiles(sourceRoot, "*.*", SearchOption.AllDirectories)
+                .Where(path => path.EndsWith(".cpp", StringComparison.OrdinalIgnoreCase) ||
+                               path.EndsWith(".h", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(
+                    path => ToolOptions.NormalizeRelativePath(Path.GetRelativePath(sourceRoot, path)),
+                    StringComparer.OrdinalIgnoreCase);
 
-            string text = File.ReadAllText(path);
-            documents.Add(new SourceDocument(
-                relative,
-                text,
-                CppText.MaskCommentsAndStrings(text, preserveStrings: true)));
+            foreach (string path in files)
+            {
+                string relative = ToolOptions.NormalizeRelativePath(Path.GetRelativePath(sourceRoot, path));
+                if (relative.StartsWith("generated/", StringComparison.OrdinalIgnoreCase) ||
+                    options.IsExcluded(relative))
+                {
+                    continue;
+                }
+
+                string text = File.ReadAllText(path);
+                documents.Add(new SourceDocument(
+                    relative,
+                    text,
+                    CppText.MaskCommentsAndStrings(text, preserveStrings: true)));
+            }
         }
 
-        return documents;
+        return documents.OrderBy(document => document.RelativePath, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     private static void RejectImplementationMetadata(SourceDocument document)

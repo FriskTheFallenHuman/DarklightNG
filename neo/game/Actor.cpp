@@ -73,7 +73,7 @@ void idAnimState::Save( idSaveGame *savefile ) const {
 	savefile->WriteObject( self );
 
 	// Save the entity owner of the animator
-	savefile->WriteObject( animator->GetEntity() );
+	savefile->WriteObject( static_cast<idEntity *>( animator->GetOwner() ) );
 
 	savefile->WriteObject( thread );
 

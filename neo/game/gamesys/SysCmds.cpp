@@ -1395,7 +1395,6 @@ Cmd_ExportModels_f
 ==================
 */
 static void Cmd_ExportModels_f( const idCmdArgs &args ) {
-	idModelExport	exporter;
 	idStr			name;
 
 	// don't allow exporting models when cheats are disabled,
@@ -1405,12 +1404,12 @@ static void Cmd_ExportModels_f( const idCmdArgs &args ) {
 	}
 
 	if ( args.Argc() < 2 ) {
-		exporter.ExportModels( "def", ".def" );
+		animationLib->ExportModels( "def", ".def" );
 	} else {
 		name = args.Argv( 1 );
 		name = "def/" + name;
 		name.DefaultFileExtension( ".def" );
-		exporter.ExportDefFile( name );
+		animationLib->ExportDefFile( name );
 	}
 }
 
@@ -1420,7 +1419,6 @@ Cmd_ReexportModels_f
 ==================
 */
 static void Cmd_ReexportModels_f( const idCmdArgs &args ) {
-	idModelExport	exporter;
 	idStr			name;
 
 	// don't allow exporting models when cheats are disabled,
@@ -1429,16 +1427,16 @@ static void Cmd_ReexportModels_f( const idCmdArgs &args ) {
 		return;
 	}
 
-	idAnimManager::forceExport = true;
+	animationLib->SetForceExport( true );
 	if ( args.Argc() < 2 ) {
-		exporter.ExportModels( "def", ".def" );
+		animationLib->ExportModels( "def", ".def" );
 	} else {
 		name = args.Argv( 1 );
 		name = "def/" + name;
 		name.DefaultFileExtension( ".def" );
-		exporter.ExportDefFile( name );
+		animationLib->ExportDefFile( name );
 	}
-	idAnimManager::forceExport = false;
+	animationLib->SetForceExport( false );
 }
 
 /*
@@ -1453,7 +1451,7 @@ static void Cmd_ReloadAnims_f( const idCmdArgs &args ) {
 		return;
 	}
 
-	animationLib.ReloadAnims();
+	animationLib->ReloadAnims();
 }
 
 /*
@@ -1472,7 +1470,7 @@ static void Cmd_ListAnims_f( const idCmdArgs &args ) {
 	int				i;
 
 	if ( args.Argc() > 1 ) {
-		idAnimator animator;
+		idAnimatorHandle animator;
 
 		classname = args.Argv( 1 );
 
@@ -1490,7 +1488,7 @@ static void Cmd_ListAnims_f( const idCmdArgs &args ) {
 		}
 		gameLocal.Printf( "%d anims\n", num );
 	} else {
-		animationLib.ListAnims();
+		animationLib->ListAnims();
 
 		size = 0;
 		num = 0;

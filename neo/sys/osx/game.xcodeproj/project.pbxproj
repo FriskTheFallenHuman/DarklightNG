@@ -20,12 +20,11 @@
 		81225AD30912C42F005D34B9 /* AI_events.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A4B0912C42F005D34B9 /* AI_events.cpp */; };
 		81225AD40912C42F005D34B9 /* AI_pathing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A4C0912C42F005D34B9 /* AI_pathing.cpp */; };
 		81225AD50912C42F005D34B9 /* AI_Vagary.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A4D0912C42F005D34B9 /* AI_Vagary.cpp */; };
-		81225AD60912C42F005D34B9 /* Anim.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A4F0912C42F005D34B9 /* Anim.cpp */; };
-		81225AD70912C42F005D34B9 /* Anim.h in Headers */ = {isa = PBXBuildFile; fileRef = 81225A500912C42F005D34B9 /* Anim.h */; };
-		81225AD80912C42F005D34B9 /* Anim_Blend.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A510912C42F005D34B9 /* Anim_Blend.cpp */; };
-		81225AD90912C42F005D34B9 /* Anim_Import.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A520912C42F005D34B9 /* Anim_Import.cpp */; };
-		81225ADA0912C42F005D34B9 /* Anim_Testmodel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A530912C42F005D34B9 /* Anim_Testmodel.cpp */; };
-		81225ADB0912C42F005D34B9 /* Anim_Testmodel.h in Headers */ = {isa = PBXBuildFile; fileRef = 81225A540912C42F005D34B9 /* Anim_Testmodel.h */; };
+		81225AD60912C42F005D34B9 /* AnimNotify.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A4F0912C42F005D34B9 /* AnimNotify.cpp */; };
+		81225AD70912C42F005D34B9 /* AnimNotify.h in Headers */ = {isa = PBXBuildFile; fileRef = 81225A500912C42F005D34B9 /* AnimNotify.h */; };
+		81225AD80912C42F005D34B9 /* AnimGameEdit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A510912C42F005D34B9 /* AnimGameEdit.cpp */; };
+		81225ADA0912C42F005D34B9 /* Testmodel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A530912C42F005D34B9 /* Testmodel.cpp */; };
+		81225ADB0912C42F005D34B9 /* Testmodel.h in Headers */ = {isa = PBXBuildFile; fileRef = 81225A540912C42F005D34B9 /* Testmodel.h */; };
 		81225ADC0912C42F005D34B9 /* BrittleFracture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A550912C42F005D34B9 /* BrittleFracture.cpp */; };
 		81225ADD0912C42F005D34B9 /* BrittleFracture.h in Headers */ = {isa = PBXBuildFile; fileRef = 81225A560912C42F005D34B9 /* BrittleFracture.h */; };
 		81225ADE0912C42F005D34B9 /* Camera.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A570912C42F005D34B9 /* Camera.cpp */; };
@@ -173,12 +172,11 @@
 		81225A4B0912C42F005D34B9 /* AI_events.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = AI_events.cpp; sourceTree = "<group>"; };
 		81225A4C0912C42F005D34B9 /* AI_pathing.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = AI_pathing.cpp; sourceTree = "<group>"; };
 		81225A4D0912C42F005D34B9 /* AI_Vagary.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = AI_Vagary.cpp; sourceTree = "<group>"; };
-		81225A4F0912C42F005D34B9 /* Anim.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = Anim.cpp; sourceTree = "<group>"; };
-		81225A500912C42F005D34B9 /* Anim.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = Anim.h; sourceTree = "<group>"; };
-		81225A510912C42F005D34B9 /* Anim_Blend.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = Anim_Blend.cpp; sourceTree = "<group>"; };
-		81225A520912C42F005D34B9 /* Anim_Import.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = Anim_Import.cpp; sourceTree = "<group>"; };
-		81225A530912C42F005D34B9 /* Anim_Testmodel.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = Anim_Testmodel.cpp; sourceTree = "<group>"; };
-		81225A540912C42F005D34B9 /* Anim_Testmodel.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = Anim_Testmodel.h; sourceTree = "<group>"; };
+		81225A4F0912C42F005D34B9 /* AnimNotify.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AnimNotify.cpp; path = ../../game/AnimNotify.cpp; sourceTree = SOURCE_ROOT; };
+		81225A500912C42F005D34B9 /* AnimNotify.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = AnimNotify.h; path = ../../game/AnimNotify.h; sourceTree = SOURCE_ROOT; };
+		81225A510912C42F005D34B9 /* AnimGameEdit.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AnimGameEdit.cpp; path = ../../game/AnimGameEdit.cpp; sourceTree = SOURCE_ROOT; };
+		81225A530912C42F005D34B9 /* Testmodel.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Testmodel.cpp; path = ../../game/Testmodel.cpp; sourceTree = SOURCE_ROOT; };
+		81225A540912C42F005D34B9 /* Testmodel.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = Testmodel.h; path = ../../game/Testmodel.h; sourceTree = SOURCE_ROOT; };
 		81225A550912C42F005D34B9 /* BrittleFracture.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = BrittleFracture.cpp; path = ../../game/BrittleFracture.cpp; sourceTree = SOURCE_ROOT; };
 		81225A560912C42F005D34B9 /* BrittleFracture.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = BrittleFracture.h; path = ../../game/BrittleFracture.h; sourceTree = SOURCE_ROOT; };
 		81225A570912C42F005D34B9 /* Camera.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Camera.cpp; path = ../../game/Camera.cpp; sourceTree = SOURCE_ROOT; };
@@ -323,7 +321,7 @@
 				81225A400912C42F005D34B9 /* AFEntity.cpp */,
 				81225A410912C42F005D34B9 /* AFEntity.h */,
 				81225A420912C42F005D34B9 /* ai */,
-				81225A4E0912C42F005D34B9 /* anim */,
+				81225A4E0912C42F005D34B9 /* animation game bridge */,
 				81225A550912C42F005D34B9 /* BrittleFracture.cpp */,
 				81225A560912C42F005D34B9 /* BrittleFracture.h */,
 				81225A570912C42F005D34B9 /* Camera.cpp */,
@@ -412,19 +410,17 @@
 			path = ../../game/ai;
 			sourceTree = SOURCE_ROOT;
 		};
-		81225A4E0912C42F005D34B9 /* anim */ = {
+		81225A4E0912C42F005D34B9 /* animation game bridge */ = {
 			isa = PBXGroup;
 			children = (
-				81225A4F0912C42F005D34B9 /* Anim.cpp */,
-				81225A500912C42F005D34B9 /* Anim.h */,
-				81225A510912C42F005D34B9 /* Anim_Blend.cpp */,
-				81225A520912C42F005D34B9 /* Anim_Import.cpp */,
-				81225A530912C42F005D34B9 /* Anim_Testmodel.cpp */,
-				81225A540912C42F005D34B9 /* Anim_Testmodel.h */,
+				81225A4F0912C42F005D34B9 /* AnimNotify.cpp */,
+				81225A500912C42F005D34B9 /* AnimNotify.h */,
+				81225A510912C42F005D34B9 /* AnimGameEdit.cpp */,
+				81225A530912C42F005D34B9 /* Testmodel.cpp */,
+				81225A540912C42F005D34B9 /* Testmodel.h */,
 			);
-			name = anim;
-			path = ../../game/anim;
-			sourceTree = SOURCE_ROOT;
+			name = "animation game bridge";
+			sourceTree = "<group>";
 		};
 		81225A640912C42F005D34B9 /* gamesys */ = {
 			isa = PBXGroup;
@@ -518,8 +514,8 @@
 				81225AC80912C42F005D34B9 /* AF.h in Headers */,
 				81225ACA0912C42F005D34B9 /* AFEntity.h in Headers */,
 				81225AD20912C42F005D34B9 /* AI.h in Headers */,
-				81225AD70912C42F005D34B9 /* Anim.h in Headers */,
-				81225ADB0912C42F005D34B9 /* Anim_Testmodel.h in Headers */,
+				81225AD70912C42F005D34B9 /* AnimNotify.h in Headers */,
+				81225ADB0912C42F005D34B9 /* Testmodel.h in Headers */,
 				81225ADD0912C42F005D34B9 /* BrittleFracture.h in Headers */,
 				81225ADF0912C42F005D34B9 /* Camera.h in Headers */,
 				81225AE10912C42F005D34B9 /* Entity.h in Headers */,
@@ -662,10 +658,9 @@
 				81225AD30912C42F005D34B9 /* AI_events.cpp in Sources */,
 				81225AD40912C42F005D34B9 /* AI_pathing.cpp in Sources */,
 				81225AD50912C42F005D34B9 /* AI_Vagary.cpp in Sources */,
-				81225AD60912C42F005D34B9 /* Anim.cpp in Sources */,
-				81225AD80912C42F005D34B9 /* Anim_Blend.cpp in Sources */,
-				81225AD90912C42F005D34B9 /* Anim_Import.cpp in Sources */,
-				81225ADA0912C42F005D34B9 /* Anim_Testmodel.cpp in Sources */,
+				81225AD60912C42F005D34B9 /* AnimNotify.cpp in Sources */,
+				81225AD80912C42F005D34B9 /* AnimGameEdit.cpp in Sources */,
+				81225ADA0912C42F005D34B9 /* Testmodel.cpp in Sources */,
 				81225ADC0912C42F005D34B9 /* BrittleFracture.cpp in Sources */,
 				81225ADE0912C42F005D34B9 /* Camera.cpp in Sources */,
 				81225AE00912C42F005D34B9 /* Entity.cpp in Sources */,

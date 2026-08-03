@@ -45,6 +45,7 @@ idRenderModelManager *		renderModelManager = NULL;
 idUserInterfaceManager *	uiManager = NULL;
 idDeclManager *				declManager = NULL;
 idCollisionModelManager *	collisionModelManager = NULL;
+idAnimManager *				animationLib = NULL;
 idCVar *					idCVar::staticVars = NULL;
 
 idCVar com_forceGenericSIMD( "com_forceGenericSIMD", "0", CVAR_BOOL|CVAR_SYSTEM, "force generic platform independent SIMD" );
@@ -63,9 +64,6 @@ idRenderWorld *				gameRenderWorld = NULL;		// all drawing is done to this world
 idSoundWorld *				gameSoundWorld = NULL;		// all audio goes to this world
 
 static gameExport_t			gameExport;
-
-// global animation lib
-idAnimManager				animationLib;
 
 // the rest of the engine will only reference the "game" variable, while all local aspects stay hidden
 idGameLocal					gameLocal;
@@ -140,6 +138,7 @@ extern "C" gameExport_t *GetGameAPI( gameImport_t *import ) {
 		uiManager					= import->uiManager;
 		declManager					= import->declManager;
 		collisionModelManager		= import->collisionModelManager;
+		animationLib				= import->animManager;
 		gameAASAlloc					= import->AAS_Alloc;
 		gameAASFree					= import->AAS_Free;
 	}
@@ -183,6 +182,7 @@ void TestGameAPI( void ) {
 	testImport.uiManager				= ::uiManager;
 	testImport.declManager				= ::declManager;
 	testImport.collisionModelManager	= ::collisionModelManager;
+	testImport.animManager				= ::animationLib;
 	testImport.AAS_Alloc				= gameAASAlloc;
 	testImport.AAS_Free					= gameAASFree;
 
@@ -325,7 +325,7 @@ void idGameLocal::Init( void ) {
 	Printf( "gamedate: %s\n", __DATE__ );
 
 	// register game specific decl types
-	declManager->RegisterDeclType( "model",				DECL_MODELDEF,		idDeclAllocator<idDeclModelDef> );
+	animationLib->RegisterDeclTypes();
 	declManager->RegisterDeclType( "export",			DECL_MODELEXPORT,	idDeclAllocator<idDecl> );
 
 	// register game specific decl folders
@@ -357,6 +357,7 @@ void idGameLocal::Init( void ) {
 
 	// load default scripts
 	program.Startup( SCRIPT_DEFAULT );
+	AnimNotify_Init();
 	
 	//BSM Nerve: Loads a game specific main script file
 	idStr gamedir;
@@ -428,7 +429,7 @@ void idGameLocal::Shutdown( void ) {
 	idAI::FreeObstacleAvoidanceNodes();
 
 	// shutdown the model exporter
-	idModelExport::Shutdown();
+	animationLib->ShutdownModelExporter();
 
 	idEvent::Shutdown();
 
@@ -459,7 +460,8 @@ void idGameLocal::Shutdown( void ) {
 	Clear();
 
 	// shut down the animation manager
-	animationLib.Shutdown();
+	AnimNotify_Shutdown();
+	animationLib->Shutdown();
 
 	Printf( "--------------------------------------\n" );
 
@@ -1314,7 +1316,7 @@ void idGameLocal::InitFromNewMap( const char *mapName, idRenderWorld *renderWorl
 	mpGame.Precache();
 
 	// free up any unused animations
-	animationLib.FlushUnusedAnims();
+	animationLib->FlushUnusedAnims();
 
 	gamestate = GAMESTATE_ACTIVE;
 
@@ -1562,7 +1564,7 @@ bool idGameLocal::InitFromSaveGame( const char *mapName, idRenderWorld *renderWo
 	mpGame.Precache();
 
 	// free up any unused animations
-	animationLib.FlushUnusedAnims();
+	animationLib->FlushUnusedAnims();
 
 	gamestate = GAMESTATE_ACTIVE;
 

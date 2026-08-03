@@ -25,6 +25,9 @@
 		AA0A00020000000000000002 /* AAS_debug.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA0A00130000000000000013 /* AAS_debug.cpp */; };
 		AA0A00030000000000000003 /* AAS_pathing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA0A00150000000000000015 /* AAS_pathing.cpp */; };
 		AA0A00040000000000000004 /* AAS_routing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA0A00160000000000000016 /* AAS_routing.cpp */; };
+		AA0B00010000000000000001 /* Anim.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA0B00110000000000000011 /* Anim.cpp */; };
+		AA0B00020000000000000002 /* Anim_Blend.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA0B00130000000000000013 /* Anim_Blend.cpp */; };
+		AA0B00030000000000000003 /* Anim_Import.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA0B00140000000000000014 /* Anim_Import.cpp */; };
 		8122581F0912BC79005D34B9 /* AASFile_optimize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8122567B0912BC79005D34B9 /* AASFile_optimize.cpp */; };
 		812258200912BC79005D34B9 /* AASFile_sample.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8122567C0912BC79005D34B9 /* AASFile_sample.cpp */; };
 		812258210912BC79005D34B9 /* AASFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8122567D0912BC79005D34B9 /* AASFile.cpp */; };
@@ -342,6 +345,11 @@
 		AA0A00140000000000000014 /* AAS_local.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = AAS_local.h; path = ../../aas/AAS_local.h; sourceTree = SOURCE_ROOT; };
 		AA0A00150000000000000015 /* AAS_pathing.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AAS_pathing.cpp; path = ../../aas/AAS_pathing.cpp; sourceTree = SOURCE_ROOT; };
 		AA0A00160000000000000016 /* AAS_routing.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AAS_routing.cpp; path = ../../aas/AAS_routing.cpp; sourceTree = SOURCE_ROOT; };
+		AA0B00110000000000000011 /* Anim.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Anim.cpp; path = ../../anim/Anim.cpp; sourceTree = SOURCE_ROOT; };
+		AA0B00120000000000000012 /* Anim.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = Anim.h; path = ../../anim/Anim.h; sourceTree = SOURCE_ROOT; };
+		AA0B00130000000000000013 /* Anim_Blend.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Anim_Blend.cpp; path = ../../anim/Anim_Blend.cpp; sourceTree = SOURCE_ROOT; };
+		AA0B00140000000000000014 /* Anim_Import.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Anim_Import.cpp; path = ../../anim/Anim_Import.cpp; sourceTree = SOURCE_ROOT; };
+		AA0B00150000000000000015 /* Anim_local.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = Anim_local.h; path = ../../anim/Anim_local.h; sourceTree = SOURCE_ROOT; };
 		8122567A0912BC79005D34B9 /* AASFile_local.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = AASFile_local.h; path = ../../aas/AASFile_local.h; sourceTree = SOURCE_ROOT; };
 		8122567B0912BC79005D34B9 /* AASFile_optimize.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AASFile_optimize.cpp; path = ../../aas/AASFile_optimize.cpp; sourceTree = SOURCE_ROOT; };
 		8122567C0912BC79005D34B9 /* AASFile_sample.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AASFile_sample.cpp; path = ../../aas/AASFile_sample.cpp; sourceTree = SOURCE_ROOT; };
@@ -773,6 +781,7 @@
 				812257980912BC79005D34B9 /* framework */,
 				812257D70912BC79005D34B9 /* ui */,
 				812258020912BC79005D34B9 /* cm */,
+				AA0B00200000000000000020 /* anim */,
 				812256600912BC78005D34B9 /* tools */,
 				8122565E0912BC78005D34B9 /* openal */,
 			);
@@ -785,6 +794,18 @@
 				8122565F0912BC78005D34B9 /* snd_efxfile.cpp */,
 			);
 			name = openal;
+			sourceTree = "<group>";
+		};
+		AA0B00200000000000000020 /* anim */ = {
+			isa = PBXGroup;
+			children = (
+				AA0B00110000000000000011 /* Anim.cpp */,
+				AA0B00120000000000000012 /* Anim.h */,
+				AA0B00130000000000000013 /* Anim_Blend.cpp */,
+				AA0B00140000000000000014 /* Anim_Import.cpp */,
+				AA0B00150000000000000015 /* Anim_local.h */,
+			);
+			name = anim;
 			sourceTree = "<group>";
 		};
 		812256600912BC78005D34B9 /* tools */ = {
@@ -1461,6 +1482,9 @@
 				AA0A00020000000000000002 /* AAS_debug.cpp in Sources */,
 				AA0A00030000000000000003 /* AAS_pathing.cpp in Sources */,
 				AA0A00040000000000000004 /* AAS_routing.cpp in Sources */,
+				AA0B00010000000000000001 /* Anim.cpp in Sources */,
+				AA0B00020000000000000002 /* Anim_Blend.cpp in Sources */,
+				AA0B00030000000000000003 /* Anim_Import.cpp in Sources */,
 				8122581F0912BC79005D34B9 /* AASFile_optimize.cpp in Sources */,
 				812258200912BC79005D34B9 /* AASFile_sample.cpp in Sources */,
 				812258210912BC79005D34B9 /* AASFile.cpp in Sources */,

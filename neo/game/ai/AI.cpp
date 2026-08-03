@@ -4030,9 +4030,9 @@ void idAI::CalculateAttackOffsets( void ) {
 		if ( anim ) {
 			frame = anim->FindFrameForFrameCommand( FC_LAUNCHMISSILE, &command );
 			if ( frame >= 0 ) {
-				joint = animator.GetJointHandle( command->string->c_str() );
+				joint = animator.GetJointHandle( command->string );
 				if ( joint == INVALID_JOINT ) {
-					gameLocal.Error( "Invalid joint '%s' on 'launch_missile' frame command on frame %d of model '%s'", command->string->c_str(), frame, modelDef->GetName() );
+					gameLocal.Error( "Invalid joint '%s' on 'launch_missile' frame command on frame %d of model '%s'", command->string, frame, modelDef->GetName() );
 				}
 				GetJointTransformForAnim( joint, i, FRAME2MS( frame ), missileLaunchOffset[ i ], axis );
 			}

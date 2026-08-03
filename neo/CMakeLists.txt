@@ -32,6 +32,7 @@ file(GLOB_RECURSE DARKLIGHT_TYPEINFO_TOOL_SOURCES CONFIGURE_DEPENDS
 )
 list(FILTER DARKLIGHT_TYPEINFO_TOOL_SOURCES EXCLUDE REGEX "/(bin|obj)/")
 file(GLOB_RECURSE DARKLIGHT_TYPEINFO_INPUTS CONFIGURE_DEPENDS
+	"anim/*.h"
 	"game/*.cpp"
 	"game/*.h"
 )
@@ -53,6 +54,7 @@ add_custom_command(
 		--
 		generate
 		--source "${CMAKE_CURRENT_SOURCE_DIR}/game"
+		--extra-source "${CMAKE_CURRENT_SOURCE_DIR}/anim"
 		--header "${DARKLIGHT_TYPEINFO_HEADER}"
 		--script "${DARKLIGHT_TYPEINFO_SCRIPT}"
 		--nodes "${DARKLIGHT_TYPEINFO_NODES}"
@@ -160,6 +162,7 @@ set_target_properties(game PROPERTIES
 
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
 	"aas/*.cpp"
+	"anim/*.cpp"
 	"cm/*.cpp"
 	"framework/*.cpp"
 	"renderer/*.cpp"

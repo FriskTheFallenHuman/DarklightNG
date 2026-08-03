@@ -26,8 +26,8 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
-#ifndef __ANIM_TESTMODEL_H__
-#define __ANIM_TESTMODEL_H__
+#ifndef __TESTMODEL_H__
+#define __TESTMODEL_H__
 
 /*
 ==============================================================================================
@@ -76,7 +76,6 @@ public:
 private:
 	idEntityPtr<idEntity>	head;
 	idAnimator				*headAnimator;
-	idAnim					customAnim;
 	idPhysics_Parametric	physicsObj;
 	idStr					animname;
 	int						anim;
@@ -95,4 +94,4 @@ private:
 	void					Event_Footstep( void );
 };
 
-#endif /* !__ANIM_TESTMODEL_H__*/
+#endif /* !__TESTMODEL_H__ */

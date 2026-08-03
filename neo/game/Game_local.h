@@ -98,7 +98,7 @@ void gameError( const char *fmt, ... );
 
 #include "script/Script_Program.h"
 
-#include "anim/Anim.h"
+#include "../anim/Anim.h"
 
 #include "../aas/AAS.h"
 
@@ -635,8 +635,6 @@ private:
 //============================================================================
 
 extern idGameLocal			gameLocal;
-extern idAnimManager		animationLib;
-
 //============================================================================
 
 class idGameError : public idException {
@@ -795,7 +793,8 @@ const int	CINEMATIC_SKIP_DELAY	= SEC2MS( 2.0f );
 #include "BrittleFracture.h"
 
 #include "ai/AI.h"
-#include "anim/Anim_Testmodel.h"
+#include "AnimNotify.h"
+#include "Testmodel.h"
 
 #include "script/Script_Compiler.h"
 #include "script/Script_Interpreter.h"

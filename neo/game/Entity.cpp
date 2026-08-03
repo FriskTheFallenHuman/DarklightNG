@@ -4991,7 +4991,7 @@ idAnimatedEntity::idAnimatedEntity
 ================
 */
 idAnimatedEntity::idAnimatedEntity() {
-	animator.SetEntity( this );
+	animator.Init( this );
 	damageEffects = NULL;
 }
 
@@ -5017,7 +5017,7 @@ archives object for save game file
 ================
 */
 void idAnimatedEntity::Save( idSaveGame *savefile ) const {
-	animator.Save( savefile );
+	Anim_SaveAnimator( animator, savefile );
 
 	// Wounds are very temporary, ignored at this time
 	//damageEffect_t			*damageEffects;
@@ -5031,7 +5031,7 @@ unarchives object from save game file
 ================
 */
 void idAnimatedEntity::Restore( idRestoreGame *savefile ) {
-	animator.Restore( savefile );
+	Anim_RestoreAnimator( animator, savefile );
 
 	// check if the entity has an MD5 model
 	if ( animator.ModelHandle() ) {

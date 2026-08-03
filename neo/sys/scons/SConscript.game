@@ -13,6 +13,8 @@ game_string = ' \
 	AF.cpp \
 	AFEntity.cpp \
 	Actor.cpp \
+	AnimGameEdit.cpp \
+	AnimNotify.cpp \
 	Camera.cpp \
 	Entity.cpp \
 	BrittleFracture.cpp \
@@ -39,6 +41,7 @@ game_string = ' \
 	Trigger.cpp \
 	Weapon.cpp \
 	WorldSpawn.cpp \
+	Testmodel.cpp \
 	ai/AI.cpp \
 	ai/AI_events.cpp \
 	ai/AI_pathing.cpp \
@@ -50,10 +53,6 @@ game_string = ' \
 	gamesys/SysCmds.cpp \
 	gamesys/SysCvar.cpp \
 	gamesys/TypeInfo.cpp \
-	anim/Anim.cpp \
-	anim/Anim_Blend.cpp \
-	anim/Anim_Import.cpp \
-	anim/Anim_Testmodel.cpp \
 	script/Script_Compiler.cpp \
 	script/Script_Interpreter.cpp \
 	script/Script_Program.cpp \

@@ -610,7 +610,7 @@ public:
 	};
 
 protected:
-	idAnimator				animator;
+	idAnimatorHandle		animator;
 	damageEffect_t *		damageEffects;
 
 private:

@@ -223,6 +223,13 @@ aas_engine_string = ' \
 
 aas_list += scons_utils.BuildList( 'aas', aas_engine_string )
 
+anim_string = ' \
+	Anim.cpp \
+	Anim_Blend.cpp \
+	Anim_Import.cpp'
+
+anim_list = scons_utils.BuildList( 'anim', anim_string )
+
 roq_string = ' \
 	NSBitmapImageRep.cpp \
 	codec.cpp \
@@ -296,7 +303,7 @@ tools_list = scons_utils.BuildList( 'tools', tools_string )
 
 core_list = framework_list + jpeg_list + renderer_list + ui_list \
 	+ cm_list + dmap_list + renderbump_list + aas_list + roq_list \
-	+ snd_list + sys_list + tools_list
+	+ anim_list + snd_list + sys_list + tools_list
 
 for i in range( len( core_list ) ):
 	core_list[ i ] = '../../' + core_list[ i ]
