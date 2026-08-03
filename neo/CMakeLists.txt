@@ -109,9 +109,24 @@ set(ALSOFT_INSTALL_AMBDEC_PRESETS OFF CACHE BOOL "Do not install AmbDec presets"
 set(ALSOFT_INSTALL_EXAMPLES OFF CACHE BOOL "Do not install OpenAL Soft examples" FORCE)
 set(ALSOFT_INSTALL_UTILS OFF CACHE BOOL "Do not install OpenAL Soft utilities" FORCE)
 set(ALSOFT_UPDATE_BUILD_VERSION OFF CACHE BOOL "Use the vendored release version" FORCE)
+set(ALSOFT_ENABLE_MODULES OFF CACHE BOOL "Avoid generator-specific C++ module artifacts" FORCE)
 set(FORCE_STATIC_VCRT ON CACHE BOOL "Match Darklight's static MSVC runtime" FORCE)
 add_subdirectory(openal EXCLUDE_FROM_ALL)
 set_target_properties(OpenAL PROPERTIES FOLDER "Libraries/OpenAL Soft")
+
+# SDL2 owns the game window, OpenGL context, input and event pump.  Keep the
+# dependency fully vendored and static so Doom3.exe has no SDL2.dll runtime
+# dependency and uses the same /MT runtime as the rest of Darklight.
+set(SDL_SHARED OFF CACHE BOOL "Do not build the SDL2 shared library" FORCE)
+set(SDL_STATIC ON CACHE BOOL "Build the SDL2 static library" FORCE)
+set(SDL2_DISABLE_SDL2MAIN ON CACHE BOOL "Darklight provides its own entry point" FORCE)
+set(SDL2_DISABLE_INSTALL ON CACHE BOOL "Do not install vendored SDL2" FORCE)
+set(SDL2_DISABLE_UNINSTALL ON CACHE BOOL "Do not create SDL2 uninstall targets" FORCE)
+set(SDL_TEST OFF CACHE BOOL "Do not build SDL2 tests" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "Do not build the SDL2 test library" FORCE)
+set(SDL_FORCE_STATIC_VCRT ON CACHE BOOL "Match Darklight's static MSVC runtime" FORCE)
+add_subdirectory(sys/sdl2 EXCLUDE_FROM_ALL)
+set_target_properties(SDL2-static PROPERTIES FOLDER "Libraries/SDL2")
 
 function(darklight_target_defaults target)
 	set_target_properties(${target} PROPERTIES
@@ -239,14 +254,16 @@ list(APPEND EDITOR_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/tools/pda/PDAEditorImGui.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/tools/sound/SoundEditorImGui.cpp"
 )
-file(GLOB WIN32_SOURCES CONFIGURE_DEPENDS "sys/win32/*.cpp")
+file(GLOB SYS_PLATFORM_SOURCES CONFIGURE_DEPENDS "sys/sys_*.cpp")
+list(REMOVE_ITEM SYS_PLATFORM_SOURCES
+	"${CMAKE_CURRENT_SOURCE_DIR}/sys/sys_gl_logfuncs.cpp"
+)
 list(APPEND ENGINE_SOURCES
 	${EDITOR_SOURCES}
-	${WIN32_SOURCES}
+	${SYS_PLATFORM_SOURCES}
 	"${CMAKE_CURRENT_SOURCE_DIR}/libbink/bink.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/sys/sys_local.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/sys/win32/rc/CreateResourceIDs.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/sys/win32/rc/doom.rc"
+	"${CMAKE_CURRENT_SOURCE_DIR}/sys/rc/CreateResourceIDs.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/sys/rc/doom.rc"
 )
 set(DARKLIGHT_IMGUI_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui.cpp"
@@ -268,8 +285,6 @@ list(REMOVE_ITEM ENGINE_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/jpeg-6/jpegtran.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/sound/OggVorbis/vorbissrc/psytune.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/sound/OggVorbis/vorbissrc/tone.c"
-	"${CMAKE_CURRENT_SOURCE_DIR}/sys/win32/gl_logfuncs.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/sys/win32/win_gamma.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/ui/GameWindow.cpp"
 )
 
@@ -293,6 +308,7 @@ target_compile_definitions(doom3 PRIVATE
 	__DOOM_DLL__
 	_D3XP
 	ID_ENABLE_CURL=0
+	SDL_MAIN_HANDLED
 )
 target_include_directories(doom3 PRIVATE
 	"${CMAKE_CURRENT_SOURCE_DIR}/sound/OggVorbis"
@@ -302,9 +318,8 @@ target_include_directories(doom3 PRIVATE
 target_link_libraries(doom3 PRIVATE
 	idlib
 	OpenAL::OpenAL
+	SDL2::SDL2-static
 	dbghelp
-	dinput8
-	dxguid
 	glu32
 	comctl32
 	iphlpapi

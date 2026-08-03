@@ -21,7 +21,7 @@ GNU General Public License for more details.
 */
 #pragma once
 
-#include "../../sys/win32/rc/MaterialEditor_resource.h"
+#include "../../sys/rc/MaterialEditor_resource.h"
 
 /**
 * Structure used to store the user defined search parameters.

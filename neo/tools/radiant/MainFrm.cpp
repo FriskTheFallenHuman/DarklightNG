@@ -53,7 +53,7 @@ GNU General Public License for more details.
 #include "autocaulk.h"
 #include "RadiantImGui.h"
 
-#include "../../sys/win32/rc/common_resource.h"
+#include "../../sys/rc/common_resource.h"
 #include "../comafx/DialogName.h"
 #include "../comafx/DialogColorPicker.h"
 #include "../common/EditorTheme.h"

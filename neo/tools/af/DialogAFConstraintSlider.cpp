@@ -23,7 +23,7 @@ GNU General Public License for more details.
 #include "../../idlib/precompiled.h"
 #pragma hdrstop
 
-#include "../../sys/win32/rc/AFEditor_resource.h"
+#include "../../sys/rc/AFEditor_resource.h"
 
 #include "DialogAF.h"
 #include "DialogAFConstraint.h"

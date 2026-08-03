@@ -8,7 +8,7 @@
 #include "proptree.h"
 #include "PropTreeItemFileEdit.h"
 
-#include "../../../sys/win32/rc/proptree_Resource.h"
+#include "../../../sys/rc/proptree_Resource.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

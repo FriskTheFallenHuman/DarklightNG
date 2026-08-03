@@ -23,7 +23,7 @@ GNU General Public License for more details.
 #include "../../idlib/precompiled.h"
 #pragma hdrstop
 
-#include "../../sys/win32/rc/debugger_resource.h"
+#include "../../sys/rc/debugger_resource.h"
 #include "DebuggerApp.h"
 #include "../Common/OpenFileDialog.h"
 #include "DebuggerQuickWatchDlg.h"

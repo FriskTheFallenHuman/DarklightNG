@@ -23,8 +23,8 @@ GNU General Public License for more details.
 #include "../../idlib/precompiled.h"
 #pragma hdrstop
 
-#include "../../sys/win32/win_local.h"
-#include "../../sys/win32/rc/common_resource.h"
+#include "../../sys/sys_platform.h"
+#include "../../sys/rc/common_resource.h"
 #include "OpenFileDialog.h"
 
 char rvOpenFileDialog::mLookin[ MAX_OSPATH ];

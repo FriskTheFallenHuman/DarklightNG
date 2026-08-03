@@ -21,7 +21,7 @@
 #pragma hdrstop
 
 #include "PropTree.h"
-#include "../../../sys/win32/rc/proptree_Resource.h"
+#include "../../../sys/rc/proptree_Resource.h"
 #include "PropTreeItemColor.h"
 
 #ifdef _DEBUG

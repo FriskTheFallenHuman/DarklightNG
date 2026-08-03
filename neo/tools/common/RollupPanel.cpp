@@ -23,7 +23,7 @@ GNU General Public License for more details.
 #include "../../idlib/precompiled.h"
 #pragma hdrstop
 
-#include "../../sys/win32/win_local.h"
+#include "../../sys/sys_platform.h"
 #include "RollupPanel.h"
 
 // Based on original code by Johann Nadalutti

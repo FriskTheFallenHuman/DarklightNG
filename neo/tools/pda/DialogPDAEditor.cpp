@@ -24,9 +24,9 @@ GNU General Public License for more details.
 #pragma hdrstop
 
 #include "../../game/game.h"
-#include "../../sys/win32/win_local.h"
-#include "../../sys/win32/rc/common_resource.h"
-#include "../../sys/win32/rc/PDAEditor_resource.h"
+#include "../../sys/sys_platform.h"
+#include "../../sys/rc/common_resource.h"
+#include "../../sys/rc/PDAEditor_resource.h"
 #include "../comafx/DialogName.h"
 
 #include "DialogPDAEditor.h"

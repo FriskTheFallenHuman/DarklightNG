@@ -22,7 +22,7 @@ GNU General Public License for more details.
 #ifndef DEBUGGERAPP_H_
 #define DEBUGGERAPP_H_
 
-#include "../../sys/win32/win_local.h"
+#include "../../sys/sys_platform.h"
 #include "../../framework/sync/Msg.h"
 
 #ifndef REGISTRYOPTIONS_H_

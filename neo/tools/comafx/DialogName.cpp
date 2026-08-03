@@ -23,7 +23,7 @@ GNU General Public License for more details.
 #include "../../idlib/precompiled.h"
 #pragma hdrstop
 
-#include "../../sys/win32/rc/common_resource.h"
+#include "../../sys/rc/common_resource.h"
 #include "DialogName.h"
 
 /////////////////////////////////////////////////////////////////////////////

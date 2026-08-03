@@ -43,8 +43,8 @@ If you have questions concerning this license or the applicable additional terms
 
 #include <commctrl.h>
 #include "afxres.h"
-#include "../../sys/win32/rc/Radiant_resource.h"       // main symbols
-#include "../../sys/win32/win_local.h"
+#include "../../sys/rc/Radiant_resource.h"       // main symbols
+#include "../../sys/sys_platform.h"
 
 #include "qedefs.h"
 

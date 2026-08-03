@@ -24,7 +24,7 @@ GNU General Public License for more details.
 #pragma hdrstop
 
 #include "../../renderer/tr_local.h"
-#include "../../sys/win32/win_local.h"
+#include "../../sys/sys_platform.h"
 
 #include "GEApp.h"
 #include "GESelectionMgr.h"

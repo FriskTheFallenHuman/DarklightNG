@@ -24,11 +24,11 @@ GNU General Public License for more details.
 #pragma hdrstop
 
 #include "../../renderer/tr_local.h"
-#include "../../sys/win32/win_local.h"
+#include "../../sys/sys_platform.h"
 #include <io.h>
 
 #include "../../ui/DeviceContext.h"
-#include "../../sys/win32/rc/guied_resource.h"
+#include "../../sys/rc/guied_resource.h"
 
 #include "GEApp.h"
 #include "GEImGui.h"

@@ -27,7 +27,7 @@ GNU General Public License for more details.
 #include <windows.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
-#include "../../../sys/win32/win_local.h"
+#include "../../../sys/sys_platform.h"
 #endif
 
 #include "../../../renderer/tr_local.h"

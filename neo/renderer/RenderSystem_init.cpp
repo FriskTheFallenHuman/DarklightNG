@@ -27,7 +27,7 @@ GNU General Public License for more details.
 
 // Vista OpenGL wrapper check
 #ifdef _WIN32
-#include "../sys/win32/win_local.h"
+#include "../sys/sys_platform.h"
 #endif
 
 // functions that are not called every frame

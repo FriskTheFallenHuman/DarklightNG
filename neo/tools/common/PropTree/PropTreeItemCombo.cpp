@@ -22,7 +22,7 @@
 
 #include "PropTree.h"
 #include "../EditorTheme.h"
-#include "../../../sys/win32/rc/proptree_Resource.h"
+#include "../../../sys/rc/proptree_Resource.h"
 
 #include "PropTreeItemCombo.h"
 

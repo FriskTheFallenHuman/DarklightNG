@@ -23,7 +23,7 @@ GNU General Public License for more details.
 #include "../../idlib/precompiled.h"
 #pragma hdrstop
 
-#include "../../sys/win32/rc/guied_resource.h"
+#include "../../sys/rc/guied_resource.h"
 #include "../common/ColorButton.h"
 #include "../common/MaskEdit.h"
 

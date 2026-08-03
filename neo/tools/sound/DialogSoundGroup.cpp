@@ -23,7 +23,7 @@ GNU General Public License for more details.
 #include "../../idlib/precompiled.h"
 #pragma hdrstop
 
-#include "../../sys/win32/rc/SoundEditor_resource.h"
+#include "../../sys/rc/SoundEditor_resource.h"
 
 #include "DialogSoundGroup.h"
 

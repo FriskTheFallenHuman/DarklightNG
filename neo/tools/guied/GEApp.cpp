@@ -25,7 +25,7 @@ GNU General Public License for more details.
 
 #include <io.h>
 
-#include "../../sys/win32/rc/guied_resource.h"
+#include "../../sys/rc/guied_resource.h"
 #include "../../ui/DeviceContext.h"
 
 #include "GEApp.h"

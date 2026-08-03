@@ -23,7 +23,7 @@ GNU General Public License for more details.
 #ifndef GEAPP_H_
 #define GEAPP_H_
 
-#include "../../sys/win32/win_local.h"
+#include "../../sys/sys_platform.h"
 
 #include "../../ui/Rectangle.h"
 #include "../../ui/Window.h"

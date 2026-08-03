@@ -23,9 +23,9 @@ GNU General Public License for more details.
 #include "../../idlib/precompiled.h"
 #pragma hdrstop
 
-#include "../../sys/win32/rc/guied_resource.h"
+#include "../../sys/rc/guied_resource.h"
 #include "../../renderer/tr_local.h"
-#include "../../sys/win32/win_local.h"
+#include "../../sys/sys_platform.h"
 #include "../../ui/DeviceContext.h"
 #include "../../ui/EditWindow.h"
 #include "../../ui/ListWindow.h"

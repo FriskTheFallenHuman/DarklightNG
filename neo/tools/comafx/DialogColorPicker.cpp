@@ -23,7 +23,7 @@ GNU General Public License for more details.
 #include "../../idlib/precompiled.h"
 #pragma hdrstop
 
-#include "../../sys/win32/rc/Radiant_resource.h"
+#include "../../sys/rc/Radiant_resource.h"
 #include "DialogColorPicker.h"
 
 #ifdef ID_DEBUG_MEMORY

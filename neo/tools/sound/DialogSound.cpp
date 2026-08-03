@@ -24,11 +24,11 @@ GNU General Public License for more details.
 #pragma hdrstop
 
 #include "../../game/game.h"
-#include "../../sys/win32/win_local.h"
-#include "../../sys/win32/rc/common_resource.h"
-#include "../../sys/win32/rc/SoundEditor_resource.h"
+#include "../../sys/sys_platform.h"
+#include "../../sys/rc/common_resource.h"
+#include "../../sys/rc/SoundEditor_resource.h"
 #include "../comafx/DialogName.h"
-#include "../../sys/win32/rc/DeclEditor_resource.h"
+#include "../../sys/rc/DeclEditor_resource.h"
 #include "../decl/DialogDeclEditor.h"
 
 #include "DialogSound.h"

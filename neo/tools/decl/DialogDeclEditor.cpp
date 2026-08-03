@@ -23,8 +23,8 @@ GNU General Public License for more details.
 #include "../../idlib/precompiled.h"
 #pragma hdrstop
 
-#include "../../sys/win32/rc/Common_resource.h"
-#include "../../sys/win32/rc/DeclEditor_resource.h"
+#include "../../sys/rc/Common_resource.h"
+#include "../../sys/rc/DeclEditor_resource.h"
 
 #include "../comafx/DialogGoToLine.h"
 #include "../comafx/CPathTreeCtrl.h"
