@@ -154,6 +154,15 @@ void rvGEProperties::Update ( void )
 	}	
 }
 
+bool rvGEProperties::SetProperty ( const char* name, const char* value )
+{
+	if ( !mWrapper || !mWorkspace )
+	{
+		return false;
+	}
+	return AddModifier ( name, value );
+}
+
 /*
 ================
 rvGEProperties::AddModifier
@@ -307,5 +316,4 @@ LRESULT CALLBACK rvGEProperties::WndProc ( HWND hWnd, UINT msg, WPARAM wParam, L
 		
 	return DefWindowProc ( hWnd, msg, wParam, lParam );
 }
-
 

@@ -98,6 +98,10 @@ public:
 	bool				NewFile					( void );
 	
 	bool				IsActive				( void );	
+	int					ExecuteCommand			( UINT command );
+	int					GetWorkspaceCount		( void ) const;
+	rvGEWorkspace*		GetWorkspace			( int index );
+	void				SetActiveWorkspace		( rvGEWorkspace* workspace );
 
 	void				CloseViewer				( void );
 
@@ -143,6 +147,16 @@ private:
 ID_INLINE bool rvGEApp::IsActive ( void )
 {
 	return mMDIFrame ? true : false;
+}
+
+ID_INLINE int rvGEApp::GetWorkspaceCount ( void ) const
+{
+	return mWorkspaces.Num();
+}
+
+ID_INLINE rvGEWorkspace* rvGEApp::GetWorkspace ( int index )
+{
+	return index >= 0 && index < mWorkspaces.Num() ? mWorkspaces[index] : NULL;
 }
 
 ID_INLINE rvGENavigator& rvGEApp::GetNavigator ( void )

@@ -19,6 +19,24 @@ namespace {
 
 static const char *RADIANT_IMGUI_WINDOW_CLASS = "DarklightRadiantImGui";
 
+// Dear ImGui stores the current context globally.  Radiant and the GUI editor
+// share this thread, and opening/focusing one window can synchronously enter
+// its window procedure while the other editor is still building a frame.
+// Restore the caller's context on every exit from those nested operations.
+class ScopedImGuiContext {
+public:
+	explicit ScopedImGuiContext( ImGuiContext *context ) : previous( ImGui::GetCurrentContext() ) {
+		ImGui::SetCurrentContext( context );
+	}
+
+	~ScopedImGuiContext() {
+		ImGui::SetCurrentContext( previous );
+	}
+
+private:
+	ImGuiContext *previous;
+};
+
 idCVar radiant_useImGui( "radiant_useImGui", "1", CVAR_TOOL | CVAR_ARCHIVE,
 	"use the Dear ImGui Radiant window shell" );
 idCVar radiant_imguiQuadLayout( "radiant_imguiQuadLayout", "1", CVAR_TOOL | CVAR_ARCHIVE,
@@ -41,6 +59,7 @@ static void RenderImGuiDrawData( ImDrawData *drawData ) {
 	const bool hasProgram = qglUseProgram != NULL;
 	const bool hasBuffers = qglBindBufferARB != NULL;
 	const bool hasMultitexture = qglActiveTextureARB != NULL && qglClientActiveTextureARB != NULL;
+	const GLboolean cubeMapEnabled = qglIsEnabled( GL_TEXTURE_CUBE_MAP_EXT );
 
 	if ( hasProgram ) {
 		qglGetIntegerv( 0x8B8D /* GL_CURRENT_PROGRAM */, &previousProgram );
@@ -61,6 +80,7 @@ static void RenderImGuiDrawData( ImDrawData *drawData ) {
 	if ( hasProgram ) {
 		qglUseProgram( 0 );
 	}
+	qglDisable( GL_TEXTURE_CUBE_MAP_EXT );
 	if ( hasBuffers ) {
 		qglBindBufferARB( GL_ARRAY_BUFFER_ARB, 0 );
 		qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
@@ -73,6 +93,9 @@ static void RenderImGuiDrawData( ImDrawData *drawData ) {
 	}
 	if ( hasProgram ) {
 		qglUseProgram( previousProgram );
+	}
+	if ( cubeMapEnabled ) {
+		qglEnable( GL_TEXTURE_CUBE_MAP_EXT );
 	}
 	if ( hasMultitexture ) {
 		qglClientActiveTextureARB( previousClientActiveTexture );
@@ -407,7 +430,7 @@ bool RadiantImGuiHost::InitializeRenderer() {
 
 	IMGUI_CHECKVERSION();
 	imguiContext = ImGui::CreateContext();
-	ImGui::SetCurrentContext( imguiContext );
+	ScopedImGuiContext scopedContext( imguiContext );
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.IniFilename = "radiant_imgui.ini";
@@ -474,6 +497,8 @@ bool RadiantImGuiHost::InitializeRenderer() {
 
 void RadiantImGuiHost::ShutdownRenderer() {
 	if ( rendererReady || imguiContext != NULL ) {
+		ImGuiContext *previousContext = ImGui::GetCurrentContext();
+		ImGuiContext *destroyedContext = imguiContext;
 		MakeCurrent();
 		cameraSurface.Destroy();
 		xySurface.Destroy();
@@ -496,6 +521,7 @@ void RadiantImGuiHost::ShutdownRenderer() {
 			imguiContext = NULL;
 		}
 		rendererReady = false;
+		ImGui::SetCurrentContext( previousContext == destroyedContext ? NULL : previousContext );
 	}
 	if ( hwnd != NULL && dc != NULL ) {
 		ReleaseDC( hwnd, dc );
@@ -532,6 +558,7 @@ void RadiantImGuiHost::Frame() {
 	if ( !rendererReady || rendering || hwnd == NULL || !IsWindowVisible( hwnd ) || IsIconic( hwnd ) ) {
 		return;
 	}
+	ScopedImGuiContext scopedContext( imguiContext );
 	if ( pendingMapSave[0] != '\0' ) {
 		char savePath[MAX_PATH];
 		idStr::Copynz( savePath, pendingMapSave, sizeof( savePath ) );
@@ -780,6 +807,11 @@ void RadiantImGuiHost::RenderShell() {
 		// This menu is inserted into the live MFC menu at runtime, so it is not
 		// present in the menu resource mirrored by RenderNativeMenuBar().
 		if ( ImGui::BeginMenu( "Editors" ) ) {
+			const bool guiEditorVisible = GUIEditorIsVisible();
+			if ( ImGui::MenuItem( "GUI Editor...", NULL, guiEditorVisible ) ) {
+				GUIEditorToggle();
+			}
+			ImGui::Separator();
 			if ( ImGui::MenuItem( "Light Editor...", "J" ) ) {
 				ShowLightEditor();
 			}
@@ -2491,9 +2523,9 @@ void RadiantImGuiHost::HandleZInput( CZWnd *view, bool hovered, const ImVec2 &mi
 }
 
 LRESULT RadiantImGuiHost::WindowProc( HWND window, UINT message, WPARAM wParam, LPARAM lParam ) {
+	ScopedImGuiContext scopedContext( imguiContext );
 	bool imguiHandled = false;
 	if ( imguiContext != NULL ) {
-		ImGui::SetCurrentContext( imguiContext );
 		imguiHandled = rendererReady && ImGui_ImplWin32_WndProcHandler( window, message, wParam, lParam );
 	}
 	if ( message == WM_LBUTTONDOWN || message == WM_RBUTTONDOWN || message == WM_MBUTTONDOWN ) {

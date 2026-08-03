@@ -758,6 +758,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
 	ON_COMMAND(ID_PRECISION_CURSOR_CYCLE , OnPrecisionCursorCycle)
 	ON_COMMAND(ID_MATERIALS_GENERATEMATERIALSLIST,OnGenerateMaterialsList)
 	ON_COMMAND(ID_EDITORS_DOOMSCRIPT_BLUEPRINT, OnDoomScriptBlueprintEditor)
+	ON_COMMAND(ID_EDITORS_GUI_EDITOR, OnGUIEditor)
 	ON_COMMAND(ID_SELECTION_VIEW_WIREFRAMEON, OnSelectionWireFrameOn)
 	ON_COMMAND(ID_SELECTION_VIEW_WIREFRAMEOFF, OnSelectionWireFrameOff)
 	ON_COMMAND(ID_SELECTION_VIEW_VISIBLEON, OnSelectionVisibleOn)
@@ -1229,6 +1230,8 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 	CMenu *pMenu = GetMenu();
 	if ( pMenu != NULL ) {
 		HMENU editorsMenu = ::CreatePopupMenu();
+		::AppendMenu( editorsMenu, MF_STRING, ID_EDITORS_GUI_EDITOR, "GUI Editor..." );
+		::AppendMenu( editorsMenu, MF_SEPARATOR, 0, NULL );
 		::AppendMenu( editorsMenu, MF_STRING, ID_EDITORS_DOOMSCRIPT_BLUEPRINT, "DoomScript Blueprint Editor..." );
 		int editorsPosition = Max( 0, pMenu->GetMenuItemCount() - 2 );
 		pMenu->InsertMenu( editorsPosition, MF_BYPOSITION | MF_POPUP, (UINT_PTR)editorsMenu, "&Editors" );
@@ -7091,6 +7094,10 @@ void CMainFrame::OnGenerateMaterialsList()
 
 void CMainFrame::OnDoomScriptBlueprintEditor() {
 	ShowDoomScriptBlueprintEditor();
+}
+
+void CMainFrame::OnGUIEditor() {
+	GUIEditorToggle();
 }
 
 /*

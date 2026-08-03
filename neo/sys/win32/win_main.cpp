@@ -2630,14 +2630,15 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 #ifdef ID_ALLOW_TOOLS
 		if ( com_editors ) {
 			Sys_EnableEditorTheme();
-			if ( com_editors & EDITOR_GUI ) {
-				// GUI editor
-				GUIEditorRun();
-			} else if ( com_editors & EDITOR_RADIANT ) {
+			if ( com_editors & EDITOR_RADIANT ) {
 				// Level Editor
 				RadiantRun();
 			}
-			else if (com_editors & EDITOR_MATERIAL ) {
+			if ( com_editors & EDITOR_GUI ) {
+				// GUI editor companion window
+				GUIEditorRun();
+			}
+			if (com_editors & EDITOR_MATERIAL ) {
 				//BSM Nerve: Add support for the material editor
 				MaterialEditorRun();
 			}

@@ -64,6 +64,9 @@ void	GUIEditorInit( void ) { common->Printf( "The GUI Editor only runs on Win32\
 void	GUIEditorShutdown( void ) {}
 void	GUIEditorRun( void ) {}
 bool	GUIEditorHandleMessage( void *msg ) { return false; }
+void	GUIEditorToggle( void ) {}
+void	GUIEditorHide( void ) {}
+bool	GUIEditorIsVisible( void ) { return false; }
 
 void	DebuggerClientLaunch( void ) {}
 void	DebuggerClientInit( const char *cmdline ) { common->Printf( "The Script Debugger Client only runs on Win32\n" ); }

@@ -48,6 +48,7 @@ public:
 	void	SetWorkspace		( rvGEWorkspace* workspace );
 
 	void	Update				( void );	
+	bool	SetProperty			( const char* name, const char* value );
 
 	HWND	GetWindow			( void );
 	

@@ -98,6 +98,9 @@ void	GUIEditorInit( void );
 void	GUIEditorShutdown( void );
 void	GUIEditorRun( void );
 bool	GUIEditorHandleMessage( void *msg );
+void	GUIEditorToggle( void );
+void	GUIEditorHide( void );
+bool	GUIEditorIsVisible( void );
 
 
 // Script Debugger

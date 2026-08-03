@@ -35,6 +35,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "../../ui/DeviceContext.h"
 
 #include "GEApp.h"
+#include "GEImGui.h"
 #include "GEOptionsDlg.h"
 #include "GEViewer.h"
 
@@ -79,8 +80,8 @@ bool rvGEApp::Initialize ( void )
 {
 	mOptions.Init();
 
-	// Mutually exclusive
-	com_editors = EDITOR_GUI;
+	// The ImGui GUI editor can run alongside Radiant.
+	com_editors |= EDITOR_GUI;
 
 	Sys_GrabMouseCursor( false );
 	
@@ -141,16 +142,10 @@ bool rvGEApp::Initialize ( void )
 		return false;
 	}
 
-	// hide the doom window by default
-	::ShowWindow ( win32.hWnd, SW_HIDE );
-	
-	// Show both windows
-	mOptions.GetWindowPlacement ( "mdiframe", mMDIFrame );
-	ShowWindow ( mMDIFrame, SW_SHOW ); 
-	UpdateWindow ( mMDIFrame );
-
+	// Keep the old MDI frame solely as a hidden compatibility host for the
+	// existing document, input and renderer code. GEImGui owns the visible UI.
 	ShowWindow ( mMDIClient, SW_SHOW );
-	UpdateWindow ( mMDIClient );
+	ShowWindow ( mMDIFrame, SW_HIDE );
 	
 	return true;
 }
@@ -196,6 +191,20 @@ Translate any accelerators destined for this window
 bool rvGEApp::TranslateAccelerator ( LPMSG msg )
 {
 	HWND focus;
+	if ( GEImGuiIsVisible() && GEImGuiOwnsWindow( msg->hwnd ) &&
+		( msg->message == WM_KEYDOWN || msg->message == WM_SYSKEYDOWN ) &&
+		( GetKeyState( VK_CONTROL ) & 0x8000 ) != 0 ) {
+		UINT command = 0;
+		switch ( msg->wParam ) {
+			case 'N': command = ID_GUIED_FILE_NEW; break;
+			case 'O': command = ID_GUIED_FILE_OPEN; break;
+			case 'S': command = ID_GUIED_FILE_SAVE; break;
+		}
+		if ( command != 0 ) {
+			GEImGuiExecuteCommand( command );
+			return true;
+		}
+	}
 
 	if ( msg->message == WM_SYSCHAR )
 	{
@@ -211,7 +220,7 @@ bool rvGEApp::TranslateAccelerator ( LPMSG msg )
 	focus = GetActiveWindow ( );
 
 	// Only use accelerators when on the main window or navigator window
-	if ( focus == mMDIClient || focus == mMDIFrame ||
+	if ( focus == mMDIClient || focus == mMDIFrame || GEImGuiOwnsWindow ( msg->hwnd ) ||
 		 focus == GetNavigator().GetWindow ( ) )
 	{
 		if ( ::TranslateAccelerator ( mMDIFrame, mAccelerators, msg ) )
@@ -324,7 +333,6 @@ LRESULT CALLBACK rvGEApp::FrameWndProc ( HWND hWnd, UINT uMsg, WPARAM wParam, LP
 		case WM_DESTROY:
 			app->mOptions.SetWindowPlacement ( "mdiframe", hWnd );
 			app->mOptions.Save ( );			
-			ExitProcess(0);
 			break;			
 
 		case WM_COMMAND:
@@ -354,10 +362,10 @@ LRESULT CALLBACK rvGEApp::FrameWndProc ( HWND hWnd, UINT uMsg, WPARAM wParam, LP
 			
 			app->InitRecentFiles ( );
 			app->UpdateRecentFiles ( );
-			app->mNavigator.Create ( hWnd, gApp.mOptions.GetNavigatorVisible ( ) );		
-			app->mTransformer.Create ( hWnd, gApp.mOptions.GetTransformerVisible ( )  );
-			app->mStatusBar.Create ( hWnd, 9999, gApp.mOptions.GetStatusBarVisible ( )  );
-			app->mProperties.Create ( hWnd, gApp.mOptions.GetPropertiesVisible ( ) );
+			app->mNavigator.Create ( hWnd, false );
+			app->mTransformer.Create ( hWnd, false );
+			app->mStatusBar.Create ( hWnd, 9999, false );
+			app->mProperties.Create ( hWnd, false );
 
 			// add all the tool windows to the tool window array
 			app->mToolWindows.Append ( app->mMDIFrame );
@@ -488,7 +496,7 @@ void rvGEApp::HandleCommandSave ( rvGEWorkspace* workspace, const char* filename
 		// Initialize OPENFILENAME
 		ZeroMemory(&ofn, sizeof(OPENFILENAME));
 		ofn.lStructSize = sizeof(OPENFILENAME);
-		ofn.hwndOwner = mMDIFrame;
+		ofn.hwndOwner = GEImGuiWindow() ? GEImGuiWindow() : mMDIFrame;
 		ofn.lpstrFile = szFile;
 		ofn.nMaxFile = sizeof(szFile);
 		ofn.lpstrFilter = "GUI Files\0*.GUI\0All Files\0*.*\0";
@@ -528,6 +536,19 @@ void rvGEApp::HandleCommandSave ( rvGEWorkspace* workspace, const char* filename
 	else
 	{
 		MessageBox ( va("Could not write file '%s'", workspace->GetFilename()), MB_OK|MB_ICONERROR );
+	}
+}
+
+int rvGEApp::ExecuteCommand ( UINT command )
+{
+	return HandleCommand ( MAKELONG ( command, 0 ), 0 );
+}
+
+void rvGEApp::SetActiveWorkspace ( rvGEWorkspace* workspace )
+{
+	if ( workspace && workspace->GetWindow() )
+	{
+		SendMessage ( mMDIClient, WM_MDIACTIVATE, (WPARAM)workspace->GetWindow(), 0 );
 	}
 }
 
@@ -589,32 +610,12 @@ int rvGEApp::HandleCommand ( WPARAM wParam, LPARAM lParam )
 			break;
 	
 		case ID_GUIED_HELP_ABOUT:
-			DialogBox ( GetInstance(), MAKEINTRESOURCE(IDD_GUIED_ABOUT), mMDIFrame, AboutDlg_WndProc );
+			GEImGuiShowAbout ( );
 			break;
 	
 		case ID_GUIED_TOOLS_VIEWER:
 		{
-			if ( mViewer )
-			{
-				break;
-			}
-			
-			mViewer = new rvGEViewer;
-			if ( !mViewer->Create ( mMDIFrame ) )
-			{
-				delete mViewer;
-				mViewer = NULL;
-			}
-						
-			if ( workspace )
-			{				
-				if ( !workspace->IsModified () || HandleCommand ( MAKELONG(ID_GUIED_FILE_SAVE,0), 0 ) )
-				{
-					mViewer->OpenFile ( workspace->GetFilename ( ) );
-				}
-			}
-			
-			SetActiveWindow ( mViewer->GetWindow ( ) );
+			GEImGuiShowViewer ( );
 			break;
 		}
 		
@@ -690,12 +691,12 @@ int rvGEApp::HandleCommand ( WPARAM wParam, LPARAM lParam )
 	
 		case ID_GUIED_ITEM_PROPERTIES:
 			assert ( workspace );
-			workspace->EditSelectedProperties ( );
+			GEImGuiShowProperties ( );
 			break;
 
 		case ID_GUIED_ITEM_SCRIPTS:
 			assert ( workspace );
-			workspace->EditSelectedScripts ( );
+			GEImGuiShowScripts ( );
 			break;
 			
 		case ID_GUIED_ITEM_NEWWINDOWDEF:
@@ -804,7 +805,7 @@ int rvGEApp::HandleCommand ( WPARAM wParam, LPARAM lParam )
 			break;
 	
 		case ID_GUIED_VIEW_OPTIONS:
-			GEOptionsDlg_DoModal ( mMDIFrame );
+			GEImGuiShowOptions ( );
 			break;
 	
 		case ID_GUIED_VIEW_SHOWGRID:
@@ -826,7 +827,7 @@ int rvGEApp::HandleCommand ( WPARAM wParam, LPARAM lParam )
 			break;
 	
 		case ID_GUIED_FILE_EXIT:
-			DestroyWindow ( mMDIFrame );
+			GUIEditorHide ( );
 			break;
 
 		case ID_GUIED_FILE_CLOSE:
@@ -859,7 +860,7 @@ int rvGEApp::HandleCommand ( WPARAM wParam, LPARAM lParam )
 			// Initialize OPENFILENAME
 			ZeroMemory(&ofn, sizeof(OPENFILENAME));
 			ofn.lStructSize = sizeof(OPENFILENAME);
-			ofn.hwndOwner = mMDIFrame;
+			ofn.hwndOwner = GEImGuiWindow() ? GEImGuiWindow() : mMDIFrame;
 			ofn.lpstrFile = szFile;
 			ofn.nMaxFile = sizeof(szFile);
 			ofn.lpstrFilter = "GUI Files\0*.GUI\0All Files\0*.*\0";
@@ -1379,6 +1380,5 @@ Displays a modal message box
 */
 int rvGEApp::MessageBox ( const char* text, int flags )
 {
-	return ::MessageBox ( mMDIFrame, text, "Quake 4 GUI Editor", flags );
+	return ::MessageBox ( GEImGuiWindow() ? GEImGuiWindow() : mMDIFrame, text, "DOOMEdit GUI Editor", flags );
 }
-

@@ -70,6 +70,7 @@ rvGEWorkspace::rvGEWorkspace ( rvGEApp* app ) : mApplication ( app )
 	mModified   		= false;
 	mNew				= false;
 	mDragScroll 		= false;
+	mExternalInput		= false;
 	mSourceControlState = SCS_CHECKEDOUT;
 	mFilename   		= "guis/Untitled.gui";
 	mDragType			= rvGESelectionMgr::HT_NONE;
@@ -262,16 +263,18 @@ rvGEWorkspace::Render
 Renders the workspace to the given DC
 ================
 */
-void rvGEWorkspace::Render ( HDC hdc )
+void rvGEWorkspace::Render ( HDC hdc, HGLRC glContext )
 {
 	int		front;
 	int		back;
 	float	scale;
+	viewDef_t* previousViewDef = tr.viewDef;
 	
 	scale = g_ZoomScales[mZoom];
 
 	// Switch GL contexts to our dc
-	if (!qwglMakeCurrent( hdc, win32.hGLRC )) 
+	HGLRC renderContext = glContext != NULL ? glContext : win32.hGLRC;
+	if (!qwglMakeCurrent( hdc, renderContext )) 
 	{
 		common->Printf("ERROR: wglMakeCurrent failed.. Error:%i\n", qglGetError());
 		common->Printf("Please restart Q3Radiant if the Map view is not working\n");
@@ -352,6 +355,7 @@ void rvGEWorkspace::Render ( HDC hdc )
 
 	qglEnable( GL_TEXTURE_CUBE_MAP_EXT );
 	qglEnable( GL_CULL_FACE);
+	tr.viewDef = previousViewDef;
 }
 
 /*
@@ -823,7 +827,10 @@ int	rvGEWorkspace::HandleMButtonDown ( WPARAM wParam, LPARAM lParam )
 	mDragPoint.Set ( LOWORD(lParam), HIWORD(lParam) );
 	mDragScroll = true;
 	SetCursor ( mHandCursor );
-	SetCapture ( mWnd );
+	if ( !mExternalInput )
+	{
+		SetCapture ( mWnd );
+	}
 
 	WindowToWorkspace ( mDragPoint );
 
@@ -842,7 +849,10 @@ int	rvGEWorkspace::HandleMButtonUp ( WPARAM wParam, LPARAM lParam )
 	if ( mDragScroll )
 	{
 		mDragScroll = false;
-		ReleaseCapture ( );
+		if ( !mExternalInput )
+		{
+			ReleaseCapture ( );
+		}
 	}
 
 	return 0;
@@ -980,7 +990,10 @@ int	rvGEWorkspace::HandleLButtonDown ( WPARAM wParam, LPARAM lParam )
 	// Windows capture
 	else if ( mDragType != rvGESelectionMgr::HT_NONE )
 	{
-		SetCapture ( mWnd );
+		if ( !mExternalInput )
+		{
+			SetCapture ( mWnd );
+		}
 	}
 
 	WindowToWorkspace ( mDragPoint );
@@ -999,7 +1012,10 @@ int	rvGEWorkspace::HandleLButtonUp ( WPARAM wParam, LPARAM lParam )
 {
 	if ( mDragType != rvGESelectionMgr::HT_NONE )
 	{
-		ReleaseCapture ( );
+		if ( !mExternalInput )
+		{
+			ReleaseCapture ( );
+		}
 		mModifiers.BlockNextMerge ( );
 
 		// Update the transformer
@@ -1135,6 +1151,45 @@ int	rvGEWorkspace::HandleMouseMove ( WPARAM wParam, LPARAM lParam )
 	}
 	
 	return 0;
+}
+
+void rvGEWorkspace::HandleExternalMouseButton ( int button, bool down, int x, int y )
+{
+	mExternalInput = true;
+	const LPARAM point = MAKELPARAM ( (short)x, (short)y );
+	if ( button == 0 )
+	{
+		if ( down ) HandleLButtonDown ( MK_LBUTTON, point );
+		else HandleLButtonUp ( 0, point );
+	}
+	else if ( button == 1 )
+	{
+		if ( down ) HandleRButtonDown ( MK_RBUTTON, point );
+	}
+	else if ( button == 2 )
+	{
+		if ( down ) HandleMButtonDown ( MK_MBUTTON, point );
+		else HandleMButtonUp ( 0, point );
+	}
+	mExternalInput = false;
+}
+
+void rvGEWorkspace::HandleExternalMouseMove ( int x, int y, WPARAM buttons )
+{
+	mExternalInput = true;
+	HandleMouseMove ( buttons, MAKELPARAM ( (short)x, (short)y ) );
+	mExternalInput = false;
+}
+
+void rvGEWorkspace::HandleExternalMouseWheel ( int delta )
+{
+	if ( delta > 0 ) ZoomIn ( );
+	else if ( delta < 0 ) ZoomOut ( );
+}
+
+void rvGEWorkspace::HandleExternalKey ( int key )
+{
+	HandleKeyDown ( key, 0 );
 }
 
 /*
@@ -1584,6 +1639,48 @@ idWindow* rvGEWorkspace::AddWindow ( rvGEWindowWrapper::EWindowType type )
 	mApplication->GetProperties().Update ( );
 
 	return window;
+}
+
+bool rvGEWorkspace::SetSelectedStateKey ( const char* name, const char* value )
+{
+	if ( mSelections.Num() != 1 || !name || !name[0] )
+	{
+		return false;
+	}
+	rvGEWindowWrapper* wrapper = rvGEWindowWrapper::GetWrapper ( mSelections[0] );
+	idStr verifiedValue = value;
+	if ( !wrapper->VerfiyStateKey ( name, verifiedValue ) )
+	{
+		verifiedValue = "\"";
+		verifiedValue += value;
+		verifiedValue += "\"";
+		if ( !wrapper->VerfiyStateKey ( name, verifiedValue ) )
+		{
+			gApp.MessageBox ( va( "Invalid property value '%s' for property '%s'", value, name ), MB_OK | MB_ICONERROR );
+			return false;
+		}
+	}
+	idDict state = wrapper->GetStateDict();
+	state.Set ( name, verifiedValue );
+	mModifiers.Append ( new rvGEStateModifier ( "Property Change", mSelections[0], state ) );
+	SetModified ( true );
+	mApplication->GetNavigator().Update();
+	mApplication->GetProperties().Update();
+	return true;
+}
+
+bool rvGEWorkspace::SetSelectedScriptKey ( const char* name, const char* value, bool variable )
+{
+	if ( mSelections.Num() != 1 || !name || !name[0] )
+	{
+		return false;
+	}
+	rvGEWindowWrapper* wrapper = rvGEWindowWrapper::GetWrapper ( mSelections[0] );
+	if ( variable ) wrapper->GetVariableDict().Set ( name, value );
+	else wrapper->GetScriptDict().Set ( name, value );
+	SetModified ( true );
+	mApplication->GetNavigator().Update();
+	return true;
 }
 
 bool rvGEWorkspace::EditSelectedProperties ( void )

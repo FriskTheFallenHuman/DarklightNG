@@ -37,6 +37,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "../../sys/win32/rc/guied_resource.h"
 
 #include "GEApp.h"
+#include "GEImGui.h"
 
 rvGEApp		gApp;
 	
@@ -49,7 +50,18 @@ Start the gui editor
 */
 void GUIEditorInit( void ) 
 {
-	gApp.Initialize();
+	if ( !gApp.IsActive() && !gApp.Initialize() )
+	{
+		common->Warning ( "Could not initialize the GUI editor backend.\n" );
+		return;
+	}
+	if ( !GEImGuiCreate() )
+	{
+		common->Warning ( "Could not create the ImGui GUI editor window.\n" );
+		return;
+	}
+	com_editors |= EDITOR_GUI;
+	GEImGuiShow();
 }
 
 /*
@@ -58,6 +70,24 @@ GUIEditorShutdown
 ================
 */
 void GUIEditorShutdown( void ) {
+	GEImGuiDestroy();
+}
+
+void GUIEditorToggle( void ) {
+	if ( GEImGuiIsVisible() ) {
+		GUIEditorHide();
+	} else {
+		GUIEditorInit();
+	}
+}
+
+void GUIEditorHide( void ) {
+	GEImGuiHide();
+	com_editors &= ~EDITOR_GUI;
+}
+
+bool GUIEditorIsVisible( void ) {
+	return GEImGuiIsVisible();
 }
 
 /*
@@ -69,7 +99,7 @@ Handle translator messages
 */
 bool GUIEditorHandleMessage ( void *msg )
 {
-	if ( !gApp.IsActive ( ) )
+	if ( !gApp.IsActive ( ) || !GEImGuiIsVisible() )
 	{
 		return false;
 	}
@@ -86,35 +116,10 @@ Run a frame
 */
 void GUIEditorRun() 
 {
-    MSG			msg;
-
-	// pump the message loop
-	while (PeekMessage (&msg, NULL, 0, 0, PM_NOREMOVE)) 
-	{
-		if ( !GetMessage (&msg, NULL, 0, 0) ) 
-		{
-			common->Quit();
-		}
-
-		// save the msg time, because wndprocs don't have access to the timestamp
-		if ( win32.sysMsgTime && win32.sysMsgTime > (int)msg.time ) 
-		{
-		} 
-		else 
-		{
-			win32.sysMsgTime = msg.time;
-		}
-
-		if ( gApp.TranslateAccelerator ( &msg ) )
-		{
-			continue;
-		}
- 
-		TranslateMessage (&msg);
-		DispatchMessage (&msg);
-	}
-
-	gApp.RunFrame ( );
+	// Win_Frame/Sys_PumpEvents (and MFC while Radiant is active) already owns
+	// the process message queue. Pumping it a second time here can consume the
+	// other editor's close/quit messages.
+	GEImGuiFrame ( );
 	
 	// The GUI editor runs too hot so we need to slow it down a bit.
 	Sleep ( 1 );

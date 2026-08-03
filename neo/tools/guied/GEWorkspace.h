@@ -103,7 +103,7 @@ public:
 	bool					UndoCheckout			( void );
 	ESourceControlState		GetSourceControlState	( void );	
 	
-	void					Render					( HDC hDC );
+	void					Render					( HDC hDC, HGLRC glContext = NULL );
 
 	rvGEApp*				GetApplication			( void );
 
@@ -138,6 +138,10 @@ public:
 	HWND						GetWindow				( void );
 
 	void					HandleMessage			( UINT msg, WPARAM wParam, LPARAM lParam );
+	void					HandleExternalMouseButton( int button, bool down, int x, int y );
+	void					HandleExternalMouseMove	( int x, int y, WPARAM buttons );
+	void					HandleExternalMouseWheel( int delta );
+	void					HandleExternalKey		( int key );
 	
 	idVec2&					WindowToWorkspace		( idVec2& point );
 	idVec2&					WorkspaceToWindow		( idVec2& point );
@@ -157,6 +161,8 @@ public:
 	void					AddModifierSize			( const char* modName, float l, float t, float r, float b, bool snap );
 
 	void					SetModified				( bool mod );
+	bool					SetSelectedStateKey		( const char* name, const char* value );
+	bool					SetSelectedScriptKey		( const char* name, const char* value, bool variable );
 
 protected:
 
@@ -237,6 +243,7 @@ protected:
 	bool						mDragX;
 	bool						mDragY;
 	bool						mDragScroll;
+	bool						mExternalInput;
 	
 	rvGEApp*					mApplication;
 	
