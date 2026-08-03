@@ -23,6 +23,8 @@ GNU General Public License for more details.
 #include "../../../idlib/precompiled.h"
 #pragma hdrstop
 
+#include <stdint.h>
+#include <limits.h>
 #include <xmmintrin.h>
 
 #include "dmap.h"
@@ -78,7 +80,7 @@ typedef struct {
 	float barycentricVZ;
 } lmTraceTriangle_t;
 
-struct __declspec(align(16)) lmTracePacket_t {
+struct alignas(16) lmTracePacket_t {
 	float originX[4];
 	float originY[4];
 	float originZ[4];
@@ -143,7 +145,7 @@ typedef struct {
 // The baker only needs two integers per runtime node.  A positive data1 marks
 // a leaf (data0 = packet, data1 = lane count); a negative data1 marks an inner
 // node (data0 = first child, -data1 - 1 = second child).
-struct __declspec(align(16)) lmPackedTraceNode_t {
+struct alignas(16) lmPackedTraceNode_t {
 	idBounds bounds;
 	int data0;
 	int data1;
@@ -210,23 +212,23 @@ static int lmBounceSpacing;
 static int lmDenoisePasses;
 static float lmAOStrength;
 static float lmAODistance;
-static unsigned __int64 lmShadePoints;
-static unsigned __int64 lmLightTests;
-static unsigned __int64 lmLightsInVolume;
-static unsigned __int64 lmLightsOccluded;
-static unsigned __int64 lmLightsContributing;
-static unsigned __int64 lmShadowRays;
-static unsigned __int64 lmMixedShadowTests;
-static unsigned __int64 lmBounceRays;
-static unsigned __int64 lmBounceHits;
-static unsigned __int64 lmBounceContributingHits;
-static unsigned __int64 lmBounceAnchorTexels;
-static unsigned __int64 lmBounceTexels;
-static unsigned __int64 lmBounceNonzeroTexels;
-static unsigned __int64 lmBounceByteSum;
-static unsigned __int64 lmAOByteSum;
-static unsigned __int64 lmAlphaTests;
-static unsigned __int64 lmAlphaPassThroughs;
+static uint64_t lmShadePoints;
+static uint64_t lmLightTests;
+static uint64_t lmLightsInVolume;
+static uint64_t lmLightsOccluded;
+static uint64_t lmLightsContributing;
+static uint64_t lmShadowRays;
+static uint64_t lmMixedShadowTests;
+static uint64_t lmBounceRays;
+static uint64_t lmBounceHits;
+static uint64_t lmBounceContributingHits;
+static uint64_t lmBounceAnchorTexels;
+static uint64_t lmBounceTexels;
+static uint64_t lmBounceNonzeroTexels;
+static uint64_t lmBounceByteSum;
+static uint64_t lmAOByteSum;
+static uint64_t lmAlphaTests;
+static uint64_t lmAlphaPassThroughs;
 static int lmExternalOccluders;
 static int lmDoorOccluders;
 static int lmExactBakedLights;
@@ -1792,8 +1794,8 @@ static void LM_DenoiseIndirect( const lmAtlas_t *atlas, const std::vector<int> &
 				if ( !atlas->valid[pixel] || bounceOwners[pixel] < 0 ) {
 					continue;
 				}
-				unsigned __int64 total[3] = { 0, 0, 0 };
-				unsigned __int64 aoTotal = 0;
+				uint64_t total[3] = { 0, 0, 0 };
+				uint64_t aoTotal = 0;
 				unsigned int totalWeight = 0;
 				for ( int offsetY = -1; offsetY <= 1; offsetY++ ) {
 					for ( int offsetX = -1; offsetX <= 1; offsetX++ ) {
@@ -1819,9 +1821,9 @@ static void LM_DenoiseIndirect( const lmAtlas_t *atlas, const std::vector<int> &
 							(int)( ( normalDot - 0.8f ) * 80.0f + 0.5f ) );
 						const int weight = kernel[offsetX + 1] * kernel[offsetY + 1] * normalWeight;
 						for ( int component = 0; component < 3; component++ ) {
-							total[component] += (unsigned __int64)bounce[samplePixel * 3 + component] * weight;
+							total[component] += (uint64_t)bounce[samplePixel * 3 + component] * weight;
 						}
-						aoTotal += (unsigned __int64)ambientVisibility[samplePixel] * weight;
+						aoTotal += (uint64_t)ambientVisibility[samplePixel] * weight;
 						totalWeight += weight;
 					}
 				}
@@ -2448,8 +2450,8 @@ void Lightmap_End( void ) {
 
 	std::vector<lmZipEntry_t *> entries;
 	idStr manifest;
-	unsigned __int64 validTexels = 0;
-	unsigned __int64 lightByteSum = 0;
+	uint64_t validTexels = 0;
+	uint64_t lightByteSum = 0;
 	for ( int atlasIndex = 0; atlasIndex < (int)lmAtlases.size(); atlasIndex++ ) {
 		const lmAtlas_t *atlas = lmAtlases[atlasIndex];
 		for ( int pixel = 0; pixel < LM_ATLAS_SIZE * LM_ATLAS_SIZE; pixel++ ) {

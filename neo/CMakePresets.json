@@ -19,6 +19,20 @@
       "generator": "Visual Studio 18 2026",
       "architecture": "Win32",
       "binaryDir": "${sourceDir}/../out/tools-build"
+    },
+    {
+      "name": "linux-x86",
+      "displayName": "Linux - SDL2 32-bit x86 Release",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/../out/linux-build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_FLAGS": "-m32",
+        "CMAKE_CXX_FLAGS": "-m32",
+        "CMAKE_EXE_LINKER_FLAGS": "-m32",
+        "CMAKE_SHARED_LINKER_FLAGS": "-m32",
+        "CMAKE_MODULE_LINKER_FLAGS": "-m32"
+      }
     }
   ],
   "buildPresets": [
@@ -30,6 +44,11 @@
     {
       "name": "release",
       "configurePreset": "vs2026-x86",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-release",
+      "configurePreset": "linux-x86",
       "configuration": "Release"
     }
   ]

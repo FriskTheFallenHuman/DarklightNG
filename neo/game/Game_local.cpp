@@ -61,6 +61,9 @@ static gameExport_t			gameExport;
 
 // the rest of the engine will only reference the "game" variable, while all local aspects stay hidden
 idGameLocal					gameLocal;
+#if defined( GAME_DLL ) && defined( __GNUC__ ) && !defined( _WIN32 )
+__attribute__((visibility("hidden")))
+#endif
 idGame *					game = &gameLocal;	// statically pointed at an idGameLocal
 
 const char *idGameLocal::sufaceTypeNames[ MAX_SURFACE_TYPES ] = {
@@ -303,8 +306,11 @@ void idGameLocal::Init( void ) {
 
 #else
 
-	// initialize idLib
+	// ELF symbol interposition shares the engine's idLib instance with the game
+	// module. The engine owns its initialization and shutdown lifecycle.
+	#if !defined( __linux__ )
 	idLib::Init();
+	#endif
 
 	// register static cvars declared in the game
 	idCVar::RegisterStaticVars();
@@ -467,8 +473,10 @@ void idGameLocal::Shutdown( void ) {
 	// enable leak test
 	Mem_EnableLeakTest( "game" );
 
-	// shutdown idLib
+	#if !defined( __linux__ )
+	// shutdown the private idLib linked into the Windows game DLL
 	idLib::ShutDown();
+	#endif
 
 #endif
 }
@@ -1373,7 +1381,7 @@ bool idGameLocal::InitFromSaveGame( const char *mapName, idRenderWorld *renderWo
 		if ( !InhibitEntitySpawn( mapEnt->epairs ) ) {
 			CacheDictionaryMedia( &mapEnt->epairs );
 			const char *classname = mapEnt->epairs.GetString( "classname" );
-			if ( classname != '\0' ) {
+			if ( classname[0] != '\0' ) {
 				FindEntityDef( classname, false );
 			}
 		}
@@ -1783,7 +1791,7 @@ void idGameLocal::GetShakeSounds( const idDict *dict ) {
 	idStr soundName;
 
 	soundShaderName = dict->GetString( "s_shader" );
-	if ( soundShaderName != '\0' && dict->GetFloat( "s_shakes" ) != 0.0f ) {
+	if ( soundShaderName[0] != '\0' && dict->GetFloat( "s_shakes" ) != 0.0f ) {
 		soundShader = declManager->FindSound( soundShaderName );
 
 		for ( int i = 0; i < soundShader->GetNumSounds(); i++ ) {

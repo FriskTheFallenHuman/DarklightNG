@@ -1441,7 +1441,11 @@ void idSessionLocal::LoadLoadingGui( const char *mapName ) {
 	} else {
 		guiLoading = uiManager->FindGui( "guis/map/loading.gui", true, false, true );
 	}
-	guiLoading->SetStateFloat( "map_loading", 0.0f );
+	if ( guiLoading != NULL ) {
+		guiLoading->SetStateFloat( "map_loading", 0.0f );
+	} else {
+		common->Warning( "No loading GUI found for map '%s'", mapName );
+	}
 }
 
 /*

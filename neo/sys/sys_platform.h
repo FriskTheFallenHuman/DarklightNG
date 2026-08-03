@@ -23,9 +23,11 @@ GNU General Public License for more details.
 #ifndef __SYS_PLATFORM_H__
 #define __SYS_PLATFORM_H__
 
+#include <SDL.h>
+
+#if defined( _WIN32 )
 #include <windows.h>
 #include "../renderer/wglext.h"		// windows OpenGL extensions
-#include <SDL.h>
 
 // WGL_ARB_extensions_string
 extern	PFNWGLGETEXTENSIONSSTRINGARBPROC wglGetExtensionsStringARB;
@@ -49,23 +51,25 @@ extern	PFNWGLQUERYPBUFFERARBPROC	wglQueryPbufferARB;
 extern	PFNWGLBINDTEXIMAGEARBPROC		wglBindTexImageARB;
 extern	PFNWGLRELEASETEXIMAGEARBPROC	wglReleaseTexImageARB;
 extern	PFNWGLSETPBUFFERATTRIBARBPROC	wglSetPbufferAttribARB;
+#endif
 
 
 #define	MAX_OSPATH			256
 
+#if defined( _WIN32 )
 #define	WINDOW_STYLE	(WS_OVERLAPPED|WS_BORDER|WS_CAPTION|WS_VISIBLE | WS_THICKFRAME)
+#endif
 
 void	Sys_QueEvent( int time, sysEventType_t type, int value, int value2, int ptrLength, void *ptr );
 
+#if defined( _WIN32 )
 void	Sys_CreateConsole( void );
 void	Sys_DestroyConsole( void );
-
 char	*Sys_ConsoleInput (void);
 char	*Sys_GetCurrentUser( void );
-
 void	Win_SetErrorText( const char *text );
-
 cpuid_t	Sys_GetCPUId( void );
+#endif
 
 int		MapKey (int key);
 
@@ -88,11 +92,14 @@ void	Sys_ClearSDLInputEvents( void );
 
 void	GLimp_GrabInput( bool grab );
 
+#if defined( _WIN32 )
 void	DisableTaskKeys( BOOL bDisable, BOOL bBeep, BOOL bTaskMgr );
+#endif
 
 
 void Conbuf_AppendText( const char *msg );
 
+#if defined( _WIN32 )
 struct Win32Vars_t {
 	HWND			hWnd;
 	HINSTANCE		hInstance;
@@ -158,6 +165,34 @@ struct Win32Vars_t {
 	// SMP acceleration vars
 
 };
+#else
+struct Win32Vars_t {
+	SDL_Window		*sdlWindow;
+	SDL_GLContext	sdlGLContext;
+	bool			activeApp;
+	bool			mouseReleased;
+	bool			movingWindow;
+	bool			mouseGrabbed;
+	int				sysMsgTime;
+	int				desktopBitsPixel;
+	int				desktopWidth;
+	int				desktopHeight;
+	bool			cdsFullscreen;
+	unsigned short	oldHardwareGamma[3][256];
+
+	static idCVar	in_mouse;
+	static idCVar	win_xpos;
+	static idCVar	win_ypos;
+
+	SDL_sem			*renderCommandsEvent;
+	SDL_sem			*renderCompletedEvent;
+	SDL_sem			*renderActiveEvent;
+	SDL_Thread		*renderThreadHandle;
+	void			(*glimpRenderThread)( void );
+	void			*smpData;
+	int				wglErrors;
+};
+#endif
 
 extern Win32Vars_t	win32;
 

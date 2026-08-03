@@ -13,9 +13,12 @@ SDL2 OpenGL platform implementation.
 #pragma hdrstop
 
 #include "sys_platform.h"
+#if defined( _WIN32 )
 #include "rc/doom_resource.h"
+#endif
 #include "../renderer/tr_local.h"
 
+#if defined( _WIN32 )
 #include <SDL_syswm.h>
 
 PFNWGLGETEXTENSIONSSTRINGARBPROC wglGetExtensionsStringARB;
@@ -31,9 +34,20 @@ PFNWGLQUERYPBUFFERARBPROC wglQueryPbufferARB;
 PFNWGLBINDTEXIMAGEARBPROC wglBindTexImageARB;
 PFNWGLRELEASETEXIMAGEARBPROC wglReleaseTexImageARB;
 PFNWGLSETPBUFFERATTRIBARBPROC wglSetPbufferAttribARB;
+#endif
 
 static bool gammaSaved;
 
+#if !defined( _WIN32 )
+void GLimp_EnableLogging( bool enable ) {
+	if ( enable ) {
+		common->DPrintf( "OpenGL call logging is unavailable in the hard-linked SDL2 build\n" );
+		r_logFile.SetInteger( 0 );
+	}
+}
+#endif
+
+#if defined( _WIN32 )
 bool QGL_Init( const char *dllName );
 void QGL_Shutdown( void );
 
@@ -77,6 +91,7 @@ static void GLimp_BindWGLExtensions() {
 		glConfig.wgl_extensions_string = "";
 	}
 }
+#endif
 
 static void GLimp_UpdateDisplayConfig() {
 	if ( win32.sdlWindow == NULL ) {
@@ -114,12 +129,14 @@ bool GLimp_Init( glimpParms_t parms ) {
 		return false;
 	}
 
+	#if defined( _WIN32 )
 	const char *driverName = r_glDriver.GetString()[0] ? r_glDriver.GetString() : NULL;
 	if ( !QGL_Init( driverName ) ) {
 		common->Printf( "^3GLimp_Init() could not load r_glDriver \"%s\"^0\n",
 			driverName != NULL ? driverName : "system default" );
 		return false;
 	}
+	#endif
 
 	SDL_DisplayMode desktopMode;
 	if ( SDL_GetDesktopDisplayMode( 0, &desktopMode ) == 0 ) {
@@ -199,7 +216,9 @@ bool GLimp_Init( glimpParms_t parms ) {
 
 	if ( win32.sdlWindow == NULL || win32.sdlGLContext == NULL ) {
 		common->Warning( "No usable SDL2 OpenGL mode found: %s", SDL_GetError() );
+		#if defined( _WIN32 )
 		QGL_Shutdown();
+		#endif
 		return false;
 	}
 
@@ -207,15 +226,21 @@ bool GLimp_Init( glimpParms_t parms ) {
 	SDL_GL_SetSwapInterval( r_swapInterval.GetInteger() );
 	r_swapInterval.ClearModified();
 
+	#if defined( _WIN32 )
 	GLimp_UpdateNativeHandles();
 	GLimp_BindWGLExtensions();
+	#else
+	glConfig.wgl_extensions_string = "";
+	#endif
 	GLimp_UpdateDisplayConfig();
 	GLimp_SaveGamma();
 
 	win32.activeApp = true;
 	win32.mouseGrabbed = false;
 	win32.cdsFullscreen = glConfig.isFullscreen;
+	#if defined( _WIN32 )
 	SDL_EventState( SDL_SYSWMEVENT, SDL_ENABLE );
+	#endif
 	return true;
 }
 
@@ -264,11 +289,15 @@ void GLimp_Shutdown( void ) {
 		win32.sdlWindow = NULL;
 	}
 
+	#if defined( _WIN32 )
 	win32.hWnd = NULL;
 	win32.hDC = NULL;
 	win32.hGLRC = NULL;
+	#endif
 	win32.cdsFullscreen = false;
+	#if defined( _WIN32 )
 	QGL_Shutdown();
+	#endif
 }
 
 void GLimp_SwapBuffers( void ) {

@@ -658,6 +658,9 @@ void idEditEntities::DisplayEntities( void ) {
 */
 
 idGameEdit			gameEditLocal;
+#if defined( GAME_DLL ) && defined( __GNUC__ ) && !defined( _WIN32 )
+__attribute__((visibility("hidden")))
+#endif
 idGameEdit *		gameEdit = &gameEditLocal;
 
 

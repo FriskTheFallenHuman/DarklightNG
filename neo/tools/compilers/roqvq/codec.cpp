@@ -22,6 +22,7 @@ GNU General Public License for more details.
 #include "../../../idlib/precompiled.h"
 #pragma hdrstop
 
+#include <float.h>
 #include "codec.h"
 
 float glimit( const float val ) {
@@ -315,7 +316,7 @@ void codec::Segment( int *alist, float *flist, int numElements, float rmse)
 int	codec::BestCodeword( unsigned char *tempvector, int dimension, VQDATA **codebook )
 {
 	VQDATA dist;
-	VQDATA bestDist = HUGE;
+	VQDATA bestDist = DBL_MAX;
 	VQDATA tempvq[64];
 	int bestIndex = -1;
 
@@ -1504,7 +1505,7 @@ void codec::VQ( const int numEntries, const int dimension, const unsigned char *
 		//
 		// find the closest two and eliminate one
 		//
-		double bestDist = HUGE;
+		double bestDist = DBL_MAX;
 		double dist, simport;
 		int bestIndex = -1;
 		int bestOtherIndex = 0;
@@ -1570,7 +1571,7 @@ void codec::VQ( const int numEntries, const int dimension, const unsigned char *
 		// until we have reduced it to 256 entries, find one to toss
 		//
 		do {
-			bestDist = HUGE;
+			bestDist = DBL_MAX;
 			bestIndex = -1;
 			bestOtherIndex = -1;
 			if (optimize) {
@@ -1585,7 +1586,7 @@ void codec::VQ( const int numEntries, const int dimension, const unsigned char *
 				}
 			}
 			if (bestIndex == -1 || !optimize) {
-				bestDist = HUGE;
+				bestDist = DBL_MAX;
 				bestIndex = -1;
 				bestOtherIndex = 0;
 				aentries = 0;
@@ -1687,4 +1688,3 @@ void codec::VQ( const int numEntries, const int dimension, const unsigned char *
 	int		endMsec = Sys_Milliseconds();
 	common->Printf( "VQ took %i msec\n", endMsec - startMsec );
 }
-

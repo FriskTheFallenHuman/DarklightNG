@@ -95,7 +95,7 @@ static idList<int>	hashUsedBuckets;
 static int		numHashVerts, numTotalVerts;
 static int		hashIntMins[3], hashIntScale[3];
 static unsigned int hashVisitStamp;
-static unsigned __int64 numTJunctionCandidates;
+static unsigned long long numTJunctionCandidates;
 
 static int HashBlockForInt( int axis, int value ) {
 	int block = ( value - hashIntMins[axis] ) / hashIntScale[axis];
