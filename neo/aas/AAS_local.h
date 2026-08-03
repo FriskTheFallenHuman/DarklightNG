@@ -30,7 +30,6 @@ If you have questions concerning this license or the applicable additional terms
 #define __AAS_LOCAL_H__
 
 #include "AAS.h"
-#include "../Pvs.h"
 
 
 class idRoutingCache {

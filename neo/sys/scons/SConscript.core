@@ -205,15 +205,23 @@ aas_string = ' \
 	AASBuild_ledge.cpp \
 	AASBuild_merge.cpp \
 	AASCluster.cpp \
-	AASFile.cpp \
-	AASFile_optimize.cpp \
-	AASFile_sample.cpp \
 	AASReach.cpp \
-	AASFileManager.cpp \
 	Brush.cpp \
 	BrushBSP.cpp'
 	
 aas_list = scons_utils.BuildList( 'tools/compilers/aas', aas_string )
+
+aas_engine_string = ' \
+	AAS.cpp \
+	AAS_debug.cpp \
+	AAS_pathing.cpp \
+	AAS_routing.cpp \
+	AASFile.cpp \
+	AASFile_optimize.cpp \
+	AASFile_sample.cpp \
+	AASFileManager.cpp'
+
+aas_list += scons_utils.BuildList( 'aas', aas_engine_string )
 
 roq_string = ' \
 	NSBitmapImageRep.cpp \

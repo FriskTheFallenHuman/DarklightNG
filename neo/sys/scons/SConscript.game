@@ -39,10 +39,6 @@ game_string = ' \
 	Trigger.cpp \
 	Weapon.cpp \
 	WorldSpawn.cpp \
-	ai/AAS.cpp \
-	ai/AAS_debug.cpp \
-	ai/AAS_pathing.cpp \
-	ai/AAS_routing.cpp \
 	ai/AI.cpp \
 	ai/AI_events.cpp \
 	ai/AI_pathing.cpp \
@@ -107,5 +103,3 @@ else:
 	for i in game_list:
 		ret_list += local_env.StaticObject( source = i )
 	Return( 'ret_list' )
-
-

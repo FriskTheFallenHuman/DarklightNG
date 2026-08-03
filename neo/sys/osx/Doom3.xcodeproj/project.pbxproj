@@ -21,6 +21,10 @@
 		8122581C0912BC79005D34B9 /* AASBuild_merge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 812256760912BC79005D34B9 /* AASBuild_merge.cpp */; };
 		8122581D0912BC79005D34B9 /* AASBuild.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 812256770912BC79005D34B9 /* AASBuild.cpp */; };
 		8122581E0912BC79005D34B9 /* AASCluster.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 812256780912BC79005D34B9 /* AASCluster.cpp */; };
+		AA0A00010000000000000001 /* AAS.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA0A00110000000000000011 /* AAS.cpp */; };
+		AA0A00020000000000000002 /* AAS_debug.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA0A00130000000000000013 /* AAS_debug.cpp */; };
+		AA0A00030000000000000003 /* AAS_pathing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA0A00150000000000000015 /* AAS_pathing.cpp */; };
+		AA0A00040000000000000004 /* AAS_routing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA0A00160000000000000016 /* AAS_routing.cpp */; };
 		8122581F0912BC79005D34B9 /* AASFile_optimize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8122567B0912BC79005D34B9 /* AASFile_optimize.cpp */; };
 		812258200912BC79005D34B9 /* AASFile_sample.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8122567C0912BC79005D34B9 /* AASFile_sample.cpp */; };
 		812258210912BC79005D34B9 /* AASFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8122567D0912BC79005D34B9 /* AASFile.cpp */; };
@@ -332,13 +336,19 @@
 		812256770912BC79005D34B9 /* AASBuild.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AASBuild.cpp; path = ../../tools/compilers/aas/AASBuild.cpp; sourceTree = SOURCE_ROOT; };
 		812256780912BC79005D34B9 /* AASCluster.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AASCluster.cpp; path = ../../tools/compilers/aas/AASCluster.cpp; sourceTree = SOURCE_ROOT; };
 		812256790912BC79005D34B9 /* AASCluster.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = AASCluster.h; path = ../../tools/compilers/aas/AASCluster.h; sourceTree = SOURCE_ROOT; };
-		8122567A0912BC79005D34B9 /* AASFile_local.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = AASFile_local.h; path = ../../tools/compilers/aas/AASFile_local.h; sourceTree = SOURCE_ROOT; };
-		8122567B0912BC79005D34B9 /* AASFile_optimize.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AASFile_optimize.cpp; path = ../../tools/compilers/aas/AASFile_optimize.cpp; sourceTree = SOURCE_ROOT; };
-		8122567C0912BC79005D34B9 /* AASFile_sample.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AASFile_sample.cpp; path = ../../tools/compilers/aas/AASFile_sample.cpp; sourceTree = SOURCE_ROOT; };
-		8122567D0912BC79005D34B9 /* AASFile.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AASFile.cpp; path = ../../tools/compilers/aas/AASFile.cpp; sourceTree = SOURCE_ROOT; };
-		8122567E0912BC79005D34B9 /* AASFile.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = AASFile.h; path = ../../tools/compilers/aas/AASFile.h; sourceTree = SOURCE_ROOT; };
-		8122567F0912BC79005D34B9 /* AASFileManager.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AASFileManager.cpp; path = ../../tools/compilers/aas/AASFileManager.cpp; sourceTree = SOURCE_ROOT; };
-		812256800912BC79005D34B9 /* AASFileManager.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = AASFileManager.h; path = ../../tools/compilers/aas/AASFileManager.h; sourceTree = SOURCE_ROOT; };
+		AA0A00110000000000000011 /* AAS.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AAS.cpp; path = ../../aas/AAS.cpp; sourceTree = SOURCE_ROOT; };
+		AA0A00120000000000000012 /* AAS.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = AAS.h; path = ../../aas/AAS.h; sourceTree = SOURCE_ROOT; };
+		AA0A00130000000000000013 /* AAS_debug.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AAS_debug.cpp; path = ../../aas/AAS_debug.cpp; sourceTree = SOURCE_ROOT; };
+		AA0A00140000000000000014 /* AAS_local.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = AAS_local.h; path = ../../aas/AAS_local.h; sourceTree = SOURCE_ROOT; };
+		AA0A00150000000000000015 /* AAS_pathing.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AAS_pathing.cpp; path = ../../aas/AAS_pathing.cpp; sourceTree = SOURCE_ROOT; };
+		AA0A00160000000000000016 /* AAS_routing.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AAS_routing.cpp; path = ../../aas/AAS_routing.cpp; sourceTree = SOURCE_ROOT; };
+		8122567A0912BC79005D34B9 /* AASFile_local.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = AASFile_local.h; path = ../../aas/AASFile_local.h; sourceTree = SOURCE_ROOT; };
+		8122567B0912BC79005D34B9 /* AASFile_optimize.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AASFile_optimize.cpp; path = ../../aas/AASFile_optimize.cpp; sourceTree = SOURCE_ROOT; };
+		8122567C0912BC79005D34B9 /* AASFile_sample.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AASFile_sample.cpp; path = ../../aas/AASFile_sample.cpp; sourceTree = SOURCE_ROOT; };
+		8122567D0912BC79005D34B9 /* AASFile.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AASFile.cpp; path = ../../aas/AASFile.cpp; sourceTree = SOURCE_ROOT; };
+		8122567E0912BC79005D34B9 /* AASFile.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = AASFile.h; path = ../../aas/AASFile.h; sourceTree = SOURCE_ROOT; };
+		8122567F0912BC79005D34B9 /* AASFileManager.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AASFileManager.cpp; path = ../../aas/AASFileManager.cpp; sourceTree = SOURCE_ROOT; };
+		812256800912BC79005D34B9 /* AASFileManager.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = AASFileManager.h; path = ../../aas/AASFileManager.h; sourceTree = SOURCE_ROOT; };
 		812256810912BC79005D34B9 /* AASReach.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AASReach.cpp; path = ../../tools/compilers/aas/AASReach.cpp; sourceTree = SOURCE_ROOT; };
 		812256820912BC79005D34B9 /* AASReach.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = AASReach.h; path = ../../tools/compilers/aas/AASReach.h; sourceTree = SOURCE_ROOT; };
 		812256830912BC79005D34B9 /* Brush.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Brush.cpp; path = ../../tools/compilers/aas/Brush.cpp; sourceTree = SOURCE_ROOT; };
@@ -841,6 +851,12 @@
 				812256770912BC79005D34B9 /* AASBuild.cpp */,
 				812256780912BC79005D34B9 /* AASCluster.cpp */,
 				812256790912BC79005D34B9 /* AASCluster.h */,
+				AA0A00110000000000000011 /* AAS.cpp */,
+				AA0A00120000000000000012 /* AAS.h */,
+				AA0A00130000000000000013 /* AAS_debug.cpp */,
+				AA0A00140000000000000014 /* AAS_local.h */,
+				AA0A00150000000000000015 /* AAS_pathing.cpp */,
+				AA0A00160000000000000016 /* AAS_routing.cpp */,
 				8122567A0912BC79005D34B9 /* AASFile_local.h */,
 				8122567B0912BC79005D34B9 /* AASFile_optimize.cpp */,
 				8122567C0912BC79005D34B9 /* AASFile_sample.cpp */,
@@ -1441,6 +1457,10 @@
 				8122581C0912BC79005D34B9 /* AASBuild_merge.cpp in Sources */,
 				8122581D0912BC79005D34B9 /* AASBuild.cpp in Sources */,
 				8122581E0912BC79005D34B9 /* AASCluster.cpp in Sources */,
+				AA0A00010000000000000001 /* AAS.cpp in Sources */,
+				AA0A00020000000000000002 /* AAS_debug.cpp in Sources */,
+				AA0A00030000000000000003 /* AAS_pathing.cpp in Sources */,
+				AA0A00040000000000000004 /* AAS_routing.cpp in Sources */,
 				8122581F0912BC79005D34B9 /* AASFile_optimize.cpp in Sources */,
 				812258200912BC79005D34B9 /* AASFile_sample.cpp in Sources */,
 				812258210912BC79005D34B9 /* AASFile.cpp in Sources */,

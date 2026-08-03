@@ -957,6 +957,15 @@ void idGameEdit::PlayerGetAxis( idMat3 &axis ) const {
 
 /*
 ================
+idGameEdit::PlayerGetViewAxis
+================
+*/
+void idGameEdit::PlayerGetViewAxis( idMat3 &axis ) const {
+	axis = gameLocal.GetLocalPlayer()->viewAxis;
+}
+
+/*
+================
 idGameEdit::PlayerGetViewAngles
 ================
 */
@@ -971,6 +980,86 @@ idGameEdit::PlayerGetEyePosition
 */
 void idGameEdit::PlayerGetEyePosition( idVec3 &org ) const {
 	org = gameLocal.GetLocalPlayer()->GetEyePosition();
+}
+
+/*
+================
+idGameEdit::AASFindHideArea
+================
+*/
+bool idGameEdit::AASFindHideArea( const idAAS *aas, int areaNum, const idVec3 &origin, const idVec3 &target, int travelFlags, const idBounds &obstacleBounds, int &goalAreaNum, idVec3 &goalOrigin ) const {
+	aasGoal_t goal;
+	aasObstacle_t obstacle;
+	idAASFindCover findCover( target );
+
+	obstacle.absBounds = obstacleBounds;
+	if ( !aas->FindNearestGoal( goal, areaNum, origin, target, travelFlags, &obstacle, 1, findCover ) ) {
+		return false;
+	}
+
+	goalAreaNum = goal.areaNum;
+	goalOrigin = goal.origin;
+	return true;
+}
+
+/*
+================
+idGameEdit::AASPullPlayer
+================
+*/
+bool idGameEdit::AASPullPlayer( const idAAS *aas, const idVec3 &origin, int toAreaNum ) const {
+	idPlayer *player = gameLocal.GetLocalPlayer();
+	if ( !player ) {
+		return true;
+	}
+
+	idPhysics *physics = player->GetPhysics();
+	if ( !physics ) {
+		return true;
+	}
+
+	if ( !toAreaNum ) {
+		return false;
+	}
+
+	const idAASSettings *settings = aas->GetSettings();
+	if ( !settings ) {
+		return false;
+	}
+
+	int areaNum = aas->PointReachableAreaNum( origin, settings->boundingBoxes[ 0 ], AREA_REACHABLE_WALK | AREA_REACHABLE_FLY );
+	idVec3 areaCenter = aas->AreaCenter( toAreaNum );
+	if ( physics->GetAbsBounds().Expand( 8 ).ContainsPoint( areaCenter ) ) {
+		return false;
+	}
+
+	aasPath_t path;
+	if ( !aas->WalkPathToGoal( path, areaNum, origin, toAreaNum, areaCenter, TFL_WALK | TFL_AIR ) ) {
+		return false;
+	}
+
+	idVec3 dir = path.moveGoal - origin;
+	dir[ 2 ] *= 0.5f;
+	dir.Normalize();
+	idAngles delta = dir.ToAngles() - player->cmdAngles - player->GetDeltaViewAngles();
+	delta.Normalize180();
+	player->SetDeltaViewAngles( player->GetDeltaViewAngles() + delta * 0.1f );
+	dir[ 2 ] = 0.0f;
+	dir.Normalize();
+	dir *= 100.0f;
+	idVec3 vel = physics->GetLinearVelocity();
+	dir[ 2 ] = vel[ 2 ];
+	physics->SetLinearVelocity( dir );
+	return true;
+}
+
+/*
+================
+idGameEdit::AASRandomFloat
+================
+*/
+float idGameEdit::AASRandomFloat( void ) const {
+	return gameLocal.random.RandomFloat();
 }
 
 

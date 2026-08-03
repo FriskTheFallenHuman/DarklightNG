@@ -15,12 +15,6 @@
 		81225AC80912C42F005D34B9 /* AF.h in Headers */ = {isa = PBXBuildFile; fileRef = 81225A3F0912C42F005D34B9 /* AF.h */; };
 		81225AC90912C42F005D34B9 /* AFEntity.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A400912C42F005D34B9 /* AFEntity.cpp */; };
 		81225ACA0912C42F005D34B9 /* AFEntity.h in Headers */ = {isa = PBXBuildFile; fileRef = 81225A410912C42F005D34B9 /* AFEntity.h */; };
-		81225ACB0912C42F005D34B9 /* AAS.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A430912C42F005D34B9 /* AAS.cpp */; };
-		81225ACC0912C42F005D34B9 /* AAS.h in Headers */ = {isa = PBXBuildFile; fileRef = 81225A440912C42F005D34B9 /* AAS.h */; };
-		81225ACD0912C42F005D34B9 /* AAS_debug.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A450912C42F005D34B9 /* AAS_debug.cpp */; };
-		81225ACE0912C42F005D34B9 /* AAS_local.h in Headers */ = {isa = PBXBuildFile; fileRef = 81225A460912C42F005D34B9 /* AAS_local.h */; };
-		81225ACF0912C42F005D34B9 /* AAS_pathing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A470912C42F005D34B9 /* AAS_pathing.cpp */; };
-		81225AD00912C42F005D34B9 /* AAS_routing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A480912C42F005D34B9 /* AAS_routing.cpp */; };
 		81225AD10912C42F005D34B9 /* AI.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A490912C42F005D34B9 /* AI.cpp */; };
 		81225AD20912C42F005D34B9 /* AI.h in Headers */ = {isa = PBXBuildFile; fileRef = 81225A4A0912C42F005D34B9 /* AI.h */; };
 		81225AD30912C42F005D34B9 /* AI_events.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A4B0912C42F005D34B9 /* AI_events.cpp */; };
@@ -174,12 +168,6 @@
 		81225A3F0912C42F005D34B9 /* AF.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = AF.h; path = ../../game/AF.h; sourceTree = SOURCE_ROOT; };
 		81225A400912C42F005D34B9 /* AFEntity.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = AFEntity.cpp; path = ../../game/AFEntity.cpp; sourceTree = SOURCE_ROOT; };
 		81225A410912C42F005D34B9 /* AFEntity.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = AFEntity.h; path = ../../game/AFEntity.h; sourceTree = SOURCE_ROOT; };
-		81225A430912C42F005D34B9 /* AAS.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = AAS.cpp; sourceTree = "<group>"; };
-		81225A440912C42F005D34B9 /* AAS.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = AAS.h; sourceTree = "<group>"; };
-		81225A450912C42F005D34B9 /* AAS_debug.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = AAS_debug.cpp; sourceTree = "<group>"; };
-		81225A460912C42F005D34B9 /* AAS_local.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = AAS_local.h; sourceTree = "<group>"; };
-		81225A470912C42F005D34B9 /* AAS_pathing.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = AAS_pathing.cpp; sourceTree = "<group>"; };
-		81225A480912C42F005D34B9 /* AAS_routing.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = AAS_routing.cpp; sourceTree = "<group>"; };
 		81225A490912C42F005D34B9 /* AI.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = AI.cpp; sourceTree = "<group>"; };
 		81225A4A0912C42F005D34B9 /* AI.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = AI.h; sourceTree = "<group>"; };
 		81225A4B0912C42F005D34B9 /* AI_events.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = AI_events.cpp; sourceTree = "<group>"; };
@@ -414,12 +402,6 @@
 		81225A420912C42F005D34B9 /* ai */ = {
 			isa = PBXGroup;
 			children = (
-				81225A430912C42F005D34B9 /* AAS.cpp */,
-				81225A440912C42F005D34B9 /* AAS.h */,
-				81225A450912C42F005D34B9 /* AAS_debug.cpp */,
-				81225A460912C42F005D34B9 /* AAS_local.h */,
-				81225A470912C42F005D34B9 /* AAS_pathing.cpp */,
-				81225A480912C42F005D34B9 /* AAS_routing.cpp */,
 				81225A490912C42F005D34B9 /* AI.cpp */,
 				81225A4A0912C42F005D34B9 /* AI.h */,
 				81225A4B0912C42F005D34B9 /* AI_events.cpp */,
@@ -535,8 +517,6 @@
 				81225AC60912C42F005D34B9 /* Actor.h in Headers */,
 				81225AC80912C42F005D34B9 /* AF.h in Headers */,
 				81225ACA0912C42F005D34B9 /* AFEntity.h in Headers */,
-				81225ACC0912C42F005D34B9 /* AAS.h in Headers */,
-				81225ACE0912C42F005D34B9 /* AAS_local.h in Headers */,
 				81225AD20912C42F005D34B9 /* AI.h in Headers */,
 				81225AD70912C42F005D34B9 /* Anim.h in Headers */,
 				81225ADB0912C42F005D34B9 /* Anim_Testmodel.h in Headers */,
@@ -678,10 +658,6 @@
 				81225AC50912C42F005D34B9 /* Actor.cpp in Sources */,
 				81225AC70912C42F005D34B9 /* AF.cpp in Sources */,
 				81225AC90912C42F005D34B9 /* AFEntity.cpp in Sources */,
-				81225ACB0912C42F005D34B9 /* AAS.cpp in Sources */,
-				81225ACD0912C42F005D34B9 /* AAS_debug.cpp in Sources */,
-				81225ACF0912C42F005D34B9 /* AAS_pathing.cpp in Sources */,
-				81225AD00912C42F005D34B9 /* AAS_routing.cpp in Sources */,
 				81225AD10912C42F005D34B9 /* AI.cpp in Sources */,
 				81225AD30912C42F005D34B9 /* AI_events.cpp in Sources */,
 				81225AD40912C42F005D34B9 /* AI_pathing.cpp in Sources */,

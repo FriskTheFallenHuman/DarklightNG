@@ -74,7 +74,6 @@ typedef int aasHandle_t;
 
 class idAAS {
 public:
-	static idAAS *				Alloc( void );
 	virtual						~idAAS( void ) = 0;
 								// Initialize for the given map.
 	virtual bool				Init( const idStr &mapName, unsigned int mapFileCRC ) = 0;
@@ -137,5 +136,8 @@ public:
 								// Find the nearest goal which satisfies the callback.
 	virtual bool				FindNearestGoal( aasGoal_t &goal, int areaNum, const idVec3 origin, const idVec3 &target, int travelFlags, aasObstacle_t *obstacles, int numObstacles, idAASCallback &callback ) const = 0;
 };
+
+idAAS *						AAS_Alloc( void );
+void						AAS_Free( idAAS *aas );
 
 #endif /* !__AAS_H__ */

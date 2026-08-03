@@ -26,11 +26,10 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
-#include "../../idlib/precompiled.h"
+#include "../idlib/precompiled.h"
 #pragma hdrstop
 
 #include "AAS_local.h"
-#include "../Game_local.h"		// for print and error
 
 #define CACHETYPE_AREA				1
 #define CACHETYPE_PORTAL			2
@@ -145,7 +144,7 @@ void idAASLocal::CalculateAreaTravelTimes(void) {
 		for ( maxt = i = 0, reach = file->GetArea( n ).reach; reach; reach = reach->next, i++ ) {
 			assert( i < MAX_REACH_PER_AREA );
 			if ( i >= MAX_REACH_PER_AREA ) {
-				gameLocal.Error( "i >= MAX_REACH_PER_AREA" );
+				common->Error( "i >= MAX_REACH_PER_AREA" );
 			}
 			reach->number = i;
 			reach->disableCount = 0;
@@ -324,12 +323,12 @@ void idAASLocal::RoutingStats( void ) const {
 		}
 	}
 
-	gameLocal.Printf( "%6d area cache (%d KB)\n", numAreaCache, totalAreaCacheMemory >> 10 );
-	gameLocal.Printf( "%6d portal cache (%d KB)\n", numPortalCache, totalPortalCacheMemory >> 10 );
-	gameLocal.Printf( "%6d total cache (%d KB)\n", numAreaCache + numPortalCache, totalCacheMemory >> 10 );
-	gameLocal.Printf( "%6d area travel times (%d KB)\n", numAreaTravelTimes, ( numAreaTravelTimes * sizeof( unsigned short ) ) >> 10 );
-	gameLocal.Printf( "%6d area cache entries (%d KB)\n", areaCacheIndexSize, ( areaCacheIndexSize * sizeof( idRoutingCache * ) ) >> 10 );
-	gameLocal.Printf( "%6d portal cache entries (%d KB)\n", portalCacheIndexSize, ( portalCacheIndexSize * sizeof( idRoutingCache * ) ) >> 10 );
+	common->Printf( "%6d area cache (%d KB)\n", numAreaCache, totalAreaCacheMemory >> 10 );
+	common->Printf( "%6d portal cache (%d KB)\n", numPortalCache, totalPortalCacheMemory >> 10 );
+	common->Printf( "%6d total cache (%d KB)\n", numAreaCache + numPortalCache, totalCacheMemory >> 10 );
+	common->Printf( "%6d area travel times (%d KB)\n", numAreaTravelTimes, ( numAreaTravelTimes * sizeof( unsigned short ) ) >> 10 );
+	common->Printf( "%6d area cache entries (%d KB)\n", areaCacheIndexSize, ( areaCacheIndexSize * sizeof( idRoutingCache * ) ) >> 10 );
+	common->Printf( "%6d portal cache entries (%d KB)\n", portalCacheIndexSize, ( portalCacheIndexSize * sizeof( idRoutingCache * ) ) >> 10 );
 }
 
 /*
@@ -1011,11 +1010,11 @@ bool idAASLocal::RouteToGoalArea( int areaNum, const idVec3 origin, int goalArea
 	}
 
 	if ( areaNum <= 0 || areaNum >= file->GetNumAreas() ) {
-		gameLocal.Printf( "RouteToGoalArea: areaNum %d out of range\n", areaNum );
+		common->Printf( "RouteToGoalArea: areaNum %d out of range\n", areaNum );
 		return false;
 	}
 	if ( goalAreaNum <= 0 || goalAreaNum >= file->GetNumAreas() ) {
-		gameLocal.Printf( "RouteToGoalArea: goalAreaNum %d out of range\n", goalAreaNum );
+		common->Printf( "RouteToGoalArea: goalAreaNum %d out of range\n", goalAreaNum );
 		return false;
 	}
 

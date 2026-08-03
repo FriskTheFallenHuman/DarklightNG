@@ -69,6 +69,8 @@ typedef enum {
 #define TIME_GROUP1		0
 #define TIME_GROUP2		1
 
+class idAAS;
+
 class idGame {
 public:
 	virtual						~idGame() {}
@@ -291,8 +293,12 @@ public:
 	virtual bool				PlayerIsValid() const;
 	virtual void				PlayerGetOrigin( idVec3 &org ) const;
 	virtual void				PlayerGetAxis( idMat3 &axis ) const;
+	virtual void				PlayerGetViewAxis( idMat3 &axis ) const;
 	virtual void				PlayerGetViewAngles( idAngles &angles ) const;
 	virtual void				PlayerGetEyePosition( idVec3 &org ) const;
+	virtual bool				AASFindHideArea( const idAAS *aas, int areaNum, const idVec3 &origin, const idVec3 &target, int travelFlags, const idBounds &obstacleBounds, int &goalAreaNum, idVec3 &goalOrigin ) const;
+	virtual bool				AASPullPlayer( const idAAS *aas, const idVec3 &origin, int toAreaNum ) const;
+	virtual float				AASRandomFloat( void ) const;
 
 	// In game map editing support.
 	virtual const idDict *		MapGetEntityDict( const char *name ) const;
@@ -318,7 +324,7 @@ extern idGameEdit *				gameEdit;
 ===============================================================================
 */
 
-const int GAME_API_VERSION		= 9;
+const int GAME_API_VERSION		= 10;
 
 typedef struct {
 
@@ -334,8 +340,9 @@ typedef struct {
 	idRenderModelManager *		renderModelManager;		// render model manager
 	idUserInterfaceManager *	uiManager;				// user interface manager
 	idDeclManager *				declManager;			// declaration manager
-	idAASFileManager *			AASFileManager;			// AAS file manager
 	idCollisionModelManager *	collisionModelManager;	// collision model manager
+	idAAS *					(*AAS_Alloc)( void );	// allocate an engine-owned AAS instance
+	void					(*AAS_Free)( idAAS *aas );	// free an engine-owned AAS instance
 
 } gameImport_t;
 

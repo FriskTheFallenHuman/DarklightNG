@@ -26,18 +26,27 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
-#include "../../idlib/precompiled.h"
+#include "../idlib/precompiled.h"
 #pragma hdrstop
 
 #include "AAS_local.h"
 
 /*
 ============
-idAAS::Alloc
+AAS_Alloc
 ============
 */
-idAAS *idAAS::Alloc( void ) {
+idAAS *AAS_Alloc( void ) {
 	return new idAASLocal;
+}
+
+/*
+============
+AAS_Free
+============
+*/
+void AAS_Free( idAAS *aas ) {
+	delete aas;
 }
 
 /*

@@ -44,12 +44,19 @@ idSoundSystem *				soundSystem = NULL;
 idRenderModelManager *		renderModelManager = NULL;
 idUserInterfaceManager *	uiManager = NULL;
 idDeclManager *				declManager = NULL;
-idAASFileManager *			AASFileManager = NULL;
 idCollisionModelManager *	collisionModelManager = NULL;
 idCVar *					idCVar::staticVars = NULL;
 
 idCVar com_forceGenericSIMD( "com_forceGenericSIMD", "0", CVAR_BOOL|CVAR_SYSTEM, "force generic platform independent SIMD" );
 
+#endif
+
+#ifdef GAME_DLL
+static idAAS *				(*gameAASAlloc)( void ) = NULL;
+static void					(*gameAASFree)( idAAS *aas ) = NULL;
+#else
+static idAAS *				(*gameAASAlloc)( void ) = ::AAS_Alloc;
+static void					(*gameAASFree)( idAAS *aas ) = ::AAS_Free;
 #endif
 
 idRenderWorld *				gameRenderWorld = NULL;		// all drawing is done to this world
@@ -132,8 +139,9 @@ extern "C" gameExport_t *GetGameAPI( gameImport_t *import ) {
 		renderModelManager			= import->renderModelManager;
 		uiManager					= import->uiManager;
 		declManager					= import->declManager;
-		AASFileManager				= import->AASFileManager;
 		collisionModelManager		= import->collisionModelManager;
+		gameAASAlloc					= import->AAS_Alloc;
+		gameAASFree					= import->AAS_Free;
 	}
 
 	// set interface pointers used by idLib
@@ -162,6 +170,7 @@ void TestGameAPI( void ) {
 	gameImport_t testImport;
 	gameExport_t testExport;
 
+	testImport.version					= GAME_API_VERSION;
 	testImport.sys						= ::sys;
 	testImport.common					= ::common;
 	testImport.cmdSystem				= ::cmdSystem;
@@ -173,8 +182,9 @@ void TestGameAPI( void ) {
 	testImport.renderModelManager		= ::renderModelManager;
 	testImport.uiManager				= ::uiManager;
 	testImport.declManager				= ::declManager;
-	testImport.AASFileManager			= ::AASFileManager;
 	testImport.collisionModelManager	= ::collisionModelManager;
+	testImport.AAS_Alloc				= gameAASAlloc;
+	testImport.AAS_Free					= gameAASFree;
 
 	testExport = *GetGameAPI( &testImport );
 }
@@ -377,7 +387,7 @@ void idGameLocal::Init( void ) {
 	// allocate space for the aas
 	const idKeyValue *kv = dict->MatchPrefix( "type" );
 	while( kv != NULL ) {
-		aas = idAAS::Alloc();
+		aas = gameAASAlloc();
 		aasList.Append( aas );
 		aasNames.Append( kv->GetValue() );
 		kv = dict->MatchPrefix( "type", kv );
@@ -409,7 +419,10 @@ void idGameLocal::Shutdown( void ) {
 
 	MapShutdown();
 
-	aasList.DeleteContents( true );
+	for ( int i = 0; i < aasList.Num(); i++ ) {
+		gameAASFree( aasList[ i ] );
+	}
+	aasList.Clear();
 	aasNames.Clear();
 
 	idAI::FreeObstacleAvoidanceNodes();

@@ -159,6 +159,7 @@ set_target_properties(game PROPERTIES
 )
 
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
+	"aas/*.cpp"
 	"cm/*.cpp"
 	"framework/*.cpp"
 	"renderer/*.cpp"
