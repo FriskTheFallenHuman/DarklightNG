@@ -1183,8 +1183,6 @@ Com_MaterialEditor_f
 =============
 */
 static void Com_MaterialEditor_f( const idCmdArgs &args ) {
-	// Turn off sounds
-	soundSystem->SetMute( true );
 	MaterialEditorInit();
 }
 #endif // ID_ALLOW_TOOLS

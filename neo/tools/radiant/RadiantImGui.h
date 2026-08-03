@@ -15,5 +15,6 @@ void RadiantImGuiShowSurfaceInspector();
 void RadiantImGuiRefreshSurfaceInspector();
 void RadiantImGuiShowPatchInspector();
 void RadiantImGuiRefreshPatchInspector();
+void RadiantImGuiApplyMaterial( const char *materialName );
 
 #endif

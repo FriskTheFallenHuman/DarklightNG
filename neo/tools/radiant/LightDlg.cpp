@@ -847,39 +847,15 @@ void CLightDlg::UpdateDialog( bool updateChecks )
 }
 
 void LightEditorInit( const idDict *spawnArgs ) {
-	if ( RadiantImGuiEnabled() && RadiantImGuiWindow() != NULL ) {
+	if ( RadiantImGuiWindow() == NULL ) {
+		RadiantInit();
+	}
+	if ( RadiantImGuiWindow() != NULL ) {
 		RadiantImGuiShowLightEditor();
+		RadiantImGuiFocus();
 		return;
 	}
-	if ( renderSystem->IsFullScreen() ) {
-		common->Printf( "Cannot run the light editor in fullscreen mode.\n"
-					"Set r_fullscreen to 0 and vid_restart.\n" );
-		return;
-	}
-
-	if ( g_LightDialog == NULL ) {
-		InitAfx();
-		g_LightDialog = new CLightDlg();
-	}
-
-	if ( g_LightDialog->GetSafeHwnd() == NULL ) {
-		g_LightDialog->Create( IDD_DIALOG_LIGHT );
-		CRect rct;
-		LONG lSize = sizeof( rct );
-		if ( LoadRegistryInfo( "Radiant::LightWindow", &rct, &lSize ) ) {
-			g_LightDialog->SetWindowPos(NULL, rct.left, rct.top, 0,0, SWP_NOSIZE);
-		}
-	}
-
-	idKeyInput::ClearStates();
-
-	g_LightDialog->ShowWindow( SW_SHOW );
-	g_LightDialog->SetFocus();
-	g_LightDialog->UpdateDialog( true );
-
-	if ( spawnArgs ) {
-		// FIXME: select light based on spawn args
-	}
+	common->Warning( "The ImGui Radiant shell could not be created; the light editor is unavailable.\n" );
 }
 
 void LightEditorRun( void ) {

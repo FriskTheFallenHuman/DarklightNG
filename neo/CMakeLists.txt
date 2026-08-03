@@ -189,6 +189,27 @@ list(REMOVE_ITEM EDITOR_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/tools/guied/GEWindowWrapper_stub.cpp"
 )
 list(FILTER EDITOR_SOURCES EXCLUDE REGEX "/tools/debugger/")
+# The standalone editor dialogs have been replaced in-place by one ImGui
+# implementation in each original tool folder. Keep their runtime backends,
+# but do not compile the retired MFC windows or private control library.
+list(FILTER EDITOR_SOURCES EXCLUDE REGEX "/tools/(af|decl|materialeditor|particle|pda|sound)/")
+list(FILTER EDITOR_SOURCES EXCLUDE REGEX "/tools/script/DialogScriptEditor\\.cpp$")
+list(FILTER EDITOR_SOURCES EXCLUDE REGEX "/tools/common/PropTree/")
+list(REMOVE_ITEM EDITOR_SOURCES
+	"${CMAKE_CURRENT_SOURCE_DIR}/tools/common/RollupPanel.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tools/comafx/CPathTreeCtrl.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tools/comafx/CSyntaxRichEditCtrl.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tools/comafx/DialogGoToLine.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tools/comafx/VectorCtl.cpp"
+)
+list(APPEND EDITOR_SOURCES
+	"${CMAKE_CURRENT_SOURCE_DIR}/tools/af/AFEditorImGui.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tools/decl/DeclBrowserImGui.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tools/materialeditor/MaterialEditorImGui.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tools/particle/ParticleEditorImGui.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tools/pda/PDAEditorImGui.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tools/sound/SoundEditorImGui.cpp"
+)
 file(GLOB WIN32_SOURCES CONFIGURE_DEPENDS "sys/win32/*.cpp")
 list(APPEND ENGINE_SOURCES
 	${EDITOR_SOURCES}

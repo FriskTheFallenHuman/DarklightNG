@@ -6,6 +6,7 @@
 #include "LightDlg.h"
 #include "RadiantImGui.h"
 #include "SurfaceDlg.h"
+#include "../common/ToolEditorsImGui.h"
 
 #include "imgui.h"
 #include "backends/imgui_impl_opengl2.h"
@@ -38,7 +39,7 @@ private:
 };
 
 idCVar radiant_useImGui( "radiant_useImGui", "1", CVAR_TOOL | CVAR_ARCHIVE,
-	"use the Dear ImGui Radiant window shell" );
+	"deprecated; Radiant now always uses the Dear ImGui window shell" );
 idCVar radiant_imguiQuadLayout( "radiant_imguiQuadLayout", "1", CVAR_TOOL | CVAR_ARCHIVE,
 	"use the four-view ImGui Radiant workspace" );
 idCVar radiant_imguiShowInspector( "radiant_imguiShowInspector", "1", CVAR_TOOL | CVAR_ARCHIVE,
@@ -396,6 +397,7 @@ bool RadiantImGuiHost::Create() {
 }
 
 void RadiantImGuiHost::Destroy() {
+	ToolEditorsImGuiShutdown();
 	ShutdownRenderer();
 	if ( commandMenu != NULL ) {
 		DestroyMenu( commandMenu );
@@ -804,12 +806,30 @@ void RadiantImGuiHost::RenderShell() {
 		ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
 	if ( ImGui::BeginMenuBar() ) {
 		RenderNativeMenuBar();
-		// This menu is inserted into the live MFC menu at runtime, so it is not
-		// present in the menu resource mirrored by RenderNativeMenuBar().
 		if ( ImGui::BeginMenu( "Editors" ) ) {
 			const bool guiEditorVisible = GUIEditorIsVisible();
 			if ( ImGui::MenuItem( "GUI Editor...", NULL, guiEditorVisible ) ) {
 				GUIEditorToggle();
+			}
+			ImGui::Separator();
+			for ( int editor = TOOL_IMGUI_DECL_BROWSER; editor < TOOL_IMGUI_EDITOR_COUNT; editor++ ) {
+				const toolEditorImGui_t toolEditor = (toolEditorImGui_t)editor;
+				const bool isOpen = ToolEditorsImGuiIsOpen( toolEditor );
+				const char *label = "Editor";
+				switch ( toolEditor ) {
+					case TOOL_IMGUI_DECL_BROWSER: label = "Declaration Browser..."; break;
+					case TOOL_IMGUI_MATERIAL_EDITOR: label = "Material Editor..."; break;
+					case TOOL_IMGUI_PARTICLE_EDITOR: label = "Particle Editor..."; break;
+					case TOOL_IMGUI_SOUND_EDITOR: label = "Sound Editor..."; break;
+					case TOOL_IMGUI_AF_EDITOR: label = "Articulated Figure Editor..."; break;
+					case TOOL_IMGUI_PDA_EDITOR: label = "PDA Editor..."; break;
+					case TOOL_IMGUI_SCRIPT_EDITOR: label = "Script Editor..."; break;
+					default: break;
+				}
+				if ( ImGui::MenuItem( label, NULL, isOpen ) ) {
+					if ( isOpen ) ToolEditorsImGuiHide( toolEditor );
+					else ToolEditorsImGuiShow( toolEditor );
+				}
 			}
 			ImGui::Separator();
 			if ( ImGui::MenuItem( "Light Editor...", "J" ) ) {
@@ -940,6 +960,7 @@ void RadiantImGuiHost::RenderShell() {
 	RenderSurfaceInspectorWindow();
 	RenderLightEditorWindow();
 	RenderPatchInspectorWindow();
+	ToolEditorsImGuiRender();
 }
 
 static void CleanMenuText( const char *source, char *label, int labelSize, char *shortcut, int shortcutSize ) {
@@ -981,6 +1002,51 @@ static bool FindCommandMenuLabel( HMENU menu, UINT command, char *label, int lab
 			CleanMenuText( source, label, labelSize, shortcut, sizeof( shortcut ) );
 			return label[0] != '\0';
 		}
+	}
+	return false;
+}
+
+static bool IsRetiredRadiantCommand( UINT command ) {
+	switch ( command ) {
+		// These entries were already disconnected in the Doom 3-era MFC frame.
+		// Hiding them keeps the ImGui menu honest instead of presenting actions
+		// that silently send an unhandled WM_COMMAND to the controller window.
+		case ID_BRUSH_SCRIPTS:
+		case ID_VIEW_GROUPS:
+		case ID_VIEW_SHOWDETAIL:
+		case ID_VIEW_ENTITIESAS_BOUNDINGBOX:
+		case ID_VIEW_ENTITIESAS_SELECTEDWIREFRAME:
+		case ID_VIEW_ENTITIESAS_SELECTEDSKINNED:
+		case ID_VIEW_ENTITIESAS_SKINNEDANDBOXED:
+		case ID_SELECTION_MAKE_DETAIL:
+		case ID_SELECTION_MAKE_STRUCTURAL:
+		case ID_MISC_BENCHMARK:
+		case ID_PLUGINS_REFRESH:
+		case ID_CURVE_PRIMITIVES_SPHERE:
+		case 32866: // orphaned "Select Complete Entity" resource entry
+		// The ImGui workspace owns its layout; these old commands only hide the
+		// invisible MFC child HWNDs. Layout selection lives in Workspace instead.
+		case ID_TOGGLECAMERA:
+		case ID_TOGGLEVIEW:
+		case ID_TOGGLEVIEW_XZ:
+		case ID_TOGGLEVIEW_YZ:
+			return true;
+		default:
+			return false;
+	}
+}
+
+static bool NativeMenuHasVisibleItems( HMENU menu ) {
+	for ( int index = 0; index < GetMenuItemCount( menu ); index++ ) {
+		const UINT state = GetMenuState( menu, index, MF_BYPOSITION );
+		if ( state == (UINT)-1 || ( state & MF_SEPARATOR ) ) continue;
+		HMENU submenu = GetSubMenu( menu, index );
+		if ( submenu != NULL ) {
+			if ( NativeMenuHasVisibleItems( submenu ) ) return true;
+			continue;
+		}
+		const UINT command = GetMenuItemID( menu, index );
+		if ( command != (UINT)-1 && !IsRetiredRadiantCommand( command ) ) return true;
 	}
 	return false;
 }
@@ -1149,7 +1215,7 @@ void RadiantImGuiHost::RenderNativeMenuBar() {
 		GetMenuStringA( commandMenu, index, source, sizeof( source ), MF_BYPOSITION );
 		CleanMenuText( source, label, sizeof( label ), shortcut, sizeof( shortcut ) );
 		HMENU submenu = GetSubMenu( commandMenu, index );
-		if ( submenu != NULL && ImGui::BeginMenu( label ) ) {
+		if ( submenu != NULL && NativeMenuHasVisibleItems( submenu ) && ImGui::BeginMenu( label ) ) {
 			RenderNativeMenuItems( submenu );
 			ImGui::EndMenu();
 		}
@@ -1158,13 +1224,15 @@ void RadiantImGuiHost::RenderNativeMenuBar() {
 
 void RadiantImGuiHost::RenderNativeMenuItems( HMENU menu ) {
 	const int count = GetMenuItemCount( menu );
+	bool emittedItem = false;
+	bool pendingSeparator = false;
 	for ( int index = 0; index < count; index++ ) {
 		UINT state = GetMenuState( menu, index, MF_BYPOSITION );
 		if ( state == (UINT)-1 ) {
 			continue;
 		}
 		if ( state & MF_SEPARATOR ) {
-			ImGui::Separator();
+			if ( emittedItem ) pendingSeparator = true;
 			continue;
 		}
 		char source[512];
@@ -1175,17 +1243,29 @@ void RadiantImGuiHost::RenderNativeMenuItems( HMENU menu ) {
 		const bool enabled = ( state & ( MF_DISABLED | MF_GRAYED ) ) == 0;
 		HMENU submenu = GetSubMenu( menu, index );
 		if ( submenu != NULL ) {
+			if ( !NativeMenuHasVisibleItems( submenu ) ) continue;
+			if ( pendingSeparator ) {
+				ImGui::Separator();
+				pendingSeparator = false;
+			}
 			if ( ImGui::BeginMenu( label, enabled ) ) {
 				RenderNativeMenuItems( submenu );
 				ImGui::EndMenu();
 			}
+			emittedItem = true;
 			continue;
 		}
 		const UINT command = GetMenuItemID( menu, index );
+		if ( command == (UINT)-1 || IsRetiredRadiantCommand( command ) ) continue;
+		if ( pendingSeparator ) {
+			ImGui::Separator();
+			pendingSeparator = false;
+		}
 		if ( ImGui::MenuItem( label, shortcut[0] != '\0' ? shortcut : NULL, ( state & MF_CHECKED ) != 0, enabled ) &&
 			command != (UINT)-1 ) {
 			DispatchCommand( command );
 		}
+		emittedItem = true;
 	}
 }
 
@@ -1279,6 +1359,15 @@ void RadiantImGuiHost::DispatchCommand( UINT command ) {
 			CheckMenuItem( commandMenu, ID_VIEW_STATUS_BAR,
 				MF_BYCOMMAND | ( showStatusBar ? MF_CHECKED : MF_UNCHECKED ) );
 		}
+		return;
+	}
+	if ( command == ID_TOGGLECONSOLE ) {
+		ShowInspectorTab( W_CONSOLE );
+		return;
+	}
+	if ( command == ID_TOGGLEZ ) {
+		showZView = !showZView;
+		radiant_imguiShowZ.SetBool( showZView );
 		return;
 	}
 	if ( command == ID_PREFS ) {
@@ -2591,7 +2680,10 @@ LRESULT CALLBACK RadiantImGuiHost::StaticWindowProc( HWND window, UINT message, 
 } // namespace
 
 bool RadiantImGuiEnabled() {
-	return radiant_useImGui.GetBool();
+	// The native frame is now a hidden compatibility/controller layer only.
+	// Do not allow an archived value from an older build to bring that shell
+	// back during startup.
+	return true;
 }
 
 bool RadiantImGuiCreate() {
@@ -2703,4 +2795,15 @@ void RadiantImGuiRefreshPatchInspector() {
 	if ( radiantImGuiHost != NULL ) {
 		radiantImGuiHost->RefreshPatchInspector();
 	}
+}
+
+void RadiantImGuiApplyMaterial( const char *materialName ) {
+	if ( materialName == NULL || materialName[0] == '\0' ) return;
+	const idMaterial *material = declManager->FindMaterial( materialName, false );
+	if ( material == NULL ) {
+		common->Warning( "Material '%s' was not found.\n", materialName );
+		return;
+	}
+	Select_SetDefaultTexture( material, false, true );
+	Sys_UpdateWindows( W_ALL );
 }

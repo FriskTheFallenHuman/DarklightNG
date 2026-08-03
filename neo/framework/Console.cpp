@@ -854,9 +854,10 @@ void idConsoleLocal::Print( const char *txt ) {
 #ifdef ID_ALLOW_TOOLS
 	RadiantPrint( txt );
 
-	if( com_editors & EDITOR_MATERIAL ) {
-		MaterialEditorPrintConsole(txt);
-	}
+	// The material editor now lives inside the Radiant ImGui host, so the
+	// dedicated EDITOR_MATERIAL loop flag is intentionally not kept set.
+	// Its console sink is lightweight and internally bounded when hidden.
+	MaterialEditorPrintConsole( txt );
 #endif
 
 	color = idStr::ColorIndex( C_COLOR_CYAN );
