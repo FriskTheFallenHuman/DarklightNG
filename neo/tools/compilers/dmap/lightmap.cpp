@@ -1,11 +1,21 @@
 /*
 ===========================================================================
 
-Darklight offline lightmap and deluxemap baker.
+DarklightNG Source Code
+Copyright (C) 2026 - Justin Marshall(aka IceColdDuke).
 
-The chart UV stream is written to mapProcFile004.  Atlas images and a small
-manifest are stored in maps/path/mapname.zip, which is mounted transiently by
-the renderer while that map is loaded.
+This file is part of the DarklightNG GPL source code.
+This file is part of the Doom 3 GPL Source Code (?Doom 3 Source Code?).
+
+DarklightNG is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+DarklightNG is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
 ===========================================================================
 */

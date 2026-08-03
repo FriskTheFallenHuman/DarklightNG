@@ -1,12 +1,21 @@
 /*
 ===========================================================================
 
-Shared screen-facing particle geometry stream.
+DarklightNG Source Code
+Copyright (C) 2026 - Justin Marshall(aka IceColdDuke).
 
-Particle evaluation still produces camera-facing quads so all existing .prt
-orientation, trail, animation, and material behavior is retained.  Unlike the
-old vertex cache, every particle surface for a view is appended to one VBO and
-one IBO; the storage is orphaned once at the start of the view.
+This file is part of the DarklightNG GPL source code.
+This file is part of the Doom 3 GPL Source Code (?Doom 3 Source Code?).
+
+DarklightNG is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+DarklightNG is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
 ===========================================================================
 */
