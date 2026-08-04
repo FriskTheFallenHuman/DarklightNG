@@ -124,3 +124,18 @@ fogs/filter
 		colored					// take rgba from entity shaderparms
 	}
 }
+
+// Converted from ETQW materials/fogs.mtr.  The stage alpha is the fog
+// half-distance used by Doom 3's fog-light renderer.
+fogs/waterFog_thin
+{
+	fogLight
+	noShadows
+	{
+		map _fog
+		red parm0
+		green parm1
+		blue parm2
+		alpha 5000
+	}
+}

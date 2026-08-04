@@ -1,0 +1,117 @@
+// ETQW Valley water, converted from materials/water.mtr and
+// templates/water.template to Darklight's GLSL material stages.
+
+water/valley_water
+{
+	qer_editorimage textures/common/water
+	nonsolid
+	water
+	liquid
+	translucent
+	noShadows
+	noSelfShadow
+	{
+		program valleyWater
+		vertexParm 0 time * 0.03, time * 0.03, time * 5, 0
+		// ETQW Valley passes 0.5 as BumpScale; it is not cubemap desaturation.
+		vertexParm 1 0.05, 5, 0.5, 0
+		// Cool absorption tint for the refracted scene. High-quality water omits glare.
+		vertexParm 2 0.62, 0.78, 0.92, 0
+		vertexParm 3 0.3875292242, -0.3182793558, 0.8651702404, 0
+		vertexParm 4 0.9490196109, 0.8039215803, 0.5882353187, 1
+		vertexParm 5 0.0001, 0.0001734906, 6161, 1
+		vertexParm 6 0.6156862974, 0.7333333492, 0.9333333373, 1
+		// Above-water reflection comes entirely from the Valley atmosphere cube.
+		fragmentMap 0 cubeMap env/valley_atmosphere_native
+		fragmentMap 1 nopicmip highquality textures2/water/water_regular_atlas
+		fragmentMap 2 _currentRender
+		fragmentMap 3 clamp atmosphere/skies/valley_fog
+	}
+}
+
+water/valley_water2
+{
+	qer_editorimage textures/common/water
+	nonsolid
+	water
+	liquid
+	translucent
+	noShadows
+	noSelfShadow
+	{
+		program valleyWater
+		vertexParm 0 time * 0.03, time * 0.03, time * 5, 0
+		vertexParm 1 0.05, 5, 0.5, 0
+		vertexParm 2 0.62, 0.78, 0.92, 0
+		vertexParm 3 0.3875292242, -0.3182793558, 0.8651702404, 0
+		vertexParm 4 0.9490196109, 0.8039215803, 0.5882353187, 1
+		vertexParm 5 0.0001, 0.0001734906, 6161, 1
+		vertexParm 6 0.6156862974, 0.7333333492, 0.9333333373, 1
+		// valley02 overlaps the main river surface at the shoreline; keep its
+		// fallback response identical so depth order cannot cause a color switch.
+		fragmentMap 0 cubeMap env/valley_atmosphere_native
+		fragmentMap 1 nopicmip highquality textures2/water/water_regular_atlas
+		fragmentMap 2 _currentRender
+		fragmentMap 3 clamp atmosphere/skies/valley_fog
+	}
+}
+
+water/valley_water_underside
+{
+	qer_editorimage textures/common/water
+	nonsolid
+	water
+	liquid
+	translucent
+	// The shipped model contains an explicit coplanar underside.  Its imported
+	// winding matches the top mesh, so reverse culling keeps this stage visible
+	// only from below instead of letting its olive fog color cover the top.
+	cull back
+	noShadows
+	noSelfShadow
+	{
+		vertexProgram valleyWater
+		fragmentProgram foggyWaterSurface
+		vertexParm 0 time * 0.03, time * 0.03, time * 5, 0
+		vertexParm 1 0.05, 5, 1, 0.5
+		vertexParm 2 0.212, 0.2, 0.122, 0.0006
+		fragmentMap 1 nopicmip highquality textures2/water/water_regular_atlas
+		fragmentMap 2 _currentRender
+	}
+}
+
+// ETQW's backSide water/underwater material.  The shipped Valley modelb
+// already contains explicit underside geometry, but retain the declaration
+// for other imported water meshes.
+water/underwater
+{
+	qer_editorimage textures/common/water
+	nonsolid
+	water
+	liquid
+	translucent
+	cull back
+	noShadows
+	noSelfShadow
+	{
+		vertexProgram valleyWater
+		fragmentProgram foggyWaterSurface
+		vertexParm 0 time * 0.03, time * 0.03, time * 5, 0
+		vertexParm 1 0.05, 5, 1, 0.5
+		vertexParm 2 0.212, 0.2, 0.122, 0.0006
+		fragmentMap 1 nopicmip highquality textures2/water/water_regular_atlas
+		fragmentMap 2 _currentRender
+	}
+}
+
+// Invisible gameplay volume: enables the stock Doom 3 water-level and swim
+// physics while the exact ETQW render meshes remain separate.
+water/valley_volume
+{
+	qer_editorimage textures/common/water
+	nonsolid
+	water
+	liquid
+	noShadows
+	noFragment
+}

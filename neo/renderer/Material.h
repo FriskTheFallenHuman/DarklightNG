@@ -180,7 +180,9 @@ typedef enum {
 } stageVertexColor_t;
 
 static const int	MAX_FRAGMENT_IMAGES = 8;
-static const int	MAX_VERTEX_PARMS = 4;
+// ETQW render programs use additional material-local parameters for effects
+// such as water tint, Fresnel/glare, and atmosphere integration.
+static const int	MAX_VERTEX_PARMS = 16;
 
 typedef struct {
 	int					vertexProgram;

@@ -63181,10 +63181,12 @@ Version 2
 "light_center" "-53 -27.25 816"
 "light_rotation" "-0.777146 -0.629321 -0 0.629321 -0.777146 -0 -0 -0 1"
 "_color" "0.21 0.2 0.12"
+"start_off" "1"
+"etqw_mirror" "viewonly"
 "noshadows" "0"
 "nospecular" "0"
 "nodiffuse" "0"
-"texture" "lights/squarelight1"
+"texture" "fogs/waterFog_thin"
 "etqw_texture" "fogs/waterFog_thin"
 "etqw_light_class" "light"
 "etqw_name" "torchy_light_11"
@@ -65190,5 +65192,37 @@ Version 2
 "name" "torchy_atmosphere_1"
 "atmospheredecl" "valley01"
 "origin" "3072 -3040 8512"
+}
+// original Valley water render meshes
+{
+"classname" "func_static"
+"name" "torchy_func_static_141"
+"model" "models/water/valley.ase"
+"noshadows" "1"
+"bakeLightmap" "0"
+}
+{
+"classname" "func_static"
+"name" "torchy_func_static_14423424321"
+"model" "models/water/valley02.ase"
+"noshadows" "1"
+"bakeLightmap" "0"
+}
+// Exact ETQW liquid trace volume, translated by the original
+// torchy_liquid_water_2 entity origin ( 3030.89 -5423.69 -208 ).
+{
+"classname" "func_static"
+"name" "torchy_liquid_water_2"
+{
+ brushDef3
+ {
+  ( -0.7126151369 0.7015551772 0 -14025.61509 ) ( ( 0.00390625 0 0 ) ( 0 0.00390625 0 ) ) "water/valley_volume" 0 0 0
+  ( -0.7354834137 -0.6775427279 0 -8140.404778 ) ( ( 0.00390625 0 0 ) ( 0 0.00390625 0 ) ) "water/valley_volume" 0 0 0
+  ( 0.5110731185 -0.8595372404 0 -11379.93086 ) ( ( 0.00390625 0 0 ) ( 0 0.00390625 0 ) ) "water/valley_volume" 0 0 0
+  ( 0.6615522738 0.7498990526 0 -1618.978038 ) ( ( 0.00390625 0 0 ) ( 0 0.00390625 0 ) ) "water/valley_volume" 0 0 0
+  ( 0 0 1 -544 ) ( ( 0.00390625 0 0 ) ( 0 0.00390625 0 ) ) "water/valley_volume" 0 0 0
+  ( 0 0 -1 -960 ) ( ( 0.00390625 0 0 ) ( 0 0.00390625 0 ) ) "water/valley_volume" 0 0 0
+ }
+}
 }
 // END GENERATED VALLEY ENTITIES
