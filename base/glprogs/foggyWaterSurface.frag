@@ -26,7 +26,7 @@ void main() {
 	vec2 normalXY = mix(
 		sampleWaterNormal( firstFrame, animatedTexCoord ),
 		sampleWaterNormal( nextFrame, animatedTexCoord ), fract( frame ) );
-	vec2 screenTexCoord = gl_FragCoord.xy * u_fragmentParm[1].xy;
+	vec2 screenTexCoord = ( gl_FragCoord.xy - u_fragmentParm[7].xy ) * u_fragmentParm[1].xy;
 	screenTexCoord += normalXY * gl_TexCoord[6].x * u_vertexLocalParm[1].x;
 	screenTexCoord = clamp( screenTexCoord, 0.0, 1.0 ) * u_fragmentParm[0].xy;
 	vec3 sceneColor = texture2D( u_texture2, screenTexCoord ).rgb;

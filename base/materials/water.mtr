@@ -21,11 +21,14 @@ water/valley_water
 		vertexParm 4 0.9490196109, 0.8039215803, 0.5882353187, 1
 		vertexParm 5 0.0001, 0.0001734906, 6161, 1
 		vertexParm 6 0.6156862974, 0.7333333492, 0.9333333373, 1
-		// Above-water reflection comes entirely from the Valley atmosphere cube.
+		// SSR: thickness, maximum ray length, surface bias, strength.  Rays that
+		// touch the first-person depth range are rejected to the cubemap fallback.
+		vertexParm 7 24, 3072, 2, 0.92
 		fragmentMap 0 cubeMap env/valley_atmosphere_native
 		fragmentMap 1 nopicmip highquality textures2/water/water_regular_atlas
 		fragmentMap 2 _currentRender
 		fragmentMap 3 clamp atmosphere/skies/valley_fog
+		fragmentMap 4 clamp _currentDepth
 	}
 }
 
@@ -47,12 +50,14 @@ water/valley_water2
 		vertexParm 4 0.9490196109, 0.8039215803, 0.5882353187, 1
 		vertexParm 5 0.0001, 0.0001734906, 6161, 1
 		vertexParm 6 0.6156862974, 0.7333333492, 0.9333333373, 1
+		vertexParm 7 24, 2048, 2, 0.9
 		// valley02 overlaps the main river surface at the shoreline; keep its
 		// fallback response identical so depth order cannot cause a color switch.
 		fragmentMap 0 cubeMap env/valley_atmosphere_native
 		fragmentMap 1 nopicmip highquality textures2/water/water_regular_atlas
 		fragmentMap 2 _currentRender
 		fragmentMap 3 clamp atmosphere/skies/valley_fog
+		fragmentMap 4 clamp _currentDepth
 	}
 }
 

@@ -23,5 +23,6 @@ void main() {
 		dot( localPosition, u_vertexParm[8] ), 1.0 );
 	vec4 projected = gl_ProjectionMatrix * vec4( 1.0, 0.0, ( gl_ModelViewMatrix * localPosition ).z, 1.0 );
 	gl_TexCoord[6] = vec4( min( abs( projected.x / max( abs( projected.w ), 1.0 ) ), 0.02 ) );
+	gl_TexCoord[7] = gl_ModelViewMatrix * localPosition;
 	gl_Position = ftransform();
 }

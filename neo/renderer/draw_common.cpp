@@ -574,6 +574,46 @@ void RB_SetProgramEnvironment( void ) {
 	parm[3] = 1;
 	R_SetGLSLProgramEnvParameter( GL_FRAGMENT_SHADER, 1, parm );
 
+	// World-to-view rotation rows.  The water SSR shader uses these to rotate
+	// its animated global-space normal into the view space used by the depth
+	// buffer.  Translation is intentionally omitted for normal vectors.
+	const float *modelView = backEnd.viewDef->worldSpace.modelViewMatrix;
+	parm[0] = modelView[0];
+	parm[1] = modelView[4];
+	parm[2] = modelView[8];
+	parm[3] = 0.0f;
+	R_SetGLSLProgramEnvParameter( GL_FRAGMENT_SHADER, 2, parm );
+	parm[0] = modelView[1];
+	parm[1] = modelView[5];
+	parm[2] = modelView[9];
+	R_SetGLSLProgramEnvParameter( GL_FRAGMENT_SHADER, 3, parm );
+	parm[0] = modelView[2];
+	parm[1] = modelView[6];
+	parm[2] = modelView[10];
+	R_SetGLSLProgramEnvParameter( GL_FRAGMENT_SHADER, 4, parm );
+
+	// Perspective projection coefficients and depth reconstruction constants.
+	const float *projection = backEnd.viewDef->projectionMatrix;
+	parm[0] = projection[0];
+	parm[1] = projection[5];
+	parm[2] = projection[8];
+	parm[3] = projection[9];
+	R_SetGLSLProgramEnvParameter( GL_FRAGMENT_SHADER, 5, parm );
+	parm[0] = projection[10];
+	parm[1] = projection[14];
+	parm[2] = 0.0f;
+	parm[3] = 0.0f;
+	R_SetGLSLProgramEnvParameter( GL_FRAGMENT_SHADER, 6, parm );
+
+	// Framebuffer copies start at texture origin even when the GL viewport is
+	// inset.  Keep the offset separate from parm 1 so legacy heat-haze shaders
+	// retain its established (1 / width, 1 / height, 0, 1) contract.
+	parm[0] = backEnd.viewDef->viewport.x1;
+	parm[1] = backEnd.viewDef->viewport.y1;
+	parm[2] = 0.0f;
+	parm[3] = 0.0f;
+	R_SetGLSLProgramEnvParameter( GL_FRAGMENT_SHADER, 7, parm );
+
 	//
 	// set eye position in global space
 	//
@@ -931,6 +971,9 @@ int RB_STD_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 			globalImages->currentRenderImage->CopyFramebuffer( backEnd.viewDef->viewport.x1,
 				backEnd.viewDef->viewport.y1,  backEnd.viewDef->viewport.x2 -  backEnd.viewDef->viewport.x1 + 1,
 				backEnd.viewDef->viewport.y2 -  backEnd.viewDef->viewport.y1 + 1, true );
+			globalImages->currentDepthImage->CopyDepthbuffer( backEnd.viewDef->viewport.x1,
+				backEnd.viewDef->viewport.y1, backEnd.viewDef->viewport.x2 - backEnd.viewDef->viewport.x1 + 1,
+				backEnd.viewDef->viewport.y2 - backEnd.viewDef->viewport.y1 + 1 );
 		}
 		backEnd.currentRenderCopied = true;
 	}
