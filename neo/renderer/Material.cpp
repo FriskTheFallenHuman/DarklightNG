@@ -96,6 +96,7 @@ void idMaterial::CommonInit() {
 	noFog = false;
 	hasSubview = false;
 	allowOverlays = true;
+	bakeLightmap = false;
 	unsmoothedTangents = false;
 	gui = NULL;
 	memset( deformRegisters, 0, sizeof( deformRegisters ) );
@@ -1838,6 +1839,12 @@ void idMaterial::ParseMaterial( idLexer &src ) {
 		// noshadow
 		else if ( !token.Icmp( "noShadows" ) ) {
 			SetMaterialFlag( MF_NOSHADOWS );
+			continue;
+		}
+		// Generate secondary UVs plus lightmap/deluxemap atlas data even for a
+		// custom translucent stage that bypasses normal interaction lighting.
+		else if ( !token.Icmp( "bakeLightmap" ) ) {
+			bakeLightmap = true;
 			continue;
 		}
 		else if ( !token.Icmp( "suppressInSubview" ) ) {

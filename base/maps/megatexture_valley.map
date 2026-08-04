@@ -65199,14 +65199,14 @@ Version 2
 "name" "torchy_func_static_141"
 "model" "models/water/valley.ase"
 "noshadows" "1"
-"bakeLightmap" "0"
+"bakeLightmap" "1"
 }
 {
 "classname" "func_static"
 "name" "torchy_func_static_14423424321"
 "model" "models/water/valley02.ase"
 "noshadows" "1"
-"bakeLightmap" "0"
+"bakeLightmap" "1"
 }
 // Exact ETQW liquid trace volume, translated by the original
 // torchy_liquid_water_2 entity origin ( 3030.89 -5423.69 -208 ).

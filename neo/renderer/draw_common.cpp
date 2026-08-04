@@ -792,6 +792,34 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 				continue;
 			}
 
+			bool usesBakedAtlas = false;
+			for ( int imageIndex = 0; imageIndex < newStage->numFragmentProgramImages; imageIndex++ ) {
+				idImage *image = newStage->fragmentProgramImages[imageIndex];
+				if ( image == globalImages->bakedLightmapImage || image == globalImages->bakedDeluxemapImage ) {
+					usesBakedAtlas = true;
+					break;
+				}
+			}
+			const bool hasBakedAtlas = usesBakedAtlas && !r_skipBakedLightmaps.GetBool() &&
+				tri->lightmapBuffer && tri->bakedLightmap && tri->bakedDeluxemap;
+			if ( usesBakedAtlas ) {
+				// x: baked decode scale, y: minimum irradiance, z: reflection
+				// modulation, w: atlas availability.  Missing/disabled atlases leave
+				// custom materials unchanged instead of sampling the placeholders.
+				float bakedParms[4] = {
+					0.75f * r_bakedLightmapScale.GetFloat(), 0.0f, 0.65f,
+					hasBakedAtlas ? 1.0f : 0.0f
+				};
+				R_SetGLSLProgramEnvParameter( GL_FRAGMENT_SHADER, 8, bakedParms );
+			}
+			bool lightCoordEnabled = false;
+			if ( hasBakedAtlas ) {
+				const idVec2 *lightmap = RB_BindLightmapBuffer( tri );
+				qglVertexAttribPointer( 12, 2, GL_FLOAT, false, sizeof( idVec2 ), lightmap->ToFloatPtr() );
+				qglEnableVertexAttribArray( 12 );
+				lightCoordEnabled = true;
+			}
+
 			// megaTextures bind a lot of images and set a lot of parameters
 			if ( newStage->megaTexture ) {
 				newStage->megaTexture->UpdateMapping( backEnd.viewDef->renderWorld );
@@ -811,9 +839,15 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 			}
 
 			for ( int i = 0 ; i < newStage->numFragmentProgramImages ; i++ ) {
-				if ( newStage->fragmentProgramImages[i] ) {
+				idImage *image = newStage->fragmentProgramImages[i];
+				if ( image ) {
+					if ( image == globalImages->bakedLightmapImage ) {
+						image = hasBakedAtlas ? tri->bakedLightmap : globalImages->whiteImage;
+					} else if ( image == globalImages->bakedDeluxemapImage ) {
+						image = hasBakedAtlas ? tri->bakedDeluxemap : globalImages->flatNormalMap;
+					}
 					GL_SelectTexture( i );
-					newStage->fragmentProgramImages[i]->Bind();
+					image->Bind();
 				}
 			}
 			// draw it
@@ -837,6 +871,12 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 			qglDisableVertexAttribArray( 9 );
 			qglDisableVertexAttribArray( 10 );
 			qglDisableClientState( GL_NORMAL_ARRAY );
+			if ( lightCoordEnabled ) {
+				qglDisableVertexAttribArray( 12 );
+				// Attribute pointers retain their source VBO.  Restore the ambient
+				// stream before a later stage configures conventional attributes.
+				RB_BindDrawVertBuffer( tri );
+			}
 			continue;
 		}
 

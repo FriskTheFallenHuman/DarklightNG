@@ -2330,8 +2330,9 @@ int Lightmap_AddSurface( int entityNum, const idMaterial *material, const srfTri
 	const bool castsShadow = !entity.mapEntity->epairs.GetBool( "noshadows", "0" ) &&
 		material->Coverage() != MC_TRANSLUCENT &&
 		( material->Coverage() == MC_PERFORATED || material->SurfaceCastsShadow() );
-	const bool receivesLightmap = bakedReceiver && material->IsDrawn() && material->ReceivesLighting() &&
-		material->Coverage() == MC_OPAQUE && tri->numVerts > 0;
+	const bool standardReceiver = material->ReceivesLighting() && material->Coverage() == MC_OPAQUE;
+	const bool receivesLightmap = bakedReceiver && material->IsDrawn() &&
+		( standardReceiver || material->BakesLightmap() ) && tri->numVerts > 0;
 	if ( !receivesLightmap ) {
 		if ( castsShadow ) {
 			LM_AddTraceTriangles( tri, entityOrigin, entityAxis, material, true, -1, NULL, doorShadow );

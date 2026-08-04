@@ -453,6 +453,8 @@ public:
 	idImage *			accumImage;
 	idImage *			currentRenderImage;			// for SS_POST_PROCESS shaders
 	idImage *			currentDepthImage;			// scene depth paired with _currentRender
+	idImage *			bakedLightmapImage;			// per-surface _bakedLightmap placeholder
+	idImage *			bakedDeluxemapImage;			// per-surface _bakedDeluxemap placeholder
 	idImage *			scratchCubeMapImage;
 	idImage *			specularTableImage;			// 1D intensity texture with our specular function
 	idImage *			specular2DTableImage;		// 2D intensity texture with our specular function with variable specularity

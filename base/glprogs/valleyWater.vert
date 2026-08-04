@@ -2,6 +2,7 @@
 
 attribute vec3 attr_Tangent;
 attribute vec3 attr_Bitangent;
+attribute vec2 attr_LightCoord;
 
 uniform vec4 u_vertexParm[32];
 
@@ -9,7 +10,7 @@ void main() {
 	vec4 localPosition = gl_Vertex;
 	vec3 localEye = u_vertexParm[5].xyz - localPosition.xyz;
 
-	gl_TexCoord[0] = gl_MultiTexCoord0;
+	gl_TexCoord[0] = vec4( gl_MultiTexCoord0.xy, attr_LightCoord );
 	gl_TexCoord[1] = vec4(
 		dot( localEye, u_vertexParm[6].xyz ),
 		dot( localEye, u_vertexParm[7].xyz ),

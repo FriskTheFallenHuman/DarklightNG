@@ -8,6 +8,7 @@ water/valley_water
 	water
 	liquid
 	translucent
+	bakeLightmap
 	noShadows
 	noSelfShadow
 	{
@@ -29,6 +30,8 @@ water/valley_water
 		fragmentMap 2 _currentRender
 		fragmentMap 3 clamp atmosphere/skies/valley_fog
 		fragmentMap 4 clamp _currentDepth
+		fragmentMap 5 clamp _bakedLightmap
+		fragmentMap 6 clamp _bakedDeluxemap
 	}
 }
 
@@ -39,6 +42,7 @@ water/valley_water2
 	water
 	liquid
 	translucent
+	bakeLightmap
 	noShadows
 	noSelfShadow
 	{
@@ -58,6 +62,8 @@ water/valley_water2
 		fragmentMap 2 _currentRender
 		fragmentMap 3 clamp atmosphere/skies/valley_fog
 		fragmentMap 4 clamp _currentDepth
+		fragmentMap 5 clamp _bakedLightmap
+		fragmentMap 6 clamp _bakedDeluxemap
 	}
 }
 

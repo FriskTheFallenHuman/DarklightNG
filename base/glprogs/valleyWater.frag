@@ -5,6 +5,8 @@ uniform sampler2D u_texture1;
 uniform sampler2D u_texture2;
 uniform sampler2D u_texture3;
 uniform sampler2D u_texture4;
+uniform sampler2D u_texture5;
+uniform sampler2D u_texture6;
 uniform vec4 u_vertexParm[32];
 uniform vec4 u_vertexLocalParm[16];
 uniform vec4 u_fragmentParm[32];
@@ -215,6 +217,21 @@ void main() {
 	vec4 screenReflection = traceScreenSpaceReflection( gl_TexCoord[7].xyz, viewNormal );
 	reflection = mix( reflection, screenReflection.rgb,
 		clamp( screenReflection.a * u_vertexLocalParm[7].w, 0.0, 1.0 ) );
+
+	// Apply the baked irradiance through the animated normal and the tangent-
+	// space dominant direction stored by dmap's deluxemap.  Refraction receives
+	// the full lighting response; reflection is shadowed more softly so bright
+	// sky remains physically visible without making the surface self-lit.
+	vec3 deluxeDirection = normalize( texture2D( u_texture6, gl_TexCoord[0].zw ).xyz * 2.0 - 1.0 );
+	float deluxeFactor = clamp( max( dot( localNormal, deluxeDirection ), 0.0 ) /
+		max( deluxeDirection.z, 0.25 ), 0.0, 2.0 );
+	vec3 bakedLighting = texture2D( u_texture5, gl_TexCoord[0].zw ).rgb *
+		u_fragmentParm[8].x * deluxeFactor;
+	bakedLighting = clamp( max( bakedLighting, vec3( u_fragmentParm[8].y ) ), 0.0, 2.0 );
+	vec3 surfaceLighting = mix( vec3( 1.0 ), bakedLighting, u_fragmentParm[8].w );
+	refraction *= surfaceLighting;
+	reflection *= mix( vec3( 1.0 ), surfaceLighting,
+		clamp( u_fragmentParm[8].z * u_fragmentParm[8].w, 0.0, 1.0 ) );
 
 	float facing = max( dot( surfaceToEye, worldNormal ), 0.0 );
 	float fresnel = clamp( 1.0 / pow( 1.0 + facing, u_vertexLocalParm[1].y ), 0.0, 1.0 );

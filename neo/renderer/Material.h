@@ -395,6 +395,9 @@ public:
 						// Many special effect surfaces don't have any bump/diffuse/specular
 						// stages, and don't interact with lights at all
 	bool				ReceivesLighting( void ) const { return numAmbientStages != numStages; }
+	// Custom post-process surfaces can opt into dmap atlas generation and
+	// consume the result directly instead of using the opaque baked pass.
+	bool				BakesLightmap( void ) const { return bakeLightmap; }
 
 						// returns true if the material should generate interactions on sides facing away
 						// from light centers, as with noshadow and noselfshadow options
@@ -652,6 +655,7 @@ private:
 	bool				unsmoothedTangents;
 	bool				hasSubview;			// mirror, remote render, etc
 	bool				allowOverlays;
+	bool				bakeLightmap;
 
 	int					numOps;
 	expOp_t *			ops;				// evaluate to make expressionRegisters
