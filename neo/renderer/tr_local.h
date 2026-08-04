@@ -31,7 +31,8 @@ GNU General Public License for more details.
 #include "RenderLight.h"
 
 class idRenderWorldLocal;
-class idAmbientCubeMap;
+class sdDeclAmbientCubeMap;
+typedef sdDeclAmbientCubeMap idAmbientCubeMap;
 
 // everything that is needed by the backend needs
 // to be double buffered to allow it to run in
@@ -734,6 +735,8 @@ extern idCVar r_skipBakedLightmaps;		// force realtime-light fallback for mapPro
 extern idCVar r_bakedLightmapScale;		// runtime brightness adjustment for baked lighting
 extern idCVar r_skipAmbientCubeMaps;		// disable ETQW-style per-area ambient cube lighting
 extern idCVar r_ambientCubeMapScale;		// runtime brightness adjustment for ambient cubes
+extern idCVar r_skipAtmosphere;			// disable ETQW-style atmospheric fog and sky scattering
+extern idCVar r_atmosScale;				// runtime atmospheric extinction scale
 extern idCVar r_skipFrontEnd;			// bypasses all front end work, but 2D gui rendering still draws
 extern idCVar r_skipBackEnd;			// don't draw anything
 extern idCVar r_skipCopyTexture;		// do all rendering, but don't actually copyTexSubImage2D
@@ -1136,6 +1139,7 @@ DRAW_*
 void	RB_GLSL_DrawInteractions( void );
 void	RB_GLSL_DrawBakedLightmaps( drawSurf_t **drawSurfs, int numDrawSurfs );
 void	RB_GLSL_DrawAmbientCubeMaps( drawSurf_t **drawSurfs, int numDrawSurfs );
+void	RB_GLSL_DrawAtmosphere( drawSurf_t **drawSurfs, int numDrawSurfs );
 
 /*
 

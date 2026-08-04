@@ -280,6 +280,7 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
 	"aas/*.cpp"
 	"anim/*.cpp"
 	"cm/*.cpp"
+	"decllib/*.cpp"
 	"framework/*.cpp"
 	"renderer/*.cpp"
 	"renderer/jpeg-6/*.c"

@@ -771,6 +771,7 @@ const int	CINEMATIC_SKIP_DELAY	= SEC2MS( 2.0f );
 #include "Projectile.h"
 #include "Weapon.h"
 #include "Light.h"
+#include "Atmosphere.h"
 #include "WorldSpawn.h"
 #include "Item.h"
 #include "PlayerView.h"

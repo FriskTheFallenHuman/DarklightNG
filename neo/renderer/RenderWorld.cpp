@@ -110,6 +110,7 @@ idRenderWorldLocal::idRenderWorldLocal() {
 	ambientMapTimeStamp = FILE_NOT_FOUND_TIMESTAMP;
 	hasBakedLightmaps = false;
 	defaultAmbientCubeMap = NULL;
+	atmosphere = NULL;
 	bakedSurfaceCount = 0;
 	bakedBatchCount = 0;
 	bakedLightSuppressionCount = 0;

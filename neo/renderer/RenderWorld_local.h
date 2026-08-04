@@ -26,7 +26,9 @@ GNU General Public License for more details.
 // assume any lightDef or entityDef index above this is an internal error
 const int LUDICROUS_INDEX	= 10000;
 
-class idAmbientCubeMap;
+class sdDeclAmbientCubeMap;
+typedef sdDeclAmbientCubeMap idAmbientCubeMap;
+class sdDeclAtmosphere;
 
 
 typedef struct portal_s {
@@ -81,6 +83,11 @@ public:
 	virtual void			FreeRenderEntity( idRenderEntity *entity );
 	virtual idRenderLight *	AllocRenderLight();
 	virtual void			FreeRenderLight( idRenderLight *light );
+	virtual void			SetAtmosphere( const sdDeclAtmosphere *decl ) { atmosphere = decl; }
+	virtual const sdDeclAtmosphere *GetAtmosphere() const { return atmosphere; }
+	virtual void			SetAreaAmbientCubeMap( int areaNum, const sdDeclAmbientCubeMap *decl ) {
+		if ( areaNum >= 0 && areaNum < numPortalAreas ) { portalAreas[areaNum].ambientCubeMap = decl; }
+	}
 
 	virtual bool			CheckAreaForPortalSky( int areaNum );
 
@@ -153,6 +160,7 @@ public:
 	idList<idRenderModel *>	localModels;
 	idList<idImage *>		bakedAtlasImages;		// unique global images touched by this map archive
 	const idAmbientCubeMap *defaultAmbientCubeMap;
+	const sdDeclAtmosphere *atmosphere;
 
 	idList<idRenderEntityLocal*>	entityDefs;
 	idList<idRenderLightLocal*>		lightDefs;

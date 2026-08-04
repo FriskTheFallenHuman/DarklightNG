@@ -2375,6 +2375,8 @@ so it can perform tab completion
 =================
 */
 void idGameLocal::InitConsoleCommands( void ) {
+	cmdSystem->AddCommand( "setAtmosphere", sdAtmosphere::SetAtmosphere_f, CMD_FL_GAME | CMD_FL_CHEAT, "switch the active atmosphere declaration" );
+	cmdSystem->AddCommand( "getAtmosphereLightDetails", sdAtmosphere::GetAtmosphereLightDetails_f, CMD_FL_GAME | CMD_FL_CHEAT, "print active atmosphere sun parameters" );
 	cmdSystem->AddCommand( "listTypeInfo",			ListTypeInfo_f,				CMD_FL_GAME,				"list type info" );
 	cmdSystem->AddCommand( "writeGameState",		WriteGameState_f,			CMD_FL_GAME,				"write game state" );
 	cmdSystem->AddCommand( "testSaveGame",			TestSaveGame_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"test a save game for a level" );

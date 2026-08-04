@@ -72,6 +72,8 @@ typedef enum {
 	DECL_EMAIL,
 	DECL_MODELEXPORT,
 	DECL_MAPDEF,
+	DECL_ATMOSPHERE,
+	DECL_AMBIENTCUBEMAP,
 
 	// new decl types can be added here
 

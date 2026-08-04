@@ -23,6 +23,9 @@ GNU General Public License for more details.
 #include "../idlib/precompiled.h"
 #pragma hdrstop
 
+#include "../decllib/declAtmosphere.h"
+#include "../decllib/declAmbientCubeMap.h"
+
 /*
 
 GUIs and script remain separately parsed
@@ -811,10 +814,13 @@ void idDeclManagerLocal::Init( void ) {
 	RegisterDeclType( "email",				DECL_EMAIL,			idDeclAllocator<idDeclEmail> );
 	RegisterDeclType( "video",				DECL_VIDEO,			idDeclAllocator<idDeclVideo> );
 	RegisterDeclType( "audio",				DECL_AUDIO,			idDeclAllocator<idDeclAudio> );
+	RegisterDeclType( "atmosphere",			DECL_ATMOSPHERE,		idDeclAllocator<sdDeclAtmosphere> );
+	RegisterDeclType( "ambientCubemap",		DECL_AMBIENTCUBEMAP,	idDeclAllocator<sdDeclAmbientCubeMap> );
 
 	RegisterDeclFolder( "materials",		".mtr",				DECL_MATERIAL );
 	RegisterDeclFolder( "skins",			".skin",			DECL_SKIN );
 	RegisterDeclFolder( "sound",			".sndshd",			DECL_SOUND );
+	RegisterDeclFolder( "atmosphere",		".atm",				DECL_ATMOSPHERE );
 
 	// add console commands
 	cmdSystem->AddCommand( "listDecls", ListDecls_f, CMD_FL_SYSTEM, "lists all decls" );
@@ -836,6 +842,8 @@ void idDeclManagerLocal::Init( void ) {
 	cmdSystem->AddCommand( "listEmails", idListDecls_f<DECL_EMAIL>, CMD_FL_SYSTEM, "lists Emails", idCmdSystem::ArgCompletion_String<listDeclStrings> );
 	cmdSystem->AddCommand( "listVideos", idListDecls_f<DECL_VIDEO>, CMD_FL_SYSTEM, "lists Videos", idCmdSystem::ArgCompletion_String<listDeclStrings> );
 	cmdSystem->AddCommand( "listAudios", idListDecls_f<DECL_AUDIO>, CMD_FL_SYSTEM, "lists Audios", idCmdSystem::ArgCompletion_String<listDeclStrings> );
+	cmdSystem->AddCommand( "listAtmospheres", idListDecls_f<DECL_ATMOSPHERE>, CMD_FL_SYSTEM, "lists atmosphere declarations", idCmdSystem::ArgCompletion_String<listDeclStrings> );
+	cmdSystem->AddCommand( "listAmbientCubeMaps", idListDecls_f<DECL_AMBIENTCUBEMAP>, CMD_FL_SYSTEM, "lists ambient cube-map declarations", idCmdSystem::ArgCompletion_String<listDeclStrings> );
 
 	cmdSystem->AddCommand( "printTable", idPrintDecls_f<DECL_TABLE>, CMD_FL_SYSTEM, "prints a table", idCmdSystem::ArgCompletion_Decl<DECL_TABLE> );
 	cmdSystem->AddCommand( "printMaterial", idPrintDecls_f<DECL_MATERIAL>, CMD_FL_SYSTEM, "prints a material", idCmdSystem::ArgCompletion_Decl<DECL_MATERIAL> );
@@ -851,6 +859,8 @@ void idDeclManagerLocal::Init( void ) {
 	cmdSystem->AddCommand( "printEmail", idPrintDecls_f<DECL_EMAIL>, CMD_FL_SYSTEM, "prints an Email", idCmdSystem::ArgCompletion_Decl<DECL_EMAIL> );
 	cmdSystem->AddCommand( "printVideo", idPrintDecls_f<DECL_VIDEO>, CMD_FL_SYSTEM, "prints a Audio", idCmdSystem::ArgCompletion_Decl<DECL_VIDEO> );
 	cmdSystem->AddCommand( "printAudio", idPrintDecls_f<DECL_AUDIO>, CMD_FL_SYSTEM, "prints an Video", idCmdSystem::ArgCompletion_Decl<DECL_AUDIO> );
+	cmdSystem->AddCommand( "printAtmosphere", idPrintDecls_f<DECL_ATMOSPHERE>, CMD_FL_SYSTEM, "prints an atmosphere declaration", idCmdSystem::ArgCompletion_Decl<DECL_ATMOSPHERE> );
+	cmdSystem->AddCommand( "printAmbientCubeMap", idPrintDecls_f<DECL_AMBIENTCUBEMAP>, CMD_FL_SYSTEM, "prints an ambient cube-map declaration", idCmdSystem::ArgCompletion_Decl<DECL_AMBIENTCUBEMAP> );
 
 	cmdSystem->AddCommand( "listHuffmanFrequencies", ListHuffmanFrequencies_f, CMD_FL_SYSTEM, "lists decl text character frequencies" );
 

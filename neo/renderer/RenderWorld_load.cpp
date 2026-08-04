@@ -24,7 +24,7 @@ GNU General Public License for more details.
 #pragma hdrstop
 
 #include "tr_local.h"
-#include "AmbientCubeMap.h"
+#include "../decllib/declAmbientCubeMap.h"
 
 
 /*
@@ -34,6 +34,7 @@ idRenderWorldLocal::FreeWorld
 */
 void idRenderWorldLocal::FreeWorld() {
 	int i;
+	atmosphere = NULL;
 
 	// this will free all the lightDefs and entityDefs
 	FreeDefs();
@@ -430,13 +431,19 @@ void idRenderWorldLocal::LoadAmbientCubeMaps( const char *mapBaseName ) {
 				src.Error( "expected ambient cube map name" );
 				return;
 			}
-			idAmbientCubeMap *cube = R_FindAmbientCubeMap( cubeName, true );
-			if ( !cube->Parse( src ) ) {
-				src.Error( "could not parse ambient cube map '%s'", cubeName.c_str() );
-				return;
+			// Older generated sidecars embedded the declaration text. The real
+			// declaration now lives in atmosphere/*.atm, but consume the legacy
+			// block so existing maps continue to load during migration.
+			if ( src.CheckTokenString( "{" ) ) {
+				src.SkipBracedSection( false );
 			}
-			cube->GenerateImages();
-			parsedCubeMaps++;
+			idAmbientCubeMap *cube = R_FindAmbientCubeMap( cubeName, false );
+			if ( cube ) {
+				parsedCubeMaps++;
+			} else {
+				common->Warning( "%s references undeclared ambient cube map '%s'",
+					filename.c_str(), cubeName.c_str() );
+			}
 			continue;
 		}
 		if ( !token.Icmp( "defaultAmbientCubeMap" ) ) {

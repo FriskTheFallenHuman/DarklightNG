@@ -151,7 +151,9 @@
    |  |  +- idTrigger_Touch
    |  |- idVacuumEntity
    |  |- idVacuumSeparatorEntity
-   |  +- idWorldspawn
+   |  |- idWorldspawn
+   |  |- sdAmbientLight
+   |  +- sdAtmosphere
    |- idForce
    |  |- idForce_Constant
    |  |- idForce_Drag
@@ -837,6 +839,6 @@ scriptEvent float influenceActive();
 #endif // __DOOM_EVENTS_SCRIPT__
 
 //@doomscript-blueprint begin 6
-//@source 00A52466
+//@source 18A2B6C4
 //@catalog BB84C54F
 //@doomscript-blueprint end

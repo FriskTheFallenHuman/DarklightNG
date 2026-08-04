@@ -24,7 +24,7 @@ GNU General Public License for more details.
 #pragma hdrstop
 
 #include "tr_local.h"
-#include "AmbientCubeMap.h"
+#include "../decllib/declAmbientCubeMap.h"
 
 static const float CHECK_BOUNDS_EPSILON = 1.0f;
 

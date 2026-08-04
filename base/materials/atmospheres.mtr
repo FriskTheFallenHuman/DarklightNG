@@ -1,0 +1,126 @@
+// ETQW atmosphere materials converted to the Doom 3 material grammar.
+
+atmospheres/default
+{
+	noShadows
+	noSelfShadow
+	translucent
+	{
+		blend blend
+		map _white
+		alpha 0
+	}
+}
+
+atmospheres/lights/default
+{
+	{
+		map _white
+		colored
+		zeroClamp
+	}
+}
+
+atmospheres/lights/scrolling_clouds01
+{
+	{
+		map _white
+		colored
+		zeroClamp
+	}
+}
+
+atmospheres/lights/scrolling_clouds01_bright
+{
+	{
+		map _white
+		colored
+		zeroClamp
+	}
+}
+
+atmospheres/lights/scrolling_clouds_temperate
+{
+	{
+		map _white
+		colored
+		zeroClamp
+	}
+}
+
+atmospheres/sprites/sundisc
+{
+	translucent
+	noShadows
+	noSelfShadow
+	sort 2
+	{
+		blend add
+		map atmosphere/sundisk.tga
+		vertexColor
+	}
+}
+
+atmospheres/sprites/sundisc_bright
+{
+	translucent
+	noShadows
+	noSelfShadow
+	sort 2
+	{
+		blend add
+		map atmosphere/sprites/sun_bright_halo2.tga
+		vertexColor
+	}
+}
+
+atmospheres/sprites/sundisk_flare
+{
+	translucent
+	noShadows
+	noSelfShadow
+	{
+		blend add
+		map atmosphere/sprites/sun_bright_halo2.tga
+		vertexColor
+	}
+}
+
+atmospheres/lights/sunsprite2
+{
+	translucent
+	noShadows
+	noSelfShadow
+	{
+		blend add
+		map atmosphere/sprites/sun_bright_halo2.tga
+		vertexColor
+	}
+}
+
+atmospheres/skydomes/valley_final
+{
+	noFragment
+	noShadows
+	noOverlays
+	forceOpaque
+	{
+		blend add
+		cubeMap env/valley_atmosphere_native
+		texgen skybox
+	}
+}
+
+textures/skies/valley_atmosphere
+{
+	qer_editorimage atmosphere/skies/valleysky_top.tga
+	noFragment
+	noShadows
+	noOverlays
+	forceOpaque
+	{
+		blend add
+		cubeMap env/valley_atmosphere_native
+		texgen skybox
+	}
+}

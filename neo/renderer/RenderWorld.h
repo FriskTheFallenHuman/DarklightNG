@@ -35,6 +35,9 @@ GNU General Public License for more details.
 #define	PROC_FILE_ID				"mapProcFile004"
 #define	PROC_FILE_ID_LEGACY			"mapProcFile003"
 
+class sdDeclAtmosphere;
+class sdDeclAmbientCubeMap;
+
 // shader parms
 const int MAX_GLOBAL_SHADER_PARMS	= 12;
 
@@ -152,6 +155,9 @@ public:
 	virtual void			FreeRenderEntity( idRenderEntity *entity ) = 0;
 	virtual idRenderLight *	AllocRenderLight() = 0;
 	virtual void			FreeRenderLight( idRenderLight *light ) = 0;
+	virtual void			SetAtmosphere( const sdDeclAtmosphere *decl ) = 0;
+	virtual const sdDeclAtmosphere *GetAtmosphere() const = 0;
+	virtual void			SetAreaAmbientCubeMap( int areaNum, const sdDeclAmbientCubeMap *decl ) = 0;
 
 	// returns true if this area model needs portal sky to draw
 	virtual bool			CheckAreaForPortalSky( int areaNum ) = 0;

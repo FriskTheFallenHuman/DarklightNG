@@ -1473,6 +1473,10 @@ void	RB_STD_DrawView( void ) {
 		idScopedGpuMarker marker( "Fog / Blend Lights", profile3DView );
 		RB_STD_FogAllLights();
 	}
+	{
+		idScopedGpuMarker marker( "Atmosphere", profile3DView );
+		RB_GLSL_DrawAtmosphere( drawSurfs, numDrawSurfs );
+	}
 
 	// now draw any post-processing effects using _currentRender
 	if ( processed < numDrawSurfs ) {
