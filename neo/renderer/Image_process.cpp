@@ -562,6 +562,28 @@ void R_BlendOverTexture( byte *data, int pixelCount, const byte blend[4] ) {
 	}
 }
 
+/*
+==================
+R_BlendOverTexture
+
+ETQW variant with an independent blend amount for each channel.
+==================
+*/
+void R_BlendOverTexture( byte *data, int pixelCount, const byte blend[4], const byte amount[4] ) {
+	int inverseAmount[4];
+	int premult[4];
+	for ( int channel = 0; channel < 4; ++channel ) {
+		inverseAmount[channel] = 255 - amount[channel];
+		premult[channel] = blend[channel] * amount[channel];
+	}
+
+	for ( int i = 0; i < pixelCount; ++i, data += 4 ) {
+		for ( int channel = 0; channel < 4; ++channel ) {
+			data[channel] = (byte)( ( data[channel] * inverseAmount[channel] + premult[channel] ) / 255 );
+		}
+	}
+}
+
 
 /*
 ==================
@@ -612,4 +634,3 @@ void R_RotatePic( byte *data, int width ) {
 
 	R_StaticFree( temp );
 }
-

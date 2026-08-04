@@ -192,6 +192,47 @@ static byte	mipBlendColors[16][4] = {
 };
 
 /*
+================
+idImage::SetMipmapLevel
+
+Applies ETQW's optional per-image mipmap state after a mip level has been
+filtered.  MegaTexture detail images use MT_BLEND with a neutral 0.5 color.
+================
+*/
+void idImage::SetMipmapLevel( byte *pixels, int width, int height, int level, const mipmapState_t &state ) {
+	if ( !pixels || width < 1 || height < 1 || state.colorType == mipmapState_t::MT_NONE ) {
+		return;
+	}
+
+	if ( state.colorType == mipmapState_t::MT_BLEND ) {
+		if ( level == 0 ) {
+			return;
+		}
+		byte color[4];
+		byte amount[4];
+		for ( int channel = 0; channel < 4; ++channel ) {
+			color[channel] = (byte)idMath::ClampInt( 0, 255, idMath::Ftoi( state.color[channel] * 255.0f ) );
+			amount[channel] = (byte)idMath::ClampInt( 0, 255, idMath::Ftoi( state.blend[channel] * 255.0f ) );
+		}
+		R_BlendOverTexture( pixels, width * height, color, amount );
+		return;
+	}
+
+	if ( state.colorType == mipmapState_t::MT_ALPHA ) {
+		const float alpha = level == 0 ? 50.0f : idMath::ClampFloat( 0.0f, 1.0f, ( 5.0f - level ) * 0.25f ) * 255.0f;
+		const byte alphaByte = (byte)idMath::ClampInt( 0, 255, idMath::Ftoi( alpha ) );
+		for ( int i = 0; i < width * height; ++i ) {
+			pixels[i * 4 + 3] = alphaByte;
+		}
+		return;
+	}
+
+	if ( state.colorType == mipmapState_t::MT_COLOR ) {
+		R_BlendOverTexture( pixels, width * height, mipBlendColors[idMath::ClampInt( 0, 15, level )] );
+	}
+}
+
+/*
 ===============
 SelectInternalFormat
 
@@ -687,6 +728,8 @@ void idImage::GenerateImage( const byte *pic, int width, int height,
 			scaled_height = 1;
 		}
 		miplevel++;
+
+		SetMipmapLevel( scaledBuffer, scaled_width, scaled_height, miplevel, mipmapState );
 
 		// this is a visualization tool that shades each mip map
 		// level with a different color so you can see the

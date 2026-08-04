@@ -1473,10 +1473,13 @@ Loading of the image may be deferred for dynamic loading.
 ==============
 */
 idImage	*idImageManager::ImageFromFile( const char *_name, textureFilter_t filter, bool allowDownSize,
-						 textureRepeat_t repeat, textureDepth_t depth, cubeFiles_t cubeMap, bool forcePrecompressed ) {
+						 textureRepeat_t repeat, textureDepth_t depth, cubeFiles_t cubeMap, bool forcePrecompressed,
+						 const mipmapState_t *requestedMipmapState ) {
 	idStr name;
 	idImage	*image;
 	int hash;
+	const mipmapState_t defaultMipmapState;
+	const mipmapState_t &mipmapState = requestedMipmapState ? *requestedMipmapState : defaultMipmapState;
 
 	if ( !_name || !_name[0] || idStr::Icmp( _name, "default" ) == 0 || idStr::Icmp( _name, "_default" ) == 0 ) {
 		declManager->MediaPrint( "DEFAULTED\n" );
@@ -1504,6 +1507,15 @@ idImage	*idImageManager::ImageFromFile( const char *_name, textureFilter_t filte
 			}
 			if ( image->forcePrecompressedFile != forcePrecompressed ) {
 				continue;
+			}
+			if ( image->mipmapState != mipmapState ) {
+				common->Warning( "Image '%s' has been referenced with conflicting mipmap states", _name );
+				image->mipmapState = mipmapState;
+				image->PurgeImage();
+				if ( image->partialImage ) {
+					image->partialImage->mipmapState = mipmapState;
+					image->partialImage->PurgeImage();
+				}
 			}
 
 			if ( image->filter != filter || image->repeat != repeat ) {
@@ -1571,6 +1583,7 @@ idImage	*idImageManager::ImageFromFile( const char *_name, textureFilter_t filte
 	image->cubeFiles = cubeMap;
 	image->filter = filter;
 	image->forcePrecompressedFile = forcePrecompressed;
+	image->mipmapState = mipmapState;
 	
 	image->levelLoadReferenced = true;
 
@@ -1586,6 +1599,7 @@ idImage	*idImageManager::ImageFromFile( const char *_name, textureFilter_t filte
 		image->partialImage->cubeFiles = cubeMap;
 		image->partialImage->filter = filter;
 		image->partialImage->forcePrecompressedFile = forcePrecompressed;
+		image->partialImage->mipmapState = mipmapState;
 
 		image->partialImage->levelLoadReferenced = true;
 

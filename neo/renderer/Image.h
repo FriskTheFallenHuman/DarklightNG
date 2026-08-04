@@ -135,6 +135,45 @@ typedef enum {
 	CF_CAMERA		// _forward, _back, etc, rotated and flipped as needed before sending to GL
 } cubeFiles_t;
 
+// ETQW allows individual images to control how their generated mip levels
+// approach a neutral value.  MegaTexture detail images use MT_BLEND to fade
+// their signed modulation toward 0.5 as distance selects lower mip levels.
+struct mipmapState_t {
+	enum colorType_e {
+		MT_NONE,
+		MT_BLEND,
+		MT_ALPHA,
+		MT_COLOR
+	};
+
+	float		color[4];
+	float		blend[4];
+	colorType_e	colorType;
+
+	mipmapState_t() : colorType( MT_NONE ) {
+		for ( int i = 0; i < 4; ++i ) {
+			color[i] = 0.0f;
+			blend[i] = 0.0f;
+		}
+	}
+
+	bool operator==( const mipmapState_t &other ) const {
+		if ( colorType != other.colorType ) {
+			return false;
+		}
+		for ( int i = 0; i < 4; ++i ) {
+			if ( color[i] != other.color[i] || blend[i] != other.blend[i] ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool operator!=( const mipmapState_t &other ) const {
+		return !( *this == other );
+	}
+};
+
 #define	MAX_IMAGE_NAME	256
 
 class idImage {
@@ -160,6 +199,7 @@ public:
 	void		GenerateImage( const byte *pic, int width, int height, 
 					   textureFilter_t filter, bool allowDownSize, 
 					   textureRepeat_t repeat, textureDepth_t depth );
+	void		SetMipmapLevel( byte *pixels, int width, int height, int level, const mipmapState_t &state );
 	void		Generate3DImage( const byte *pic, int width, int height, int depth,
 						textureFilter_t filter, bool allowDownSize, 
 						textureRepeat_t repeat, textureDepth_t minDepth );
@@ -227,6 +267,7 @@ public:
 	textureRepeat_t		repeat;
 	textureDepth_t		depth;
 	cubeFiles_t			cubeFiles;				// determines the naming and flipping conventions for the six images
+	mipmapState_t		mipmapState;			// ETQW per-image mip color/fade behavior
 
 	bool				referencedOutsideLevelLoad;
 	bool				levelLoadReferenced;	// for determining if it needs to be purged
@@ -309,7 +350,7 @@ public:
 	idImage *			ImageFromFile( const char *name,
 							 textureFilter_t filter, bool allowDownSize,
 							 textureRepeat_t repeat, textureDepth_t depth, cubeFiles_t cubeMap = CF_2D,
-							 bool forcePrecompressed = false );
+							 bool forcePrecompressed = false, const mipmapState_t *mipmapState = NULL );
 
 	// look for a loaded image, whatever the parameters
 	idImage *			GetImage( const char *name ) const;
@@ -473,6 +514,7 @@ byte *R_MipMap3D( const byte *in, int width, int height, int depth, bool preserv
 void R_SetBorderTexels( byte *inBase, int width, int height, const byte border[4] );
 void R_SetBorderTexels3D( byte *inBase, int width, int height, int depth, const byte border[4] );
 void R_BlendOverTexture( byte *data, int pixelCount, const byte blend[4] );
+void R_BlendOverTexture( byte *data, int pixelCount, const byte blend[4], const byte amount[4] );
 void R_HorizontalFlip( byte *data, int width, int height );
 void R_VerticalFlip( byte *data, int width, int height );
 void R_RotatePic( byte *data, int width );

@@ -21,10 +21,10 @@ static void RB_GLSL_DrawAtmosphereSurface( const drawSurf_t *surf ) {
 		return;
 	}
 
-	// A second untextured pass over a perforated surface would fog the empty
-	// parts of its triangles.  Opaque geometry is safe because the depth
-	// prepass already established precisely which fragments are visible.
-	if ( material->Coverage() != MC_OPAQUE || material->IsPortalSky() ) {
+	// The atmosphere pass uses DEPTHFUNC_EQUAL, so perforated materials reuse
+	// the alpha-tested coverage written by the depth prepass.  Empty portions
+	// of foliage cards therefore remain untouched while the leaves receive fog.
+	if ( material->Coverage() == MC_TRANSLUCENT || material->IsPortalSky() ) {
 		return;
 	}
 

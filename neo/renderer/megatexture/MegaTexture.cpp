@@ -36,9 +36,9 @@ idCVar idMegaTexture::r_showMegaTextureLevels( "r_showMegaTextureLevels", "0", C
 idCVar idMegaTexture::r_skipMegaTexture( "r_skipMegaTexture", "0", CVAR_RENDERER | CVAR_BOOL, "skip MegaTexture view updates" );
 idCVar idMegaTexture::r_skipMegaTextureUpload( "r_skipMegaTextureUpload", "0", CVAR_RENDERER | CVAR_BOOL, "skip MegaTexture tile uploads" );
 idCVar idMegaTexture::r_useMegaTextureImageCompression( "r_useMegaTextureImageCompression", "0", CVAR_RENDERER | CVAR_BOOL, "recompress decoded MegaTexture tiles to DXT" );
-idCVar idMegaTexture::r_detailTexture( "r_detailTexture", "1", CVAR_RENDERER | CVAR_BOOL, "enable MegaTexture detail texture" );
-idCVar idMegaTexture::r_detailRatio( "r_detailRatio", "4", CVAR_RENDERER | CVAR_FLOAT, "MegaTexture detail texture ratio" );
-idCVar idMegaTexture::r_detailFade( "r_detailFade", "0.5", CVAR_RENDERER | CVAR_FLOAT, "MegaTexture detail texture fade" );
+idCVar idMegaTexture::r_detailTexture( "r_detailTexture", "1", CVAR_RENDERER | CVAR_BOOL, "Detail texture on landscape" );
+idCVar idMegaTexture::r_detailRatio( "r_detailRatio", "4", CVAR_RENDERER | CVAR_FLOAT, "Ratio of detail texture to main texture" );
+idCVar idMegaTexture::r_detailFade( "r_detailFade", "0.5", CVAR_RENDERER | CVAR_FLOAT, "Distance fading control (reloadImages all needed)", 0.0f, 1.0f );
 idCVar idMegaTexture::r_megaStreamBlocks( "r_megaStreamBlocks", "16", CVAR_RENDERER | CVAR_INTEGER, "legacy ETQW 32 KiB stream window size" );
 idCVar idMegaTexture::r_megaFadeTime( "r_megaFadeTime", "250", CVAR_RENDERER | CVAR_INTEGER, "MegaTexture level transition time in milliseconds" );
 idCVar idMegaTexture::r_megaStreamFromDVD( "r_megaStreamFromDVD", "0", CVAR_RENDERER | CVAR_BOOL, "retain ETQW optical-media streaming policy flag" );
@@ -957,7 +957,13 @@ void idMegaTexture::LoadDetailTexture() {
 	detailName += "_detail.tga";
 	idStr detailMaskName = imageBase;
 	detailMaskName += "_detailmask.tga";
-	detailTexture = globalImages->ImageFromFile( detailName, TF_DEFAULT, false, TR_REPEAT, TD_DEFAULT );
+	mipmapState_t detailMipmapState;
+	detailMipmapState.colorType = mipmapState_t::MT_BLEND;
+	for ( int channel = 0; channel < 4; ++channel ) {
+		detailMipmapState.color[channel] = 0.5f;
+		detailMipmapState.blend[channel] = r_detailFade.GetFloat();
+	}
+	detailTexture = globalImages->ImageFromFile( detailName, TF_DEFAULT, false, TR_REPEAT, TD_DEFAULT, CF_2D, false, &detailMipmapState );
 	detailTextureMask = globalImages->ImageFromFile( detailMaskName, TF_DEFAULT, false, TR_REPEAT, TD_DEFAULT );
 	// These are owned by the MegaTexture resource and must survive the ordinary
 	// per-map image purge just like the generated moving atlases.
