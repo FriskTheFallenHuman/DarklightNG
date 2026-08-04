@@ -139,6 +139,10 @@ public:
 	// a NULL or empty mapName will create an empty, single area world
 	virtual bool			InitFromMap( const char *mapName ) = 0;
 
+	// Optional terrain mapping used by ETQW MegaTextures. The grid is copied
+	// by the render world and may be released by the caller after this call.
+	virtual void			SetMegaTextureSTGrid( const idBounds &bounds, const idVec2 *grid, int width, int height ) = 0;
+
 	//-------------- Entity and Light Defs -----------------
 
 	// entityDefs and lightDefs are added to a given world to determine

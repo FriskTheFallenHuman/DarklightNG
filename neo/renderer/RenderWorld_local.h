@@ -169,6 +169,12 @@ public:
 	void					AddWorldModelEntities();
 	void					ClearPortalStates();
 	virtual	bool			InitFromMap( const char *mapName );
+	virtual void			SetMegaTextureSTGrid( const idBounds &bounds, const idVec2 *grid, int width, int height );
+
+	idBounds				megaTextureBounds;
+	idList<idVec2>		megaTextureSTGrid;
+	int					megaTextureSTGridWidth;
+	int					megaTextureSTGridHeight;
 
 	//--------------------------
 	// RenderWorld_portals.cpp

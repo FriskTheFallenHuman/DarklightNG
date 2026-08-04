@@ -24,7 +24,7 @@ GNU General Public License for more details.
 #define __TR_LOCAL_H__
 
 #include "Image.h"
-#include "MegaTexture.h"
+#include "megatexture/MegaTexture.h"
 #include "GlslProgram.h"
 #include "GpuProfiler.h"
 #include "RenderEntity.h"

@@ -754,6 +754,7 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 
 			// megaTextures bind a lot of images and set a lot of parameters
 			if ( newStage->megaTexture ) {
+				newStage->megaTexture->UpdateMapping( backEnd.viewDef->renderWorld );
 				newStage->megaTexture->SetMappingForSurface( tri );
 				idVec3	localViewer;
 				R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewDef->renderView.vieworg, localViewer );

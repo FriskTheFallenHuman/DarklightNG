@@ -1665,6 +1665,7 @@ void idImageManager::PurgeAllImages() {
 		image = images[i];
 		image->PurgeImage();
 	}
+	PurgeAllMegaTextures();
 }
 
 /*
@@ -1680,6 +1681,44 @@ void idImageManager::ReloadAllImages() {
 
 	args.TokenizeString( "reloadImages reload", false );
 	R_ReloadImages_f( args );
+	ReloadAllMegaTextures();
+}
+
+/*
+===============
+MegaTextureFromFile
+===============
+*/
+idMegaTexture *idImageManager::MegaTextureFromFile( const char *fileName ) {
+	idStr canonical = fileName ? fileName : "";
+	canonical.BackSlashesToSlashes();
+	canonical.StripPath();
+	canonical.StripFileExtension();
+	for ( int i = 0; i < megaTextures.Num(); ++i ) {
+		if ( !canonical.Icmp( megaTextures[i]->GetName() ) ) {
+			megaTextures[i]->Touch();
+			megaTextures[i]->SetLevelLoadReferenced( insideLevelLoad );
+			if ( !insideLevelLoad ) megaTextures[i]->SetReferencedOutsideLevelLoad( true );
+			return megaTextures[i];
+		}
+	}
+	idMegaTexture *megaTexture = new idMegaTexture;
+	if ( !megaTexture->InitFromMegaFile( canonical ) ) {
+		delete megaTexture;
+		return NULL;
+	}
+	megaTexture->SetLevelLoadReferenced( insideLevelLoad );
+	megaTexture->SetReferencedOutsideLevelLoad( !insideLevelLoad );
+	megaTextures.Append( megaTexture );
+	return megaTexture;
+}
+
+void idImageManager::PurgeAllMegaTextures() {
+	for ( int i = 0; i < megaTextures.Num(); ++i ) megaTextures[i]->Purge();
+}
+
+void idImageManager::ReloadAllMegaTextures() {
+	for ( int i = 0; i < megaTextures.Num(); ++i ) megaTextures[i]->Load();
 }
 
 /*
@@ -1940,6 +1979,7 @@ void idImageManager::Init() {
 	memset(imageHashTable, 0, sizeof(imageHashTable));
 
 	images.Resize( 1024, 1024 );
+	megaTextures.Resize( 16, 16 );
 
 	// clear the cached LRU
 	cacheLRU.cacheUsageNext = &cacheLRU;
@@ -1988,6 +2028,7 @@ Shutdown
 ===============
 */
 void idImageManager::Shutdown() {
+	megaTextures.DeleteContents( true );
 	images.DeleteContents( true );
 }
 
@@ -2003,6 +2044,10 @@ loading the actual data.
 */
 void idImageManager::BeginLevelLoad() {
 	insideLevelLoad = true;
+	for ( int i = 0; i < megaTextures.Num(); ++i ) {
+		megaTextures[i]->SetLevelLoadReferenced( false );
+		if ( com_purgeAll.GetBool() ) megaTextures[i]->Purge();
+	}
 
 	for ( int i = 0 ; i < images.Num() ; i++ ) {
 		idImage	*image = images[ i ];
@@ -2043,6 +2088,14 @@ void idImageManager::EndLevelLoad() {
 	}
 
 	common->Printf( "----- idImageManager::EndLevelLoad -----\n" );
+	for ( int i = 0; i < megaTextures.Num(); ++i ) {
+		idMegaTexture *megaTexture = megaTextures[i];
+		if ( !megaTexture->IsLevelLoadReferenced() && !megaTexture->IsReferencedOutsideLevelLoad() ) {
+			megaTexture->Purge();
+		} else if ( !megaTexture->IsLoaded() ) {
+			megaTexture->Load();
+		}
+	}
 
 	int		purgeCount = 0;
 	int		keepCount = 0;

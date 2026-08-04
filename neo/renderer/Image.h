@@ -292,6 +292,8 @@ void	R_WritePalTGA( const char *filename, const byte *data, const byte *palette,
 // data is in top-to-bottom raster order unless flipVertical is set
 
 
+class idMegaTexture;
+
 class idImageManager {
 public:
 	void				Init();
@@ -331,6 +333,12 @@ public:
 
 	// reloads all apropriate images after a vid_restart
 	void				ReloadAllImages();
+
+	// ETQW MegaTextures are image-manager resources. Materials hold borrowed
+	// pointers so duplicate declarations share one streaming/cache object.
+	idMegaTexture *	MegaTextureFromFile( const char *name );
+	void				PurgeAllMegaTextures();
+	void				ReloadAllMegaTextures();
 
 	// disable the active texture unit
 	void				BindNull();
@@ -415,6 +423,7 @@ public:
 	void				ChangeTextureFilter();
 
 	idList<idImage*>	images;
+	idList<idMegaTexture*> megaTextures;
 	idStrList			ddsList;
 	idHashIndex			ddsHash;
 

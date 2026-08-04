@@ -24,6 +24,8 @@ GNU General Public License for more details.
 #pragma hdrstop
 
 #include "tr_local.h"
+#include "megatexture/MegaTextureTileLoader.h"
+#include "megatexture/MegaTextureTileDecompressor.h"
 
 // Vista OpenGL wrapper check
 #ifdef _WIN32
@@ -246,6 +248,7 @@ PFNGLSETFRAGMENTSHADERCONSTANTATIPROC	qglSetFragmentShaderConstantATI;
 
 // ARB_texture_compression
 PFNGLCOMPRESSEDTEXIMAGE2DARBPROC		qglCompressedTexImage2DARB;
+PFNGLCOMPRESSEDTEXSUBIMAGE2DARBPROC	qglCompressedTexSubImage2DARB;
 PFNGLGETCOMPRESSEDTEXIMAGEARBPROC		qglGetCompressedTexImageARB;
 
 // ARB_vertex_buffer_object
@@ -356,6 +359,7 @@ static void R_CheckPortableExtensions( void ) {
 	if ( R_CheckExtension( "GL_ARB_texture_compression" ) && R_CheckExtension( "GL_EXT_texture_compression_s3tc" ) ) {
 		glConfig.textureCompressionAvailable = true;
 		qglCompressedTexImage2DARB = (PFNGLCOMPRESSEDTEXIMAGE2DARBPROC)GLimp_ExtensionPointer( "glCompressedTexImage2DARB" );
+		qglCompressedTexSubImage2DARB = (PFNGLCOMPRESSEDTEXSUBIMAGE2DARBPROC)GLimp_ExtensionPointer( "glCompressedTexSubImage2DARB" );
 		qglGetCompressedTexImageARB = (PFNGLGETCOMPRESSEDTEXIMAGEARBPROC)GLimp_ExtensionPointer( "glGetCompressedTexImageARB" );
 	} else {
 		glConfig.textureCompressionAvailable = false;
@@ -2025,7 +2029,11 @@ R_InitCommands
 =================
 */
 void R_InitCommands( void ) {
-	cmdSystem->AddCommand( "MakeMegaTexture", idMegaTexture::MakeMegaTexture_f, CMD_FL_RENDERER|CMD_FL_CHEAT, "processes giant images" );
+	cmdSystem->AddCommand( "megaTextureInfo", idMegaTexture::MegaTextureInfo_f, CMD_FL_RENDERER, "shows the active ETQW MegaTexture" );
+	cmdSystem->AddCommand( "megaTextureLoad", idMegaTexture::MegaTextureLoad_f, CMD_FL_RENDERER|CMD_FL_CHEAT, "loads an ETQW .mega resource" );
+	cmdSystem->AddCommand( "megaTextureDecodeTile", idMegaTexture::MegaTextureDecodeTile_f, CMD_FL_RENDERER|CMD_FL_CHEAT, "decodes an active MegaTexture tile to TGA" );
+	cmdSystem->AddCommand( "megaTextureMemory", idMegaTexture::MegaShowMemoryUsage_f, CMD_FL_RENDERER, "shows MegaTexture runtime memory" );
+	cmdSystem->AddCommand( "megaTextureStreaming", idMegaTexture::MegaTestStreamingPerformance_f, CMD_FL_RENDERER, "shows MegaTexture streaming statistics" );
 	cmdSystem->AddCommand( "sizeUp", R_SizeUp_f, CMD_FL_RENDERER, "makes the rendered view larger" );
 	cmdSystem->AddCommand( "sizeDown", R_SizeDown_f, CMD_FL_RENDERER, "makes the rendered view smaller" );
 	cmdSystem->AddCommand( "reloadGuis", R_ReloadGuis_f, CMD_FL_RENDERER, "reloads guis" );
@@ -2124,6 +2132,11 @@ void idRenderSystemLocal::Init( void ) {
 
 	globalImages->Init();
 
+	megaTextureTileDecompressor = new idMegaTextureTileDecompressor;
+	megaTextureTileDecompressor->Init();
+	megaTextureTileLoader = new idMegaTextureTileLoader;
+	megaTextureTileLoader->Init();
+
 	idCinematic::InitCinematic( );
 
 	// build brightness translation tables
@@ -2151,6 +2164,17 @@ void idRenderSystemLocal::Shutdown( void ) {
 	common->Printf( "idRenderSystem::Shutdown()\n" );
 
 	R_DoneFreeType( );
+
+	if ( megaTextureTileLoader ) {
+		megaTextureTileLoader->Shutdown();
+		delete megaTextureTileLoader;
+		megaTextureTileLoader = NULL;
+	}
+	if ( megaTextureTileDecompressor ) {
+		megaTextureTileDecompressor->Shutdown();
+		delete megaTextureTileDecompressor;
+		megaTextureTileDecompressor = NULL;
+	}
 
 	if ( glConfig.isInitialized ) {
 		globalImages->PurgeAllImages();

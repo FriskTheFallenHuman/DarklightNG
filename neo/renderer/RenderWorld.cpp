@@ -123,6 +123,9 @@ idRenderWorldLocal::idRenderWorldLocal() {
 
 	doublePortals = NULL;
 	numInterAreaPortals = 0;
+	megaTextureBounds.Clear();
+	megaTextureSTGridWidth = 0;
+	megaTextureSTGridHeight = 0;
 
 }
 

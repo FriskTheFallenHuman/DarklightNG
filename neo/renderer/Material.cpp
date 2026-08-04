@@ -1502,9 +1502,8 @@ void idMaterial::ParseStage( idLexer &src, const textureRepeat_t trpDefault ) {
 		}
 		if ( !token.Icmp( "megaTexture" ) ) {
 			if ( src.ReadTokenOnLine( &token ) ) {
-				newStage.megaTexture = new idMegaTexture;
-				if ( !newStage.megaTexture->InitFromMegaFile( token.c_str() ) ) {
-					delete newStage.megaTexture;
+				newStage.megaTexture = globalImages->MegaTextureFromFile( token.c_str() );
+				if ( !newStage.megaTexture ) {
 					SetMaterialFlag( MF_DEFAULTED );
 					continue;
 				}
