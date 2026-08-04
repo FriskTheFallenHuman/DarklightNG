@@ -24,6 +24,7 @@ GNU General Public License for more details.
 #pragma hdrstop
 
 #include "tr_local.h"
+#include "AmbientCubeMap.h"
 
 static const float CHECK_BOUNDS_EPSILON = 1.0f;
 
@@ -305,6 +306,7 @@ viewEntity_t *R_SetEntityDefViewEntity( idRenderEntityLocal *def ) {
 	// set the model and modelview matricies
 	vModel = (viewEntity_t *)R_ClearedFrameAlloc( sizeof( *vModel ) );
 	vModel->entityDef = def;
+	vModel->ambientCubeMap = def->world ? def->world->AmbientCubeMapForEntity( def ) : NULL;
 
 	// the scissorRect will be expanded as the model bounds is accepted into visible portal chains
 	vModel->scissorRect.Clear();

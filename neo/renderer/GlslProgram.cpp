@@ -63,6 +63,7 @@ static void R_InitGLSLShaderDefs() {
 	R_SetBuiltinGLSLShader( GLSLPROG_AMBIENT, "ambientLight" );
 	R_SetBuiltinGLSLShader( GLSLPROG_GLASSWARP, "glassWarp" );
 	R_SetBuiltinGLSLShader( GLSLPROG_BAKED_LIGHT, "bakedLight" );
+	R_SetBuiltinGLSLShader( GLSLPROG_AMBIENT_CUBE, "ambientCube" );
 	R_SetBuiltinGLSLShader( GLSLPROG_COLOR_PROCESS, "colorProcess" );
 	R_SetBuiltinGLSLShader( GLSLPROG_HEAT_HAZE, "heatHaze" );
 	R_SetBuiltinGLSLShader( GLSLPROG_HEAT_HAZE_WITH_MASK, "heatHazeWithMask" );

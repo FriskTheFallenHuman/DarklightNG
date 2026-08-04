@@ -24,6 +24,7 @@ GNU General Public License for more details.
 #pragma hdrstop
 
 #include "tr_local.h"
+#include "AmbientCubeMap.h"
 
 /*
 =========================================================================================
@@ -429,6 +430,228 @@ void RB_GLSL_DrawBakedLightmaps( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	qglDisableVertexAttribArray( 9 );
 	qglDisableVertexAttribArray( 8 );
 	for ( int unit = 4; unit >= 0; unit-- ) {
+		GL_SelectTextureNoClient( unit );
+		globalImages->BindNull();
+	}
+	backEnd.glState.currenttmu = -1;
+	GL_SelectTexture( 0 );
+	R_UnbindGLSLProgram();
+}
+
+//===================================================================================
+
+static int ambientCubeStagesDrawn;
+static int ambientCubeStagesAttempted;
+static int ambientCubeStagesMissingImage;
+static int ambientCubeStagesBlackColor;
+static int ambientCubeLightingStageCounts[4];
+
+/*
+==================
+RB_GLSL_DrawAmbientCubeStage
+==================
+*/
+static void RB_GLSL_DrawAmbientCubeStage( const drawSurf_t *surf, idImage *bumpImage,
+		const idVec4 bumpMatrix[2], const shaderStage_t *stage, const idAmbientCubeMap *cube ) {
+	idImage *stageImage;
+	idVec4 stageMatrix[2];
+	float stageColor[4];
+	static const float zero[4] = { 0, 0, 0, 0 };
+	static const float one[4] = { 1, 1, 1, 1 };
+	static const float negativeOne[4] = { -1, -1, -1, -1 };
+	static const float diffuseMode[4] = { 1, 0, 0, 0 };
+	static const float specularMode[4] = { 0, 1, 0, 0 };
+
+	R_SetDrawInteraction( stage, surf->shaderRegisters, &stageImage, stageMatrix, stageColor );
+	ambientCubeStagesAttempted++;
+	if ( !stageImage ) {
+		ambientCubeStagesMissingImage++;
+		return;
+	}
+	if ( stageColor[0] + stageColor[1] + stageColor[2] <= 0.0f ) {
+		ambientCubeStagesBlackColor++;
+		return;
+	}
+
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 0, bumpMatrix[0].ToFloatPtr() );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 1, bumpMatrix[1].ToFloatPtr() );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 2, stageMatrix[0].ToFloatPtr() );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 3, stageMatrix[1].ToFloatPtr() );
+	switch ( stage->vertexColor ) {
+	case SVC_MODULATE:
+		R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 4, one );
+		R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 5, zero );
+		break;
+	case SVC_INVERSE_MODULATE:
+		R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 4, negativeOne );
+		R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 5, one );
+		break;
+	default:
+		R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 4, zero );
+		R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 5, one );
+		break;
+	}
+	R_SetGLSLProgramEnvParameter( GL_FRAGMENT_SHADER, 0, stageColor );
+	R_SetGLSLProgramEnvParameter( GL_FRAGMENT_SHADER, 1,
+		stage->lighting == SL_SPECULAR ? specularMode : diffuseMode );
+	idVec4 lightingScale( cube->GetBrightness(), r_ambientCubeMapScale.GetFloat(), 0.0f, 0.0f );
+	R_SetGLSLProgramEnvParameter( GL_FRAGMENT_SHADER, 2, lightingScale.ToFloatPtr() );
+
+	GL_SelectTextureNoClient( 0 );
+	( stage->lighting == SL_SPECULAR ? cube->GetSpecularCubeMap() : cube->GetAmbientCubeMap() )->Bind();
+	GL_SelectTextureNoClient( 1 );
+	( r_skipBump.GetBool() ? globalImages->flatNormalMap : bumpImage )->Bind();
+	GL_SelectTextureNoClient( 2 );
+	stageImage->Bind();
+
+	RB_DrawElementsWithCounters( surf->geo );
+	ambientCubeStagesDrawn++;
+}
+
+/*
+==================
+RB_GLSL_DrawAmbientCubeSurface
+==================
+*/
+static void RB_GLSL_DrawAmbientCubeSurface( const drawSurf_t *surf ) {
+	const srfTriangles_t *tri = surf->geo;
+	const idMaterial *shader = surf->material;
+	const idRenderWorldLocal *renderWorld = backEnd.viewDef->renderWorld;
+	const idAmbientCubeMap *cube = surf->space->ambientCubeMap;
+	// View weapons and other depth-hacked models can be created without a
+	// stable portal reference.  They still belong to the active atmosphere.
+	if ( !cube && renderWorld ) {
+		cube = renderWorld->defaultAmbientCubeMap;
+	}
+	if ( !tri || !tri->numIndexes || !tri->verts && !tri->vertexBuffer &&
+		( !tri->ambientSurface || !tri->ambientSurface->vertexBuffer ) ) {
+		return;
+	}
+	if ( !cube || !cube->GetAmbientCubeMap() || !cube->GetSpecularCubeMap() ) {
+		return;
+	}
+	// World BSP already contains directional baked lighting.  Ambient cubes
+	// fill imported meshes, characters and other non-atlased objects only.
+	if ( tri->bakedLightmap && tri->bakedDeluxemap ) {
+		return;
+	}
+	if ( ( shader->Coverage() != MC_OPAQUE && shader->Coverage() != MC_PERFORATED ) ||
+		!shader->ReceivesLighting() || shader->IsPortalSky() ) {
+		return;
+	}
+
+	GL_Cull( shader->GetCullType() );
+	const idDrawVert *ambient = RB_BindDrawVertBuffer( tri );
+	// A resident VBO deliberately returns offset zero here.  It is a valid
+	// attribute pointer while GL_ARRAY_BUFFER is bound, not a missing stream.
+	qglColorPointer( 4, GL_UNSIGNED_BYTE, sizeof( idDrawVert ), ambient->color );
+	qglVertexAttribPointer( 11, 3, GL_FLOAT, false, sizeof( idDrawVert ), ambient->normal.ToFloatPtr() );
+	qglVertexAttribPointer( 10, 3, GL_FLOAT, false, sizeof( idDrawVert ), ambient->tangents[1].ToFloatPtr() );
+	qglVertexAttribPointer( 9, 3, GL_FLOAT, false, sizeof( idDrawVert ), ambient->tangents[0].ToFloatPtr() );
+	qglVertexAttribPointer( 8, 2, GL_FLOAT, false, sizeof( idDrawVert ), ambient->st.ToFloatPtr() );
+	qglVertexPointer( 3, GL_FLOAT, sizeof( idDrawVert ), ambient->xyz.ToFloatPtr() );
+
+	idVec3 localViewOrigin;
+	R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewDef->renderView.vieworg, localViewOrigin );
+	idVec4 parm( localViewOrigin.x, localViewOrigin.y, localViewOrigin.z, 1.0f );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 6, parm.ToFloatPtr() );
+	parm.Set( surf->space->modelMatrix[0], surf->space->modelMatrix[4], surf->space->modelMatrix[8], 0.0f );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 7, parm.ToFloatPtr() );
+	parm.Set( surf->space->modelMatrix[1], surf->space->modelMatrix[5], surf->space->modelMatrix[9], 0.0f );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 8, parm.ToFloatPtr() );
+	parm.Set( surf->space->modelMatrix[2], surf->space->modelMatrix[6], surf->space->modelMatrix[10], 0.0f );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 9, parm.ToFloatPtr() );
+
+	idImage *bumpImage = globalImages->flatNormalMap;
+	idVec4 bumpMatrix[2];
+	bumpMatrix[0].Set( 1, 0, 0, 0 );
+	bumpMatrix[1].Set( 0, 1, 0, 0 );
+	for ( int stageNum = 0; stageNum < shader->GetNumStages(); stageNum++ ) {
+		const shaderStage_t *stage = shader->GetStage( stageNum );
+		if ( stage->lighting >= SL_AMBIENT && stage->lighting <= SL_SPECULAR ) {
+			ambientCubeLightingStageCounts[stage->lighting]++;
+		}
+		if ( surf->shaderRegisters[stage->conditionRegister] == 0.0f ) {
+			continue;
+		}
+		if ( stage->lighting == SL_BUMP ) {
+			R_SetDrawInteraction( stage, surf->shaderRegisters, &bumpImage, bumpMatrix, NULL );
+			continue;
+		}
+		if ( stage->lighting == SL_DIFFUSE && !r_skipDiffuse.GetBool() ) {
+			RB_GLSL_DrawAmbientCubeStage( surf, bumpImage, bumpMatrix, stage, cube );
+		} else if ( stage->lighting == SL_SPECULAR && !r_skipSpecular.GetBool() ) {
+			RB_GLSL_DrawAmbientCubeStage( surf, bumpImage, bumpMatrix, stage, cube );
+		}
+	}
+}
+
+/*
+==================
+RB_GLSL_DrawAmbientCubeMaps
+==================
+*/
+void RB_GLSL_DrawAmbientCubeMaps( drawSurf_t **drawSurfs, int numDrawSurfs ) {
+	if ( r_skipAmbientCubeMaps.GetBool() || !backEnd.viewDef->viewEntitys ) {
+		return;
+	}
+	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | GLS_DEPTHFUNC_EQUAL );
+	if ( !R_BindGLSLProgram( GLSLPROG_AMBIENT_CUBE ) ) {
+		return;
+	}
+	RB_LogComment( "---------- RB_GLSL_DrawAmbientCubeMaps ----------\n" );
+	qglEnableVertexAttribArray( 8 );
+	qglEnableVertexAttribArray( 9 );
+	qglEnableVertexAttribArray( 10 );
+	qglEnableVertexAttribArray( 11 );
+	qglEnableClientState( GL_COLOR_ARRAY );
+	ambientCubeStagesDrawn = 0;
+	ambientCubeStagesAttempted = 0;
+	ambientCubeStagesMissingImage = 0;
+	ambientCubeStagesBlackColor = 0;
+	memset( ambientCubeLightingStageCounts, 0, sizeof( ambientCubeLightingStageCounts ) );
+
+	idRenderWorldLocal *renderWorld = backEnd.viewDef->renderWorld;
+	const bool reportThisDraw = renderWorld && !renderWorld->ambientCubeDrawReported;
+	if ( reportThisDraw ) {
+		int eligible = 0;
+		int assigned = 0;
+		int perforated = 0;
+		for ( int i = 0; i < numDrawSurfs; i++ ) {
+			const drawSurf_t *surf = drawSurfs[i];
+			const srfTriangles_t *tri = surf->geo;
+			const idMaterial *shader = surf->material;
+			if ( !tri || ( tri->bakedLightmap && tri->bakedDeluxemap ) || !shader->ReceivesLighting() ||
+				shader->IsPortalSky() || ( shader->Coverage() != MC_OPAQUE && shader->Coverage() != MC_PERFORATED ) ) {
+				continue;
+			}
+			eligible++;
+			perforated += shader->Coverage() == MC_PERFORATED ? 1 : 0;
+			if ( surf->space->ambientCubeMap || renderWorld->defaultAmbientCubeMap ) {
+				assigned++;
+			}
+		}
+		common->Printf( "Ambient cube draw active: %i/%i eligible surfaces assigned (%i perforated), default=%s\n",
+			assigned, eligible, perforated, renderWorld->defaultAmbientCubeMap ?
+			renderWorld->defaultAmbientCubeMap->GetName() : "<none>" );
+	}
+
+	RB_RenderDrawSurfListWithFunction( drawSurfs, numDrawSurfs, RB_GLSL_DrawAmbientCubeSurface );
+	if ( reportThisDraw ) {
+		common->Printf( "Ambient cube stages: draw=%i attempted=%i missingImage=%i blackColor=%i, lighting A/B/D/S=%i/%i/%i/%i, scale=%.2f\n",
+			ambientCubeStagesDrawn, ambientCubeStagesAttempted, ambientCubeStagesMissingImage,
+			ambientCubeStagesBlackColor, ambientCubeLightingStageCounts[SL_AMBIENT],
+			ambientCubeLightingStageCounts[SL_BUMP], ambientCubeLightingStageCounts[SL_DIFFUSE],
+			ambientCubeLightingStageCounts[SL_SPECULAR], r_ambientCubeMapScale.GetFloat() );
+		renderWorld->ambientCubeDrawReported = true;
+	}
+
+	qglDisableClientState( GL_COLOR_ARRAY );
+	qglDisableVertexAttribArray( 11 );
+	qglDisableVertexAttribArray( 10 );
+	qglDisableVertexAttribArray( 9 );
+	qglDisableVertexAttribArray( 8 );
+	for ( int unit = 2; unit >= 0; unit-- ) {
 		GL_SelectTextureNoClient( unit );
 		globalImages->BindNull();
 	}

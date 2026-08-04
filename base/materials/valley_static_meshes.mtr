@@ -128,14 +128,6 @@ textures/valley_lit_preview.tga
 	}
 }
 
-texturesheets/valley/valley_wall_7_shadows
-{
-	noShadows
-	diffusemap valley_import/valley_mapobjects01.tga
-	bumpmap _flat
-	specularmap _black
-}
-
 // ETQW collision-only surface names embedded in the imported LWOs.
 textures/common/collision_concrete
 {

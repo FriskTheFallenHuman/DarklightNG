@@ -1440,10 +1440,15 @@ void	RB_STD_DrawView( void ) {
 		RB_STD_FillDepthBuffer( drawSurfs, numDrawSurfs );
 	}
 
-	// Forward pipeline: z-prepass, baked lightmap/deluxemap, realtime lights.
+	// Forward pipeline: z-prepass, baked world lighting, ambient cubes for
+	// non-lightmapped objects, then realtime lights.
 	{
 		idScopedGpuMarker marker( "Baked Lighting", profile3DView );
 		RB_GLSL_DrawBakedLightmaps( drawSurfs, numDrawSurfs );
+	}
+	{
+		idScopedGpuMarker marker( "Ambient Cube Lighting", profile3DView );
+		RB_GLSL_DrawAmbientCubeMaps( drawSurfs, numDrawSurfs );
 	}
 	{
 		idScopedGpuMarker marker( "Realtime Lights", profile3DView );

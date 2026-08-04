@@ -107,13 +107,16 @@ idRenderWorldLocal::idRenderWorldLocal() {
 	mapName.Clear();
 	mapTimeStamp = FILE_NOT_FOUND_TIMESTAMP;
 	mapArchiveTimeStamp = FILE_NOT_FOUND_TIMESTAMP;
+	ambientMapTimeStamp = FILE_NOT_FOUND_TIMESTAMP;
 	hasBakedLightmaps = false;
+	defaultAmbientCubeMap = NULL;
 	bakedSurfaceCount = 0;
 	bakedBatchCount = 0;
 	bakedLightSuppressionCount = 0;
 	bakedLightCandidateCount = 0;
 	bakedLightMovedCount = 0;
 	bakedDrawReported = false;
+	ambientCubeDrawReported = false;
 
 	areaNodes = NULL;
 	numAreaNodes = 0;

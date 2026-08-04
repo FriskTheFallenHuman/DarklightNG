@@ -24,6 +24,7 @@ GNU General Public License for more details.
 #pragma hdrstop
 
 #include "tr_local.h"
+#include "AmbientCubeMap.h"
 
 
 /*
@@ -84,6 +85,7 @@ void idRenderWorldLocal::FreeWorld() {
 	}
 	localModels.Clear();
 	bakedAtlasImages.Clear();
+	defaultAmbientCubeMap = NULL;
 	megaTextureSTGrid.Clear();
 	megaTextureBounds.Clear();
 	megaTextureSTGridWidth = 0;
@@ -99,6 +101,7 @@ void idRenderWorldLocal::FreeWorld() {
 	bakedLightCandidateCount = 0;
 	bakedLightMovedCount = 0;
 	bakedDrawReported = false;
+	ambientCubeDrawReported = false;
 
 	areaReferenceAllocator.Shutdown();
 
@@ -377,6 +380,7 @@ void idRenderWorldLocal::SetupAreaRefs() {
 	connectedAreaNum = 0;
 	for ( i = 0 ; i < numPortalAreas ; i++ ) {
 		portalAreas[i].areaNum = i;
+		portalAreas[i].ambientCubeMap = defaultAmbientCubeMap;
 		portalAreas[i].lightRefs.areaNext =
 		portalAreas[i].lightRefs.areaPrev =
 			&portalAreas[i].lightRefs;
@@ -384,6 +388,129 @@ void idRenderWorldLocal::SetupAreaRefs() {
 		portalAreas[i].entityRefs.areaPrev =
 			&portalAreas[i].entityRefs;
 	}
+}
+
+/*
+=====================
+idRenderWorldLocal::LoadAmbientCubeMaps
+
+Loads directional ambient declarations and assigns light_ambient marker origins
+to the compiled portal area that contains them.  ETQW used an ambient-specific
+portal blocking bit; Doom 3 does not have that bit, so direct area assignment is
+deterministic and avoids flooding an indoor cube through every open portal.
+=====================
+*/
+void idRenderWorldLocal::LoadAmbientCubeMaps( const char *mapBaseName ) {
+	struct ambientAssignment_t {
+		idStr name;
+		idVec3 origin;
+	};
+
+	idStr filename = mapBaseName;
+	filename.SetFileExtension( "ambient" );
+	fileSystem->ReadFile( filename, NULL, &ambientMapTimeStamp );
+	defaultAmbientCubeMap = NULL;
+	for ( int i = 0; i < numPortalAreas; i++ ) {
+		portalAreas[i].ambientCubeMap = NULL;
+	}
+
+	idLexer src( filename, LEXFL_NOSTRINGCONCAT | LEXFL_NODOLLARPRECOMPILE );
+	if ( !src.IsLoaded() ) {
+		return;
+	}
+
+	idStr defaultName;
+	idList<ambientAssignment_t> assignments;
+	int parsedCubeMaps = 0;
+	idToken token;
+	while ( src.ReadToken( &token ) ) {
+		if ( !token.Icmp( "ambientCubeMap" ) ) {
+			idToken cubeName;
+			if ( !src.ReadToken( &cubeName ) ) {
+				src.Error( "expected ambient cube map name" );
+				return;
+			}
+			idAmbientCubeMap *cube = R_FindAmbientCubeMap( cubeName, true );
+			if ( !cube->Parse( src ) ) {
+				src.Error( "could not parse ambient cube map '%s'", cubeName.c_str() );
+				return;
+			}
+			cube->GenerateImages();
+			parsedCubeMaps++;
+			continue;
+		}
+		if ( !token.Icmp( "defaultAmbientCubeMap" ) ) {
+			if ( !src.ReadToken( &token ) ) {
+				src.Error( "expected default ambient cube map name" );
+				return;
+			}
+			defaultName = token;
+			continue;
+		}
+		if ( !token.Icmp( "areaAmbientCubeMap" ) ) {
+			ambientAssignment_t assignment;
+			assignment.origin.Zero();
+			src.ExpectTokenString( "{" );
+			while ( src.ReadToken( &token ) && token != "}" ) {
+				if ( !token.Icmp( "name" ) ) {
+					src.ReadToken( &token );
+					assignment.name = token;
+				} else if ( !token.Icmp( "origin" ) ) {
+					src.Parse1DMatrix( 3, assignment.origin.ToFloatPtr() );
+				} else {
+					src.Error( "unknown areaAmbientCubeMap token '%s'", token.c_str() );
+					return;
+				}
+			}
+			assignments.Append( assignment );
+			continue;
+		}
+		src.Error( "unknown ambient sidecar token '%s'", token.c_str() );
+		return;
+	}
+
+	defaultAmbientCubeMap = R_FindAmbientCubeMap( defaultName, false );
+	if ( !defaultAmbientCubeMap ) {
+		common->Warning( "%s has no valid defaultAmbientCubeMap", filename.c_str() );
+	}
+	for ( int i = 0; i < numPortalAreas; i++ ) {
+		portalAreas[i].ambientCubeMap = defaultAmbientCubeMap;
+	}
+	int assigned = 0;
+	for ( int i = 0; i < assignments.Num(); i++ ) {
+		const idAmbientCubeMap *cube = R_FindAmbientCubeMap( assignments[i].name, false );
+		const int areaNum = PointInArea( assignments[i].origin );
+		if ( !cube ) {
+			common->Warning( "%s references unknown ambient cube map '%s'", filename.c_str(), assignments[i].name.c_str() );
+			continue;
+		}
+		if ( areaNum < 0 || areaNum >= numPortalAreas ) {
+			common->Warning( "%s ambient marker '%s' is outside the compiled world at %s",
+				filename.c_str(), assignments[i].name.c_str(), assignments[i].origin.ToString() );
+			continue;
+		}
+		portalAreas[areaNum].ambientCubeMap = cube;
+		assigned++;
+	}
+	common->Printf( "Loaded %i ambient cube maps and assigned %i/%i area markers from %s\n",
+		parsedCubeMaps, assigned, assignments.Num(), filename.c_str() );
+}
+
+const idAmbientCubeMap *idRenderWorldLocal::AmbientCubeMapForEntity( const idRenderEntityLocal *def ) const {
+	if ( !def || !defaultAmbientCubeMap ) {
+		return NULL;
+	}
+	if ( def->GetModel() && def->GetModel()->IsStaticWorldModel() && def->entityRefs && def->entityRefs->area ) {
+		return def->entityRefs->area->ambientCubeMap;
+	}
+	const int areaNum = PointInArea( def->GetOrigin() );
+	if ( areaNum >= 0 && areaNum < numPortalAreas ) {
+		return portalAreas[areaNum].ambientCubeMap;
+	}
+	if ( def->entityRefs && def->entityRefs->area ) {
+		return def->entityRefs->area->ambientCubeMap;
+	}
+	return defaultAmbientCubeMap;
 }
 
 /*
@@ -594,6 +721,7 @@ bool idRenderWorldLocal::InitFromMap( const char *name ) {
 	idToken			token;
 	idStr			filename;
 	idStr			archiveName;
+	idStr			ambientName;
 	idRenderModel *	lastModel;
 
 	// if this is an empty world, initialize manually
@@ -610,16 +738,21 @@ bool idRenderWorldLocal::InitFromMap( const char *name ) {
 	filename.SetFileExtension( PROC_FILE_EXT );
 	archiveName = name;
 	archiveName.SetFileExtension( "zip" );
+	ambientName = name;
+	ambientName.SetFileExtension( "ambient" );
 
 	// if we are reloading the same map, check the timestamp
 	// and try to skip all the work
 	ID_TIME_T currentTimeStamp;
 	ID_TIME_T currentArchiveTimeStamp;
+	ID_TIME_T currentAmbientTimeStamp;
 	fileSystem->ReadFile( filename, NULL, &currentTimeStamp );
 	fileSystem->ReadFile( archiveName, NULL, &currentArchiveTimeStamp );
+	fileSystem->ReadFile( ambientName, NULL, &currentAmbientTimeStamp );
 
 	if ( name == mapName ) {
-		if ( currentTimeStamp != FILE_NOT_FOUND_TIMESTAMP && currentTimeStamp == mapTimeStamp && currentArchiveTimeStamp == mapArchiveTimeStamp ) {
+		if ( currentTimeStamp != FILE_NOT_FOUND_TIMESTAMP && currentTimeStamp == mapTimeStamp &&
+			currentArchiveTimeStamp == mapArchiveTimeStamp && currentAmbientTimeStamp == ambientMapTimeStamp ) {
 			common->Printf( "idRenderWorldLocal::InitFromMap: retaining existing map\n" );
 			FreeDefs();
 			TouchWorldModels();
@@ -672,6 +805,7 @@ bool idRenderWorldLocal::InitFromMap( const char *name ) {
 	mapName = name;
 	mapTimeStamp = currentTimeStamp;
 	mapArchiveTimeStamp = currentArchiveTimeStamp;
+	ambientMapTimeStamp = currentAmbientTimeStamp;
 
 	// if we are writing a demo, archive the load command
 	if ( session->writeDemo ) {
@@ -746,6 +880,7 @@ bool idRenderWorldLocal::InitFromMap( const char *name ) {
 
 	// find the points where we can early-our of reference pushing into the BSP tree
 	CommonChildrenArea_r( &areaNodes[0] );
+	LoadAmbientCubeMaps( name );
 
 	AddWorldModelEntities();
 	ClearPortalStates();

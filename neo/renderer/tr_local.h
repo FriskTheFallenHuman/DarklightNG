@@ -31,6 +31,7 @@ GNU General Public License for more details.
 #include "RenderLight.h"
 
 class idRenderWorldLocal;
+class idAmbientCubeMap;
 
 // everything that is needed by the backend needs
 // to be double buffered to allow it to run in
@@ -229,6 +230,7 @@ typedef struct viewEntity_s {
 
 	// back end should NOT reference the entityDef, because it can change when running SMP
 	idRenderEntityLocal	*entityDef;
+	const idAmbientCubeMap *ambientCubeMap;	// immutable ETQW-style area lighting for the back end
 
 	// for scissor clipping, local inside renderView viewport
 	// scissorRect.Empty() is true if the viewEntity_t was never actually
@@ -730,6 +732,8 @@ extern idCVar r_skipSuppress;			// ignore the per-view suppressions
 extern idCVar r_skipInteractions;		// skip all light/surface interaction drawing
 extern idCVar r_skipBakedLightmaps;		// force realtime-light fallback for mapProcFile004 worlds
 extern idCVar r_bakedLightmapScale;		// runtime brightness adjustment for baked lighting
+extern idCVar r_skipAmbientCubeMaps;		// disable ETQW-style per-area ambient cube lighting
+extern idCVar r_ambientCubeMapScale;		// runtime brightness adjustment for ambient cubes
 extern idCVar r_skipFrontEnd;			// bypasses all front end work, but 2D gui rendering still draws
 extern idCVar r_skipBackEnd;			// don't draw anything
 extern idCVar r_skipCopyTexture;		// do all rendering, but don't actually copyTexSubImage2D
@@ -1131,6 +1135,7 @@ DRAW_*
 
 void	RB_GLSL_DrawInteractions( void );
 void	RB_GLSL_DrawBakedLightmaps( drawSurf_t **drawSurfs, int numDrawSurfs );
+void	RB_GLSL_DrawAmbientCubeMaps( drawSurf_t **drawSurfs, int numDrawSurfs );
 
 /*
 

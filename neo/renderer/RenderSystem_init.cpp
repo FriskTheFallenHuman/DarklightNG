@@ -24,6 +24,7 @@ GNU General Public License for more details.
 #pragma hdrstop
 
 #include "tr_local.h"
+#include "AmbientCubeMap.h"
 #include "megatexture/MegaTextureTileLoader.h"
 #include "megatexture/MegaTextureTileDecompressor.h"
 
@@ -83,6 +84,8 @@ idCVar r_skipLightScale( "r_skipLightScale", "0", CVAR_RENDERER | CVAR_BOOL, "do
 idCVar r_skipInteractions( "r_skipInteractions", "0", CVAR_RENDERER | CVAR_BOOL, "skip all light/surface interaction drawing" );
 idCVar r_skipBakedLightmaps( "r_skipBakedLightmaps", "0", CVAR_RENDERER | CVAR_BOOL, "disable baked map lighting and retain realtime static lights" );
 idCVar r_bakedLightmapScale( "r_bakedLightmapScale", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "brightness adjustment after baked lightmap decode normalization", 0.0f, 8.0f );
+idCVar r_skipAmbientCubeMaps( "r_skipAmbientCubeMaps", "0", CVAR_RENDERER | CVAR_BOOL, "disable ETQW-style per-area ambient cube lighting" );
+idCVar r_ambientCubeMapScale( "r_ambientCubeMapScale", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "brightness adjustment for per-area ambient cube lighting", 0.0f, 8.0f );
 idCVar r_skipDynamicTextures( "r_skipDynamicTextures", "0", CVAR_RENDERER | CVAR_BOOL, "don't dynamically create textures" );
 idCVar r_skipCopyTexture( "r_skipCopyTexture", "0", CVAR_RENDERER | CVAR_BOOL, "do all rendering, but don't actually copyTexSubImage2D" );
 idCVar r_skipBackEnd( "r_skipBackEnd", "0", CVAR_RENDERER | CVAR_BOOL, "don't draw anything" );
@@ -2185,6 +2188,7 @@ void idRenderSystemLocal::Shutdown( void ) {
 	idCinematic::ShutdownCinematic( );
 
 	globalImages->Shutdown();
+	R_ShutdownAmbientCubeMaps();
 
 	// close the r_logFile
 	if ( logFile ) {
