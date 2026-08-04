@@ -50,6 +50,8 @@ public:
 private:
 	void			StartThread();
 	void			StopThread();
+	idMegaTexture *BeginActiveMegaTextureWork();
+	void			EndActiveMegaTextureWork( idMegaTexture *megaTexture );
 	int				LoadTile( byte *destination, idMegaTexture *megaTexture, int tileNum );
 	idMegaTextureTile *FindTileToLoad( idMegaTexture *megaTexture );
 	void			LoadInterleavedChildren( idMegaTexture *megaTexture, idMegaTextureTile *parentTile );
@@ -58,7 +60,9 @@ private:
 	mutable std::mutex stateMutex;
 	std::condition_variable signal;
 	std::condition_variable throttleSignal;
+	std::condition_variable workerIdleSignal;
 	idMegaTexture *	activeMegaTexture;
+	idMegaTexture *	workerMegaTexture;
 	std::atomic<int> numProcessedTiles;
 	std::atomic<bool> terminate;
 	std::atomic<bool> forceUpdate;

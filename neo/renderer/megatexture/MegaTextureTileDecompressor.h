@@ -78,7 +78,10 @@ public:
 private:
 	void			StartThread();
 	void			StopThread();
+	idMegaTexture *BeginActiveMegaTextureWork();
+	void			EndActiveMegaTextureWork( idMegaTexture *megaTexture );
 	void			GetCompressedTileData( idMegaTexture *mega, idMegaTextureLevel *level, idMegaTextureTile *tile );
+	void			SnapshotCompressedTileData();
 	const byte *	SetQuality( const byte *data );
 	void			DecompressLuminance( byte *destination );
 	void			DecompressTile( megaCompressionFormat_t format, byte *destination );
@@ -103,10 +106,14 @@ private:
 	mutable std::mutex stateMutex;
 	std::condition_variable signal;
 	std::condition_variable throttleSignal;
+	std::condition_variable workerIdleSignal;
 	idBareDctDecoder *dctDecoder;
 	idDxtEncoder *	dxtEncoder;
 	compressedTileData_t compressedData;
+	idList<byte>	compressedTileSnapshot;
+	idList<byte>	parentCompressedTileSnapshot;
 	idMegaTexture *	activeMegaTexture;
+	idMegaTexture *	workerMegaTexture;
 	int				lastProcessedTime;
 	int				numTilesThisMsec;
 	std::atomic<int> numProcessedTiles;

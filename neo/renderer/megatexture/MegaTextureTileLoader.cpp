@@ -29,6 +29,7 @@ GNU General Public License for more details.
 #include "MegaTextureTileDecompressor.h"
 
 #include <chrono>
+#include <vector>
 
 idMegaTextureTileLoader *megaTextureTileLoader = NULL;
 
@@ -46,7 +47,7 @@ static void RecordMegaTileLoad( int bytes, int seekBytes ) {
 }
 
 idMegaTextureTileLoader::idMegaTextureTileLoader() :
-	thread( NULL ), activeMegaTexture( NULL ), numProcessedTiles( 0 ), terminate( false ), forceUpdate( false ) {
+	thread( NULL ), activeMegaTexture( NULL ), workerMegaTexture( NULL ), numProcessedTiles( 0 ), terminate( false ), forceUpdate( false ) {
 	memset( megaLoadTimes, 0, sizeof( megaLoadTimes ) );
 	memset( megaLoadBytes, 0, sizeof( megaLoadBytes ) );
 	memset( megaLoadSeekBytes, 0, sizeof( megaLoadSeekBytes ) );
@@ -80,24 +81,39 @@ void idMegaTextureTileLoader::StopThread() {
 }
 
 void idMegaTextureTileLoader::SetActiveMegaTexture( idMegaTexture *mega ) {
-	idMegaTexture *old = NULL;
-	{
-		std::unique_lock<std::mutex> stateLock( stateMutex );
-		old = activeMegaTexture;
-		if ( old == mega ) return;
-		if ( old ) {
-			std::lock_guard<std::recursive_mutex> megaLock( old->GetLock() );
-			activeMegaTexture = mega;
-		} else {
-			activeMegaTexture = mega;
-		}
+	std::unique_lock<std::mutex> stateLock( stateMutex );
+	idMegaTexture *old = activeMegaTexture;
+	if ( old == mega ) return;
+	activeMegaTexture = mega;
+	// Reads deliberately run without the MegaTexture lock. Keep the previous
+	// resource alive until its in-flight read has completed.
+	while ( old && workerMegaTexture == old ) {
+		workerIdleSignal.wait( stateLock );
 	}
+	stateLock.unlock();
 	SignalThread();
 }
 
 idMegaTexture *idMegaTextureTileLoader::GetActiveMegaTexture() const {
 	std::lock_guard<std::mutex> guard( stateMutex );
 	return activeMegaTexture;
+}
+
+idMegaTexture *idMegaTextureTileLoader::BeginActiveMegaTextureWork() {
+	std::lock_guard<std::mutex> guard( stateMutex );
+	if ( terminate ) {
+		return NULL;
+	}
+	workerMegaTexture = activeMegaTexture;
+	return workerMegaTexture;
+}
+
+void idMegaTextureTileLoader::EndActiveMegaTextureWork( idMegaTexture *mega ) {
+	std::lock_guard<std::mutex> guard( stateMutex );
+	if ( workerMegaTexture == mega ) {
+		workerMegaTexture = NULL;
+	}
+	workerIdleSignal.notify_all();
 }
 
 void idMegaTextureTileLoader::ForceUpdate() {
@@ -180,22 +196,92 @@ void idMegaTextureTileLoader::LoadInterleavedChildren( idMegaTexture *mega, idMe
 
 unsigned int idMegaTextureTileLoader::Run( void *parameter ) {
 	(void)parameter;
+	std::vector<byte> loadData[5];
 	while ( !terminate ) {
-		idMegaTexture *mega = GetActiveMegaTexture();
+		idMegaTexture *mega = BeginActiveMegaTextureWork();
 		bool didWork = false;
 		if ( mega ) {
-			std::lock_guard<std::recursive_mutex> guard( mega->GetLock() );
-			idMegaTextureTile *tile = FindTileToLoad( mega );
-			if ( tile ) {
-				const int tileNum = tile->GetTileNum();
-				byte *destination = tile->GetCompressedTileData();
-				if ( LoadTile( destination, mega, tileNum ) > 0 ) {
-					tile->SetLoaded( true );
-					LoadInterleavedChildren( mega, tile );
-					++numProcessedTiles;
-					didWork = true;
+			idMegaTextureTile *tile = NULL;
+			idMegaTextureLevel *level = NULL;
+			int tileX = 0;
+			int tileY = 0;
+			int tileNums[5] = { -1, -1, -1, -1, -1 };
+			int tileBytes[5] = { 0, 0, 0, 0, 0 };
+			int childX[4] = { 0, 0, 0, 0 };
+			int childY[4] = { 0, 0, 0, 0 };
+			int loadCount = 0;
+			{
+				std::lock_guard<std::recursive_mutex> guard( mega->GetLock() );
+				tile = FindTileToLoad( mega );
+				if ( tile ) {
+					level = tile->level;
+					tileX = tile->globalX;
+					tileY = tile->globalY;
+					tileNums[0] = tile->GetTileNum();
+					tileBytes[0] = mega->GetTileDataSize( tileNums[0] ) + 3;
+					loadCount = 1;
+
+					// Level zero is stored interleaved with each level-one parent.
+					// Stage all five reads away from live tile buffers so a view
+					// update can invalidate this job safely while I/O is in flight.
+					if ( level && level->levelNum == 1 ) {
+						idMegaTextureLevel *childLevel = mega->GetLevel( 0 );
+						if ( childLevel && childLevel->isInterleaved ) {
+							for ( int child = 0; child < 4; ++child ) {
+								childX[child] = tileX * 2 + ( child & 1 );
+								childY[child] = tileY * 2 + ( child >> 1 );
+								if ( childX[child] < 0 || childY[child] < 0 ||
+									 childX[child] >= childLevel->tilesPerAxis || childY[child] >= childLevel->tilesPerAxis ) {
+									continue;
+								}
+								if ( !tile->childCompressedTileData[child] ) {
+									tile->childCompressedTileData[child] = new byte[childLevel->maxCompressedTileSize + 3];
+									level->AddUsedMemory( childLevel->maxCompressedTileSize + 3 );
+								}
+								tileNums[loadCount] = childLevel->tileBase + childY[child] * childLevel->tilesPerAxis + childX[child];
+								tileBytes[loadCount] = mega->GetTileDataSize( tileNums[loadCount] ) + 3;
+								++loadCount;
+							}
+						}
+					}
 				}
 			}
+
+			bool loaded = tile != NULL && loadCount > 0;
+			for ( int i = 0; loaded && i < loadCount; ++i ) {
+				loadData[i].resize( tileBytes[i] );
+				loaded = tileBytes[i] > 3 && LoadTile( loadData[i].data(), mega, tileNums[i] ) == tileBytes[i];
+			}
+
+			if ( loaded ) {
+				std::lock_guard<std::recursive_mutex> guard( mega->GetLock() );
+				if ( tile->globalX == tileX && tile->globalY == tileY ) {
+					byte *destination = tile->GetCompressedTileData();
+					if ( destination ) {
+						memcpy( destination, loadData[0].data(), tileBytes[0] );
+						int loadIndex = 1;
+						idMegaTextureLevel *childLevel = mega->GetLevel( 0 );
+						if ( level && level->levelNum == 1 && childLevel && childLevel->isInterleaved ) {
+							for ( int child = 0; child < 4 && loadIndex < loadCount; ++child ) {
+								if ( childX[child] < 0 || childY[child] < 0 ||
+									 childX[child] >= childLevel->tilesPerAxis || childY[child] >= childLevel->tilesPerAxis ) {
+									continue;
+								}
+								memcpy( tile->childCompressedTileData[child], loadData[loadIndex].data(), tileBytes[loadIndex] );
+								idMegaTextureTile *childTile = childLevel->GetTileLocal( childX[child] & 15, childY[child] & 15 );
+								if ( childTile->globalX == childX[child] && childTile->globalY == childY[child] ) {
+									childTile->SetLoaded( true );
+								}
+								++loadIndex;
+							}
+						}
+						tile->SetLoaded( true );
+						didWork = true;
+						++numProcessedTiles;
+					}
+				}
+			}
+			EndActiveMegaTextureWork( mega );
 		}
 		if ( didWork ) {
 			if ( megaTextureTileDecompressor ) megaTextureTileDecompressor->SignalThread();

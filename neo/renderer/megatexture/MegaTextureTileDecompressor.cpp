@@ -49,7 +49,7 @@ static int RuntimeTileBytes( imageCompressionFormat_t format ) {
 }
 
 idMegaTextureTileDecompressor::idMegaTextureTileDecompressor() :
-	thread( NULL ), dctDecoder( NULL ), dxtEncoder( NULL ), activeMegaTexture( NULL ),
+	thread( NULL ), dctDecoder( NULL ), dxtEncoder( NULL ), activeMegaTexture( NULL ), workerMegaTexture( NULL ),
 	lastProcessedTime( 0 ), numTilesThisMsec( 0 ), numProcessedTiles( 0 ), terminate( false ), forceUpdate( false ) {
 	memset( &compressedData, 0, sizeof( compressedData ) );
 	compressedData.parentCachedLevelNum = -1;
@@ -94,23 +94,39 @@ void idMegaTextureTileDecompressor::StopThread() {
 }
 
 void idMegaTextureTileDecompressor::SetActiveMegaTexture( idMegaTexture *mega ) {
-	{
-		std::unique_lock<std::mutex> stateLock( stateMutex );
-		idMegaTexture *old = activeMegaTexture;
-		if ( old == mega ) return;
-		if ( old ) {
-			std::lock_guard<std::recursive_mutex> megaLock( old->GetLock() );
-			activeMegaTexture = mega;
-		} else {
-			activeMegaTexture = mega;
-		}
+	std::unique_lock<std::mutex> stateLock( stateMutex );
+	idMegaTexture *old = activeMegaTexture;
+	if ( old == mega ) return;
+	activeMegaTexture = mega;
+	// Decoding uses private snapshots without the MegaTexture lock. Keep the
+	// previous resource alive until its in-flight decode has finished.
+	while ( old && workerMegaTexture == old ) {
+		workerIdleSignal.wait( stateLock );
 	}
+	stateLock.unlock();
 	SignalThread();
 }
 
 idMegaTexture *idMegaTextureTileDecompressor::GetActiveMegaTexture() const {
 	std::lock_guard<std::mutex> guard( stateMutex );
 	return activeMegaTexture;
+}
+
+idMegaTexture *idMegaTextureTileDecompressor::BeginActiveMegaTextureWork() {
+	std::lock_guard<std::mutex> guard( stateMutex );
+	if ( terminate ) {
+		return NULL;
+	}
+	workerMegaTexture = activeMegaTexture;
+	return workerMegaTexture;
+}
+
+void idMegaTextureTileDecompressor::EndActiveMegaTextureWork( idMegaTexture *mega ) {
+	std::lock_guard<std::mutex> guard( stateMutex );
+	if ( workerMegaTexture == mega ) {
+		workerMegaTexture = NULL;
+	}
+	workerIdleSignal.notify_all();
 }
 
 void idMegaTextureTileDecompressor::ForceUpdate() {
@@ -163,6 +179,21 @@ void idMegaTextureTileDecompressor::GetCompressedTileData( idMegaTexture *mega, 
 			const int parentTile = parentLevel->tileBase + compressedData.parentGlobalY * parentLevel->tilesPerAxis + compressedData.parentGlobalX;
 			compressedData.parentSize = mega->GetTileDataSize( parentTile );
 		}
+	}
+}
+
+void idMegaTextureTileDecompressor::SnapshotCompressedTileData() {
+	compressedTileSnapshot.Clear();
+	parentCompressedTileSnapshot.Clear();
+	if ( compressedData.data && compressedData.size > 0 ) {
+		compressedTileSnapshot.SetNum( compressedData.size + 3, false );
+		memcpy( compressedTileSnapshot.Ptr(), compressedData.data, compressedData.size + 3 );
+		compressedData.data = compressedTileSnapshot.Ptr();
+	}
+	if ( compressedData.parentData && compressedData.parentSize > 0 ) {
+		parentCompressedTileSnapshot.SetNum( compressedData.parentSize + 3, false );
+		memcpy( parentCompressedTileSnapshot.Ptr(), compressedData.parentData, compressedData.parentSize + 3 );
+		compressedData.parentData = parentCompressedTileSnapshot.Ptr();
 	}
 }
 
@@ -271,52 +302,71 @@ void idMegaTextureTileDecompressor::DeRecompressTile_Xenon( idMegaTextureLevel *
 unsigned int idMegaTextureTileDecompressor::Run( void *parameter ) {
 	(void)parameter;
 	while ( !terminate ) {
-		idMegaTexture *mega = GetActiveMegaTexture();
+		idMegaTexture *mega = BeginActiveMegaTextureWork();
 		bool didWork = false;
 		if ( mega ) {
-			std::lock_guard<std::recursive_mutex> guard( mega->GetLock() );
 			idMegaTextureLevel *level = NULL;
-			idMegaTextureTile *tile = FindTileToDecode( mega, level );
-			if ( tile && level ) {
-				const int limit = r_megaTilesPerSecond.GetInteger();
-				const int now = Sys_Milliseconds();
-				const int interval = limit > 0 && 1000 / limit > 1 ? 1000 / limit : 1;
-				if ( !mega->IsForcedUpdate() && limit > 0 && now - lastProcessedTime < interval ) {
-					// The timed wait below keeps the worker responsive to shutdown.
-				} else {
-					lastProcessedTime = now;
-					tileData_t *decoded = level->GetAvailableTile();
-					if ( decoded ) {
-						const int tileX = tile->globalX;
-						const int tileY = tile->globalY;
-						GetCompressedTileData( mega, level, tile );
-						if ( r_megaShowGrid.GetBool() ) {
-							memcpy( decoded->pic, mega->GetGridTileData(), RuntimeTileBytes( mega->GetImageCompressionFormat() ) );
-						} else if ( r_megaShowTileSize.GetBool() ) {
-							byte *scratch = mega->GetTileRecompressionScratch();
-							const byte color[4] = {
-								(byte)( compressedData.size >= 12288 ? 255 : 0 ),
-								(byte)( compressedData.size >= 5120 && compressedData.size < 12288 ? 255 : 0 ),
-								(byte)( compressedData.size < 5120 ? 255 : 0 ), 255 };
-							for ( int i = 0; i < 128 * 128; ++i ) memcpy( scratch + i * 4, color, 4 );
-							RecompressTile( mega->GetImageCompressionFormat(), scratch, decoded->pic );
-						} else {
-							DeRecompressTile( level, decoded->pic );
+			idMegaTextureTile *tile = NULL;
+			tileData_t *decoded = NULL;
+			int tileX = 0;
+			int tileY = 0;
+			int tileBase = 0;
+			bool decodeTile = false;
+			{
+				std::lock_guard<std::recursive_mutex> guard( mega->GetLock() );
+				tile = FindTileToDecode( mega, level );
+				if ( tile && level ) {
+					const int limit = r_megaTilesPerSecond.GetInteger();
+					const int now = Sys_Milliseconds();
+					const int interval = limit > 0 && 1000 / limit > 1 ? 1000 / limit : 1;
+					if ( mega->IsForcedUpdate() || limit <= 0 || now - lastProcessedTime >= interval ) {
+						lastProcessedTime = now;
+						decoded = level->GetAvailableTile();
+						if ( decoded ) {
+							tileX = tile->globalX;
+							tileY = tile->globalY;
+							tileBase = level->tileBase;
+							GetCompressedTileData( mega, level, tile );
+							SnapshotCompressedTileData();
+							decodeTile = true;
 						}
-						if ( tile->globalX == tileX && tile->globalY == tileY ) {
-							decoded->x = tileX;
-							decoded->y = tileY;
-							decoded->tileBase = level->tileBase;
-							tile->tileData = decoded;
-							level->RemoveDirtyTile( tile );
-						} else {
-							level->ReleaseTile( decoded );
-						}
-						++numProcessedTiles;
-						didWork = true;
 					}
 				}
 			}
+
+			// DCT decode, mip generation, and optional DXT recompression are the
+			// expensive portion. They must not hold the per-frame renderer lock.
+			if ( decodeTile ) {
+				if ( r_megaShowGrid.GetBool() ) {
+					memcpy( decoded->pic, mega->GetGridTileData(), RuntimeTileBytes( mega->GetImageCompressionFormat() ) );
+				} else if ( r_megaShowTileSize.GetBool() ) {
+					byte *scratch = mega->GetTileRecompressionScratch();
+					const byte color[4] = {
+						(byte)( compressedData.size >= 12288 ? 255 : 0 ),
+						(byte)( compressedData.size >= 5120 && compressedData.size < 12288 ? 255 : 0 ),
+						(byte)( compressedData.size < 5120 ? 255 : 0 ), 255 };
+					for ( int i = 0; i < 128 * 128; ++i ) memcpy( scratch + i * 4, color, 4 );
+					RecompressTile( mega->GetImageCompressionFormat(), scratch, decoded->pic );
+				} else {
+					DeRecompressTile( level, decoded->pic );
+				}
+
+				{
+					std::lock_guard<std::recursive_mutex> guard( mega->GetLock() );
+					if ( tile->globalX == tileX && tile->globalY == tileY ) {
+						decoded->x = tileX;
+						decoded->y = tileY;
+						decoded->tileBase = tileBase;
+						tile->tileData = decoded;
+						level->RemoveDirtyTile( tile );
+					} else {
+						level->ReleaseTile( decoded );
+					}
+				}
+				++numProcessedTiles;
+				didWork = true;
+			}
+			EndActiveMegaTextureWork( mega );
 		}
 		if ( didWork ) continue;
 		std::unique_lock<std::mutex> waitLock( stateMutex );
