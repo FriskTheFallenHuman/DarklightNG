@@ -1,0 +1,198 @@
+// Minimal Doom 3-compatible materials for the ETQW Valley static mesh set.
+// The source SDK uses ETQW-only material templates and hashed generated images;
+// these declarations retain the original LWO surface names.
+
+models/mapobjects/valley/valley_mapobjects01
+{
+	diffusemap valley_import/valley_mapobjects01.tga
+	bumpmap _flat
+	specularmap _black
+}
+
+models/mapobjects/valley/valley_mapobjects01_noshadow
+{
+	noShadows
+	diffusemap valley_import/valley_mapobjects01.tga
+	bumpmap _flat
+	specularmap _black
+}
+
+models/mapobjects/devices/air_cond_4
+{
+	diffusemap valley_import/valley_mapobjects01.tga
+	bumpmap _flat
+	specularmap _black
+}
+
+models/mapobjects/cargo/cargopalette01_a_noshadows
+{
+	noShadows
+	diffusemap valley_import/valley_mapobjects01.tga
+	bumpmap _flat
+	specularmap _black
+}
+
+models/mapobjects/office/officeobjects01
+{
+	diffusemap valley_import/valley_mapobjects01.tga
+	bumpmap _flat
+	specularmap _black
+}
+
+models/mapobjects/strogg/modular
+{
+	diffusemap valley_import/valley_mapobjects01.tga
+	bumpmap _flat
+	specularmap _black
+}
+
+models/mapobjects/strogg/modular2
+{
+	diffusemap valley_import/valley_mapobjects01.tga
+	bumpmap _flat
+	specularmap _black
+}
+
+models/vegetation/trees/ash/ash_bark
+{
+	noShadows
+	nonsolid
+	{
+		blend diffusemap
+		map valley_import/ash_bark.tga
+		alphaTest 0.10
+	}
+}
+
+models/vegetation/trees/ash/ash_branches
+{
+	noShadows
+	nonsolid
+	twoSided
+	{
+		blend diffusemap
+		map valley_import/ash_branches.tga
+		alphaTest 0.10
+	}
+}
+
+models/vegetation/trees/ash/ash_leaves
+{
+	noShadows
+	nonsolid
+	twoSided
+	{
+		blend diffusemap
+		map valley_import/ash_leaves.tga
+		alphaTest 0.15
+	}
+}
+
+models/vegetation/trees/pine/pine_01_branches
+{
+	noShadows
+	nonsolid
+	twoSided
+	{
+		blend diffusemap
+		map valley_import/pine_branches.tga
+		alphaTest 0.15
+	}
+}
+
+// The out-of-bounds meshes share the same MegaTexture coordinate space.
+textures/valley_noshadows
+{
+	noShadows
+	noSelfShadow
+	{
+		megaTexture megatextures/valley_lit.mega
+	}
+}
+
+megatextures/valley_noshadows
+{
+	noShadows
+	noSelfShadow
+	{
+		megaTexture megatextures/valley_lit.mega
+	}
+}
+
+textures/valley_lit_preview.tga
+{
+	noShadows
+	noSelfShadow
+	{
+		megaTexture megatextures/valley_lit.mega
+	}
+}
+
+texturesheets/valley/valley_wall_7_shadows
+{
+	noShadows
+	diffusemap valley_import/valley_mapobjects01.tga
+	bumpmap _flat
+	specularmap _black
+}
+
+// ETQW collision-only surface names embedded in the imported LWOs.
+textures/common/collision_concrete
+{
+	noShadows
+	collision
+}
+
+textures/common/collision_glass
+{
+	noShadows
+	collision
+}
+
+textures/common/collision_leaves
+{
+	noShadows
+	collision
+}
+
+textures/common/collision_metal
+{
+	noShadows
+	collision
+}
+
+textures/common/collision_pine
+{
+	noShadows
+	collision
+}
+
+textures/common/collision_wood
+{
+	noShadows
+	collision
+}
+
+textures/common/rendermodel_clip_metal
+{
+	noShadows
+	collision
+}
+
+textures/common/rendermodel_clip_wood
+{
+	noShadows
+	collision
+}
+
+textures/common/vehicleplayer_clip_metal
+{
+	noShadows
+	collision
+}
+
+textures/common/vehicleplayer_clip_wood
+{
+	noShadows
+	collision
+}

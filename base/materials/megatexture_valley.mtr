@@ -1,0 +1,9 @@
+megatextures/valley
+{
+	description "ETQW Valley baked MegaTexture test material"
+	noShadows
+	noSelfShadow
+	{
+		megaTexture megatextures/valley_lit.mega
+	}
+}
