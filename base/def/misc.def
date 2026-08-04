@@ -14,9 +14,23 @@ entityDef worldspawn {
 	"editor_var gravity"	"gravity value for the level."
 	"editor_var no_stamina" "disables stamina so the player can always run"
 	"editor_var no_Weapons" "only fists and no melee attacks"
+	"editor_var atmosphere" "Atmosphere declaration used by the level, dmap, and MegaTexture lighting bake."
+	"editor_callback atmosphere" "decl://atmosphere"
+	"editor_var atmosphereSunScale" "Multiplier for the atmosphere sun during offline lighting bakes."
+	"editor_var atmosphereAmbientScale" "Multiplier for atmosphere ambient used by offline lighting bakes."
+	"editor_var atmosphereBakeShadows" "Set to 0 to disable atmosphere-sun shadows in offline lighting bakes."
+	"editor_var megaBakeAmbientScale" "Multiplier for atmosphere ambient color baked into the MegaTexture."
+	"editor_var megaBakeSunScale" "Additional multiplier for atmosphere sun baked into the MegaTexture."
+	"editor_var megaBakeShadows" "Set to 0 to disable terrain self-shadowing in the separate MegaTexture bake."
 
 	"spawnclass"			"idWorldspawn"
 	"gravity"				"1066"
+	"atmosphereSunScale"	"1"
+	"atmosphereAmbientScale" "1"
+	"atmosphereBakeShadows" "1"
+	"megaBakeAmbientScale" "1"
+	"megaBakeSunScale"		"1"
+	"megaBakeShadows"		"1"
 	"name"					"world"
 }
 

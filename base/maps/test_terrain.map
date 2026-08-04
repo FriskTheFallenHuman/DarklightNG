@@ -2,6 +2,7 @@ Version 2
 // entity 0
 {
 "classname" "worldspawn"
+"atmosphere" "valley01"
 // primitive 0
 {
  brushDef3
@@ -31,4 +32,68 @@ Version 2
 "megaTextureProject" "megatextures/levels/test_terrain.megaproject"
 "origin" "0 0 0"
 "bakeLightmap" "1"
+}
+// entity 3
+{
+"classname" "func_static"
+"name" "valley_instance_0103"
+"model" "models/vegetation/trees/ash/ash_04.lwo"
+"origin" "-2284 -1293 -5"
+"bakeLightmap" "0"
+}
+// entity 4
+{
+"classname" "func_static"
+"name" "func_static_1"
+"model" "models/vegetation/trees/ash/ash_04.lwo"
+"origin" "-3036 571 -5"
+"bakeLightmap" "0"
+}
+// entity 5
+{
+"classname" "func_static"
+"name" "func_static_2"
+"model" "models/vegetation/trees/ash/ash_04.lwo"
+"origin" "-2076 451 -5"
+"bakeLightmap" "0"
+}
+// entity 6
+{
+"classname" "func_static"
+"name" "func_static_3"
+"model" "models/vegetation/trees/ash/ash_04.lwo"
+"origin" "-1388 -1101 -5"
+"bakeLightmap" "0"
+}
+// entity 7
+{
+"classname" "func_static"
+"name" "func_static_4"
+"model" "models/vegetation/trees/ash/ash_04.lwo"
+"origin" "-1556 -245 -5"
+"bakeLightmap" "0"
+}
+// entity 8
+{
+"classname" "func_static"
+"name" "func_static_5"
+"model" "models/vegetation/trees/ash/ash_04.lwo"
+"origin" "-3180 -405 -5"
+"bakeLightmap" "0"
+}
+// entity 9
+{
+"classname" "func_static"
+"name" "func_static_6"
+"model" "models/vegetation/trees/ash/ash_04.lwo"
+"origin" "-1116 -2085 -5"
+"bakeLightmap" "0"
+}
+// entity 10
+{
+"classname" "func_static"
+"name" "func_static_7"
+"model" "models/vegetation/trees/ash/ash_04.lwo"
+"origin" "-732 -2589 -5"
+"bakeLightmap" "0"
 }

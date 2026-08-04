@@ -24,6 +24,7 @@ GNU General Public License for more details.
 #pragma hdrstop
 
 #include "dmap.h"
+#include "../../../decllib/declAtmosphere.h"
 
 static idStr dmapStaticScriptCall;
 static idStr dmapStaticScriptText;
@@ -115,6 +116,11 @@ bool Dmap_IsStaticEntityImmutable( const idMapEntity *mapEntity ) {
 	const idDict &args = mapEntity->epairs;
 	if ( idStr::Icmp( args.GetString( "classname", "" ), "func_static" ) ) {
 		return false;
+	}
+	if ( args.GetBool( "megaTextureTerrain", "0" ) ) {
+		// Mega terrain is immutable and must be inlined for proc collision even
+		// though it deliberately opts out of dmap's receiver atlas.
+		return true;
 	}
 	const idKeyValue *bakeOverride = args.FindKey( "bakeLightmap" );
 	if ( bakeOverride ) {
@@ -596,6 +602,81 @@ static void CreateMapLight( const idMapEntity *mapEnt ) {
 
 /*
 ==============
+CreateAtmosphereMapLight
+
+The runtime atmosphere owns a parallel sun render light, but that entity does
+not exist while dmap parses the source map. Build an equivalent offline-only
+light from worldspawn's atmosphere declaration so ordinary baked receivers use
+the same sun direction and color. MegaTexture terrain performs its own bake.
+==============
+*/
+static void CreateAtmosphereMapLight( const idMapFile *dmapFile ) {
+	if ( !dmapFile || dmapFile->GetNumEntities() <= 0 ) {
+		return;
+	}
+
+	const idMapEntity *world = dmapFile->GetEntity( 0 );
+	const idMapEntity *atmosphereEntity = world;
+	const char *declName = world->epairs.GetString( "atmosphere", "" );
+	if ( !declName[0] ) {
+		declName = world->epairs.GetString( "atmospheredecl", "" );
+	}
+	// Preserve existing maps that still contain a standalone atmosphere entity.
+	if ( !declName[0] ) {
+		for ( int entityIndex = 1; entityIndex < dmapFile->GetNumEntities(); ++entityIndex ) {
+			const idMapEntity *candidate = dmapFile->GetEntity( entityIndex );
+			if ( !idStr::Icmp( candidate->epairs.GetString( "classname", "" ), "atmosphere" ) ) {
+				declName = candidate->epairs.GetString( "atmospheredecl", "" );
+				atmosphereEntity = candidate;
+				break;
+			}
+		}
+	}
+	if ( !declName[0] ) {
+		return;
+	}
+
+	const sdDeclAtmosphere *atmosphere = R_FindAtmosphere( declName, false );
+	if ( !atmosphere ) {
+		common->Warning( "dmap: worldspawn references missing atmosphere '%s'", declName );
+		return;
+	}
+
+	idVec3 sunDirection = atmosphere->GetSunDirection();
+	if ( sunDirection.Normalize() == 0.0f ) {
+		sunDirection.Set( 0.0f, 0.0f, 1.0f );
+	}
+	const float sunScale = world->epairs.GetFloat( "atmosphereSunScale", "1" );
+	const idVec3 sunColor = atmosphere->GetSunColor() * Max( 0.0f, sunScale );
+	idVec3 origin;
+	atmosphereEntity->epairs.GetVector( "origin", "0 0 0", origin );
+
+	mapLight_t *light = new mapLight_t;
+	light->def.Reset();
+	light->mapEntity = world;
+	light->def.SetOrigin( origin );
+	light->def.SetAxis( mat3_identity );
+	light->def.SetPointLight( true );
+	light->def.SetParallel( true );
+	light->def.SetLightCenter( sunDirection );
+	light->def.SetLightRadius( idVec3( 50000.0f, 50000.0f, 50000.0f ) );
+	light->def.SetShader( atmosphere->GetSunMaterial() );
+	light->def.SetShaderParm( SHADERPARM_RED, sunColor.x );
+	light->def.SetShaderParm( SHADERPARM_GREEN, sunColor.y );
+	light->def.SetShaderParm( SHADERPARM_BLUE, sunColor.z );
+	light->def.SetShaderParm( SHADERPARM_ALPHA, 1.0f );
+	light->def.SetNoShadows( !world->epairs.GetBool( "atmosphereBakeShadows", "1" ) );
+	light->def.SetBakedLight( true );
+	light->bake = true;
+	idStr::snPrintf( light->name, sizeof( light->name ), "__atmosphere_sun_%s", declName );
+	R_DeriveLightData( &light->def );
+	dmapGlobals.mapLights.Append( light );
+	common->Printf( "dmap: atmosphere '%s' contributes baked sun direction %s color %s\n",
+		declName, sunDirection.ToString(), sunColor.ToString() );
+}
+
+/*
+==============
 CreateMapLights
 
 ==============
@@ -613,6 +694,7 @@ static void CreateMapLights( const idMapFile *dmapFile ) {
 		}
 
 	}
+	CreateAtmosphereMapLight( dmapFile );
 
 }
 

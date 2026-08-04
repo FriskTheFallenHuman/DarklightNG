@@ -1,7 +1,6 @@
 #version 120
 
 attribute vec4 attr_TexCoord;
-attribute vec2 attr_LightCoord;
 
 uniform vec4 u_vertexParm[32];
 
@@ -10,7 +9,6 @@ varying vec4 megaMaskX;
 varying vec4 megaMaskY;
 varying vec4 megaLevelOpacity;
 varying vec4 megaDetailST;
-varying vec2 megaLightST;
 
 void main() {
 	vec4 atlasScale = vec4( u_vertexParm[1].w, u_vertexParm[2].w, u_vertexParm[3].w, u_vertexParm[4].w );
@@ -23,7 +21,6 @@ void main() {
 	megaLevelOpacity = u_vertexParm[7];
 	megaDetailST.xy = megaST;
 	megaDetailST.zw = ( megaST - 0.5 ) * u_vertexParm[8].x;
-	megaLightST = attr_LightCoord;
 	gl_FrontColor = gl_Color;
 	gl_Position = ftransform();
 }

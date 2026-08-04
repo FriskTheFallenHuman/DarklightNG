@@ -28,6 +28,7 @@ GNU General Public License for more details.
 #include <xmmintrin.h>
 
 #include "dmap.h"
+#include "../../../decllib/declAtmosphere.h"
 
 static const int LM_ATLAS_SIZE = 1024;
 static const int LM_PADDING = 4;
@@ -623,6 +624,12 @@ static bool LM_SampleBakedLight( int lightIndex, const idVec3 &point, idVec3 &co
 	}
 	const lmBakedLight_t *baked = lmBakedLights[lightIndex];
 	const mapLight_t *light = baked->light;
+	// Runtime represents the atmosphere sun as point+parallel only to reuse the
+	// render-light type. Its texture projection/radius is not a finite gobo for
+	// the offline bake; use the declaration color through the fallback path.
+	if ( light->def.GetParallel() && light->def.GetPointLight() ) {
+		return false;
+	}
 	const float projectionQ = light->def.lightProject[2].Distance( point );
 	if ( idMath::Fabs( projectionQ ) < 0.000001f ) {
 		return true;
@@ -1270,6 +1277,12 @@ static bool LM_TraceNearest( const idVec3 &start, const idVec3 &end, int &triang
 }
 
 static bool LM_PointInLight( const mapLight_t *light, const idVec3 &point, float &attenuation ) {
+	// A parallel atmosphere sun is infinite. Its 50k runtime radius is only a
+	// renderer implementation detail and must not clip the offline bake.
+	if ( light->def.GetParallel() ) {
+		attenuation = 1.0f;
+		return true;
+	}
 	for ( int i = 0; i < 6; i++ ) {
 		if ( light->def.frustum[i].Distance( point ) > 0.0f ) {
 			return false;
@@ -1280,6 +1293,9 @@ static bool LM_PointInLight( const mapLight_t *light, const idVec3 &point, float
 }
 
 static float LM_FallbackLightAttenuation( const mapLight_t *light, const idVec3 &point ) {
+	if ( light->def.GetParallel() ) {
+		return 1.0f;
+	}
 	if ( !light->def.GetPointLight() ) {
 		return 1.0f;
 	}
@@ -1372,7 +1388,9 @@ static void LM_ShadePoint( const idVec3 &point, const idVec3 &normal, const idVe
 
 		idVec3 lightDirection;
 		if ( light->def.GetParallel() ) {
-			lightDirection = -light->def.GetAxis()[2];
+			// Point+parallel atmosphere lights carry their direction in lightCenter,
+			// matching R_DeriveLightData and the runtime atmosphere renderer.
+			lightDirection = light->def.GetPointLight() ? light->def.GetLightCenter() : -light->def.GetAxis()[2];
 			lightDirection.Normalize();
 		} else {
 			lightDirection = light->def.globalLightOrigin - point;
@@ -2260,7 +2278,23 @@ void Lightmap_Begin( const char *mapFileBase ) {
 	lmAODistance = LM_DEFAULT_AO_DISTANCE;
 	if ( dmapGlobals.uEntities && dmapGlobals.num_entities > 0 && dmapGlobals.uEntities[0].mapEntity ) {
 		const idDict &worldSpawn = dmapGlobals.uEntities[0].mapEntity->epairs;
-		worldSpawn.GetFloat( "lightmapAmbient", "0.025", lmAmbient );
+		if ( worldSpawn.FindKey( "lightmapAmbient" ) ) {
+			worldSpawn.GetFloat( "lightmapAmbient", "0.025", lmAmbient );
+		} else {
+			const char *atmosphereName = worldSpawn.GetString( "atmosphere", "" );
+			if ( !atmosphereName[0] ) atmosphereName = worldSpawn.GetString( "atmospheredecl", "" );
+			const sdDeclAtmosphere *atmosphere = R_FindAtmosphere( atmosphereName, false );
+			if ( atmosphere && atmosphere->GetAmbientCubeMap() ) {
+				const sdDeclAmbientCubeMap *ambientCube = atmosphere->GetAmbientCubeMap();
+				idVec3 ambient = ambientCube->GetAmbientColor();
+				const idList<sdDeclAmbientCubeMap::ambientLight_t> &ambientLights = ambientCube->GetAmbientLights();
+				for ( int lightIndex = 0; lightIndex < ambientLights.Num(); ++lightIndex ) {
+					if ( ambientLights[lightIndex].ambient ) ambient += ambientLights[lightIndex].color * 0.25f;
+				}
+				ambient *= Max( 0.0f, ambientCube->GetBrightness() ) * worldSpawn.GetFloat( "atmosphereAmbientScale", "1" );
+				lmAmbient = ambient.x * 0.2126f + ambient.y * 0.7152f + ambient.z * 0.0722f;
+			}
+		}
 		worldSpawn.GetFloat( "lightmapDirectScale", "2.0", lmDirectScale );
 		worldSpawn.GetInt( "lightmapShadowSamples", "9", lmShadowSamples );
 		worldSpawn.GetFloat( "lightmapBounceScale", "0.65", lmBounceScale );
@@ -2331,8 +2365,16 @@ int Lightmap_AddSurface( int entityNum, const idMaterial *material, const srfTri
 		material->Coverage() != MC_TRANSLUCENT &&
 		( material->Coverage() == MC_PERFORATED || material->SurfaceCastsShadow() );
 	const bool standardReceiver = material->ReceivesLighting() && material->Coverage() == MC_OPAQUE;
+	bool megaTextureMaterial = false;
+	for ( int stageIndex = 0; stageIndex < material->GetNumStages(); ++stageIndex ) {
+		const shaderStage_t *stage = material->GetStage( stageIndex );
+		if ( stage && stage->newStage && stage->newStage->megaTexture ) {
+			megaTextureMaterial = true;
+			break;
+		}
+	}
 	const bool receivesLightmap = bakedReceiver && material->IsDrawn() &&
-		( standardReceiver || material->BakesLightmap() ) && tri->numVerts > 0;
+		!megaTextureMaterial && ( standardReceiver || material->BakesLightmap() ) && tri->numVerts > 0;
 	if ( !receivesLightmap ) {
 		if ( castsShadow ) {
 			LM_AddTraceTriangles( tri, entityOrigin, entityAxis, material, true, -1, NULL, doorShadow );

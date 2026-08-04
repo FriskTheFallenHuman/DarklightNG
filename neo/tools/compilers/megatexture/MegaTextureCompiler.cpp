@@ -2,10 +2,12 @@
 #pragma hdrstop
 
 #include "../../../framework/FileSystem.h"
+#include "../../../decllib/declAtmosphere.h"
 #include "../../../renderer/megatexture/MegaTexture.h"
 #include "../../../renderer/megatexture/MegaTextureCodec.h"
 #include "../compiler_public.h"
 #include "MegaTextureCompiler.h"
+#include "MegaTextureShadowBaker.h"
 #include "../../radiant/megatexture/RoadBuilder.h"
 
 #include <vector>
@@ -220,6 +222,10 @@ struct compilerState_t {
 	megaTextureProject_t project;
 	std::vector<byte> weights;
 	std::vector<megaTextureVertexTransform_t> transforms;
+	std::vector<float> heights;
+	std::vector<float> shadowVisibility;
+	std::vector<float> staticShadowVisibility;
+	int staticShadowResolution;
 	sourceLayer_t sourceLayers[megaTextureProject_t::MAX_LAYERS];
 	MegaTextureRoadBuilder roads;
 	std::vector<sourceLayer_t> roadSources;
@@ -231,6 +237,18 @@ struct compilerState_t {
 	std::vector<int> maximumSizes;
 	std::vector<idStr> rawLevels;
 	idBareDctEncoder encoder;
+	bool bakeLighting;
+	bool terrainShadows;
+	idVec3 sunDirection;
+	idVec3 sunColor;
+	idVec3 ambientColor;
+	std::vector<idVec3> ambientDirections;
+	std::vector<idVec3> ambientLightColors;
+	float directScale;
+
+	compilerState_t() : staticShadowResolution( 0 ), bakeLighting( false ), terrainShadows( true ),
+		sunDirection( 0.0f, 0.0f, 1.0f ), sunColor( 1.0f, 1.0f, 1.0f ),
+		ambientColor( 1.0f, 1.0f, 1.0f ), directScale( 1.0f ) {}
 };
 
 static bool LoadLayerImage( const char *path, std::vector<byte> &pixels, int &width, int &height ) {
@@ -287,6 +305,190 @@ static bool PrepareLayerSources( compilerState_t &state, idStr &error ) {
 		const idStr normalPath = LayerNormalPath( road.texture );
 		if ( !normalPath.IsEmpty() ) LoadLayerImage( normalPath, source.normal, source.normalWidth, source.normalHeight );
 	}
+	return true;
+}
+
+static float SampleTerrainHeight( const compilerState_t &state, float gridX, float gridY ) {
+	const int samples = state.project.terrainSamples;
+	gridX = idMath::ClampFloat( 0.0f, (float)( samples - 1 ), gridX );
+	gridY = idMath::ClampFloat( 0.0f, (float)( samples - 1 ), gridY );
+	const int x0 = (int)floorf( gridX );
+	const int y0 = (int)floorf( gridY );
+	const int x1 = Min( x0 + 1, samples - 1 );
+	const int y1 = Min( y0 + 1, samples - 1 );
+	const float fx = gridX - x0;
+	const float fy = gridY - y0;
+	const float top = state.heights[y0 * samples + x0] * ( 1.0f - fx ) + state.heights[y0 * samples + x1] * fx;
+	const float bottom = state.heights[y1 * samples + x0] * ( 1.0f - fx ) + state.heights[y1 * samples + x1] * fx;
+	return top * ( 1.0f - fy ) + bottom * fy;
+}
+
+static void TerrainSurfaceBasis( const compilerState_t &state, float u, float v,
+		idVec3 &tangent, idVec3 &bitangent, idVec3 &normal ) {
+	const int samples = state.project.terrainSamples;
+	const float gridX = idMath::ClampFloat( 0.0f, (float)( samples - 1 ), u * ( samples - 1 ) );
+	const float gridY = idMath::ClampFloat( 0.0f, (float)( samples - 1 ), v * ( samples - 1 ) );
+	const float spacing = state.project.terrainSize / ( samples - 1 );
+	const float left = SampleTerrainHeight( state, gridX - 1.0f, gridY );
+	const float right = SampleTerrainHeight( state, gridX + 1.0f, gridY );
+	const float top = SampleTerrainHeight( state, gridX, gridY - 1.0f );
+	const float bottom = SampleTerrainHeight( state, gridX, gridY + 1.0f );
+	const float dhdx = ( right - left ) / ( 2.0f * spacing );
+	// Height rows advance toward world -Y.
+	const float dhdy = -( bottom - top ) / ( 2.0f * spacing );
+	normal.Set( -dhdx, -dhdy, 1.0f );
+	normal.Normalize();
+	tangent.Set( 1.0f, 0.0f, dhdx );
+	tangent.Normalize();
+	bitangent = normal.Cross( tangent );
+	bitangent.Normalize();
+}
+
+static void BuildTerrainShadowVisibility( compilerState_t &state ) {
+	const int samples = state.project.terrainSamples;
+	state.shadowVisibility.assign( samples * samples, 1.0f );
+	if ( !state.terrainShadows || state.sunDirection.z <= 0.0f ) {
+		if ( state.sunDirection.z <= 0.0f ) {
+			std::fill( state.shadowVisibility.begin(), state.shadowVisibility.end(), 0.0f );
+		}
+		return;
+	}
+	const float horizontalLength = idMath::Sqrt( state.sunDirection.x * state.sunDirection.x +
+		state.sunDirection.y * state.sunDirection.y );
+	if ( horizontalLength <= 0.0001f ) {
+		return;
+	}
+
+	const float spacing = state.project.terrainSize / ( samples - 1 );
+	// Cap each horizon test to roughly 128 samples. This cost depends on the
+	// authoring heightfield, not on a potentially 32768-square output image.
+	const float stepDistance = Max( spacing, state.project.terrainSize / 128.0f );
+	const float verticalPerHorizontal = state.sunDirection.z / horizontalLength;
+	const float directionX = state.sunDirection.x / horizontalLength;
+	const float directionY = state.sunDirection.y / horizontalLength;
+	const float heightBias = Max( 0.5f, spacing * 0.02f );
+	const int maximumSteps = (int)ceilf( state.project.terrainSize * 1.5f / stepDistance );
+	for ( int y = 0; y < samples; ++y ) {
+		for ( int x = 0; x < samples; ++x ) {
+			const float startHeight = state.heights[y * samples + x];
+			for ( int step = 1; step <= maximumSteps; ++step ) {
+				const float distance = step * stepDistance;
+				const float sampleX = x + directionX * distance / spacing;
+				const float sampleY = y - directionY * distance / spacing;
+				if ( sampleX < 0.0f || sampleY < 0.0f || sampleX > samples - 1 || sampleY > samples - 1 ) {
+					break;
+				}
+				const float rayHeight = startHeight + verticalPerHorizontal * distance;
+				if ( SampleTerrainHeight( state, sampleX, sampleY ) > rayHeight + heightBias ) {
+					state.shadowVisibility[y * samples + x] = 0.0f;
+					break;
+				}
+			}
+		}
+	}
+}
+
+static float SampleStaticShadowVisibility( const compilerState_t &state, float u, float v ) {
+	if ( state.staticShadowVisibility.empty() || state.staticShadowResolution < 2 ) return 1.0f;
+	const int resolution = state.staticShadowResolution;
+	const float gridX = idMath::ClampFloat( 0.0f, (float)( resolution - 1 ), u * ( resolution - 1 ) );
+	const float gridY = idMath::ClampFloat( 0.0f, (float)( resolution - 1 ), v * ( resolution - 1 ) );
+	const int x0 = (int)floorf( gridX ), y0 = (int)floorf( gridY );
+	const int x1 = Min( x0 + 1, resolution - 1 ), y1 = Min( y0 + 1, resolution - 1 );
+	const float fractionX = gridX - x0, fractionY = gridY - y0;
+	const float row0 = state.staticShadowVisibility[y0 * resolution + x0] * ( 1.0f - fractionX ) +
+		state.staticShadowVisibility[y0 * resolution + x1] * fractionX;
+	const float row1 = state.staticShadowVisibility[y1 * resolution + x0] * ( 1.0f - fractionX ) +
+		state.staticShadowVisibility[y1 * resolution + x1] * fractionX;
+	return row0 * ( 1.0f - fractionY ) + row1 * fractionY;
+}
+
+static bool PrepareLightingBake( compilerState_t &state, const idDict *worldSpawnOverride, idStr &error ) {
+	if ( !state.bakeLighting ) {
+		return true;
+	}
+	if ( state.project.mapName.IsEmpty() ) {
+		error = "the terrain project has no owning map; save the level before baking";
+		return false;
+	}
+	idMapFile mapFile;
+	// The terrain project belongs to the full saved level. Do not let a stale
+	// editor .reg file substitute for its worldspawn lighting settings.
+	if ( !mapFile.Parse( state.project.mapName, true, false ) || mapFile.GetNumEntities() <= 0 ) {
+		error = va( "could not load owning map %s for atmosphere bake", state.project.mapName.c_str() );
+		return false;
+	}
+	const idMapEntity *world = mapFile.GetEntity( 0 );
+	const idDict &worldSettings = worldSpawnOverride ? *worldSpawnOverride : world->epairs;
+	const char *atmosphereName = worldSettings.GetString( "atmosphere", "" );
+	if ( !atmosphereName[0] ) atmosphereName = worldSettings.GetString( "atmospheredecl", "" );
+	// Old maps can still bake while they are being migrated to worldspawn.
+	if ( !atmosphereName[0] ) {
+		for ( int entityIndex = 1; entityIndex < mapFile.GetNumEntities(); ++entityIndex ) {
+			const idMapEntity *candidate = mapFile.GetEntity( entityIndex );
+			if ( !idStr::Icmp( candidate->epairs.GetString( "classname", "" ), "atmosphere" ) ) {
+				atmosphereName = candidate->epairs.GetString( "atmospheredecl", "" );
+				break;
+			}
+		}
+	}
+	if ( !atmosphereName[0] ) {
+		error = "worldspawn has no atmosphere; assign one in Entity properties before MegaTexture Bake";
+		return false;
+	}
+	const sdDeclAtmosphere *atmosphere = R_FindAtmosphere( atmosphereName, false );
+	if ( !atmosphere ) {
+		error = va( "worldspawn references missing atmosphere %s", atmosphereName );
+		return false;
+	}
+	if ( !MegaTextureLoadTerrainHeightfield( state.project, state.heights, error ) ) {
+		return false;
+	}
+	state.sunDirection = atmosphere->GetSunDirection();
+	if ( state.sunDirection.Normalize() == 0.0f ) state.sunDirection.Set( 0.0f, 0.0f, 1.0f );
+	state.sunColor = atmosphere->GetSunColor() * Max( 0.0f, worldSettings.GetFloat( "atmosphereSunScale", "1" ) );
+	state.ambientColor.Set( 0.025f, 0.025f, 0.025f );
+	if ( atmosphere->GetAmbientCubeMap() ) {
+		const sdDeclAmbientCubeMap *ambientCube = atmosphere->GetAmbientCubeMap();
+		const float ambientScale = Max( 0.0f, worldSettings.GetFloat( "atmosphereAmbientScale", "1" ) ) *
+			Max( 0.0f, worldSettings.GetFloat( "megaBakeAmbientScale", "1" ) ) * Max( 0.0f, ambientCube->GetBrightness() );
+		state.ambientColor = ambientCube->GetAmbientColor() * ambientScale;
+		const idList<sdDeclAmbientCubeMap::ambientLight_t> &ambientLights = ambientCube->GetAmbientLights();
+		for ( int lightIndex = 0; lightIndex < ambientLights.Num(); ++lightIndex ) {
+			if ( !ambientLights[lightIndex].ambient ) continue;
+			idVec3 direction = ambientLights[lightIndex].dir;
+			if ( direction.Normalize() == 0.0f ) continue;
+			state.ambientDirections.push_back( direction );
+			state.ambientLightColors.push_back( ambientLights[lightIndex].color * ambientScale );
+		}
+	} else {
+		state.ambientColor *= Max( 0.0f, worldSettings.GetFloat( "atmosphereAmbientScale", "1" ) ) *
+			Max( 0.0f, worldSettings.GetFloat( "megaBakeAmbientScale", "1" ) );
+	}
+	// MegaTexture illumination is a separate bake. dmap's lightmapDirectScale
+	// belongs to the atlas path and must not overexpose the streamed terrain.
+	state.directScale = Max( 0.0f, worldSettings.GetFloat( "megaBakeSunScale", "1" ) );
+	state.terrainShadows = worldSettings.GetBool( "atmosphereBakeShadows", "1" ) &&
+		worldSettings.GetBool( "megaBakeShadows", "1" );
+	BuildTerrainShadowVisibility( state );
+	int staticShadowEntities = 0;
+	int staticShadowTriangles = 0;
+	const bool staticModelShadows = state.terrainShadows && worldSettings.GetBool( "megaBakeStaticShadows", "1" );
+	if ( staticModelShadows ) {
+		// A grid finer than the authoring heightfield preserves recognizable tree
+		// and foliage shadows without tracing once per final MegaTexture texel.
+		state.staticShadowResolution = idMath::ClampInt( state.project.terrainSamples,
+			1025, state.project.resolution / 8 + 1 );
+		if ( !MegaTextureBuildStaticModelShadows( mapFile, state.project, state.heights,
+			state.sunDirection, state.staticShadowResolution, state.staticShadowVisibility,
+			staticShadowEntities, staticShadowTriangles, error ) ) return false;
+	}
+	common->Printf( "MegaTexture: baking atmosphere '%s', sun %s, ambient base %s + %d directional lights, terrain shadows %s\n",
+		atmosphereName, state.sunDirection.ToString(), state.ambientColor.ToString(), (int)state.ambientDirections.size(),
+		state.terrainShadows ? "on" : "off" );
+	common->Printf( "MegaTexture: %d static model shadow caster%s, %d alpha-aware triangles, %dx%d visibility grid\n",
+		staticShadowEntities, staticShadowEntities == 1 ? "" : "s", staticShadowTriangles,
+		state.staticShadowResolution, state.staticShadowResolution );
 	return true;
 }
 
@@ -453,9 +655,35 @@ static void GenerateLayerPixel( const compilerState_t &state, float u, float v, 
 		normal[1] = normal[1] * ( 1.0f - alpha ) + roadNormalY * alpha;
 		normal[2] = normal[2] * ( 1.0f - alpha ) + roadNormalZ * alpha;
 	}
-	for ( int component = 0; component < 3; ++component ) pixel[component] = (byte)idMath::ClampInt( 0, 255, (int)( color[component] + 0.5f ) );
 	const float length = idMath::Sqrt( normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2] );
-	if ( length > 0.0001f ) { normal[0] /= length; normal[1] /= length; }
+	if ( length > 0.0001f ) {
+		normal[0] /= length; normal[1] /= length; normal[2] /= length;
+	} else {
+		normal[0] = normal[1] = 0.0f; normal[2] = 1.0f;
+	}
+	if ( state.bakeLighting ) {
+		idVec3 tangent, bitangent, surfaceNormal;
+		TerrainSurfaceBasis( state, u, v, tangent, bitangent, surfaceNormal );
+		idVec3 worldNormal = tangent * normal[0] + bitangent * normal[1] + surfaceNormal * normal[2];
+		worldNormal.Normalize();
+		float visibility = 1.0f;
+		if ( !state.shadowVisibility.empty() ) {
+			visibility = 0.0f;
+			for ( int corner = 0; corner < 3; ++corner ) {
+				visibility += state.shadowVisibility[sample.vertex[corner]] * sample.weight[corner];
+			}
+		}
+		visibility *= SampleStaticShadowVisibility( state, u, v );
+		idVec3 ambientLighting = state.ambientColor;
+		for ( int lightIndex = 0; lightIndex < (int)state.ambientDirections.size(); ++lightIndex ) {
+			ambientLighting += state.ambientLightColors[lightIndex] * Max( 0.0f, worldNormal * state.ambientDirections[lightIndex] );
+		}
+		const float lambert = Max( 0.0f, worldNormal * state.sunDirection );
+		const idVec3 lighting = ambientLighting + state.sunColor * ( state.directScale * lambert * visibility );
+		for ( int component = 0; component < 3; ++component ) color[component] *= Max( 0.0f, lighting[component] );
+	}
+	for ( int component = 0; component < 3; ++component ) pixel[component] =
+		(byte)idMath::ClampInt( 0, 255, (int)( color[component] + 0.5f ) );
 	pixel[3] = (byte)( EncodeNormalComponent( normal[0] ) | ( EncodeNormalComponent( normal[1] ) << 4 ) );
 }
 
@@ -734,7 +962,7 @@ void MegaTextureInitializeTerrainTransforms( const megaTextureProject_t &project
 	}
 }
 
-megaTextureProject_t::megaTextureProject_t() : resolution( MEGA_TEXTURE_LEVEL_SIZE ), terrainSamples( 129 ), terrainSize( 8192.0f ), bakeLightmap( true ) {
+megaTextureProject_t::megaTextureProject_t() : resolution( MEGA_TEXTURE_LEVEL_SIZE ), terrainSamples( 129 ), terrainSize( 8192.0f ), bakeLighting( false ) {
 	terrainOrigin[0] = terrainOrigin[1] = terrainOrigin[2] = 0.0f;
 	fill[0] = fill[1] = fill[2] = 128; fill[3] = 0x88;
 	quality[0] = 75; quality[1] = 75; quality[2] = 90;
@@ -822,7 +1050,8 @@ bool megaTextureProject_t::Load( const char *path, idStr &error ) {
 		else if ( !token.Icmp( "terrainOrigin" ) ) for ( int i = 0; i < 3; ++i ) terrainOrigin[i] = lexer.ParseFloat();
 		else if ( !token.Icmp( "fill" ) ) for ( int i = 0; i < 4; ++i ) fill[i] = (byte)idMath::ClampInt( 0, 255, lexer.ParseInt() );
 		else if ( !token.Icmp( "quality" ) ) for ( int i = 0; i < 3; ++i ) quality[i] = lexer.ParseInt();
-		else if ( !token.Icmp( "bakeLightmap" ) ) bakeLightmap = lexer.ParseInt() != 0;
+		else if ( !token.Icmp( "bakeLighting" ) ) bakeLighting = lexer.ParseInt() != 0;
+		else if ( !token.Icmp( "bakeLightmap" ) ) bakeLighting = lexer.ParseInt() != 0; // legacy project key
 		else lexer.ReadToken( &token );
 	}
 	if ( heightMap.IsEmpty() && !name.IsEmpty() ) heightMap = va( "megatextures/%s.height", name.c_str() );
@@ -844,15 +1073,14 @@ bool megaTextureProject_t::Save( const char *path, idStr &error ) const {
 		text += va( "\tlayer%d %s %g\n", i, layers[i].IsEmpty() ? "-" : layers[i].c_str(), layerScale[i] );
 		text += va( "\tlayerTransform%d %g %g %g\n", i, layerScale[i], layerScaleY[i], layerRotation[i] );
 	}
-	text += va( "\tterrainSamples %d\n\tterrainSize %g\n\tterrainOrigin %g %g %g\n\tfill %d %d %d %d\n\tquality %d %d %d\n\tbakeLightmap %d\n}\n",
+	text += va( "\tterrainSamples %d\n\tterrainSize %g\n\tterrainOrigin %g %g %g\n\tfill %d %d %d %d\n\tquality %d %d %d\n\tbakeLighting %d\n}\n",
 		terrainSamples, terrainSize, terrainOrigin[0], terrainOrigin[1], terrainOrigin[2],
-		fill[0], fill[1], fill[2], fill[3], quality[0], quality[1], quality[2], bakeLightmap ? 1 : 0 );
+		fill[0], fill[1], fill[2], fill[3], quality[0], quality[1], quality[2], bakeLighting ? 1 : 0 );
 	return WriteTextFile( path, text, error );
 }
 
 bool megaTextureProject_t::WriteMaterial( idStr &error ) const {
 	idStr text = va( "%s\n{\n\tqer_editorImage %s\n", material.c_str(), PreviewPath().c_str() );
-	if ( bakeLightmap ) text += "\tbakeLightmap\n";
 	text += va( "\t{\n\t\tmegaTexture %s\n\t}\n}\n", OutputPath().c_str() );
 	return WriteTextFile( MaterialPath(), text, error );
 }
@@ -1013,11 +1241,19 @@ bool MegaTextureWriteTerrainModel( const megaTextureProject_t &project, idStr &e
 	return WriteTextFile( project.terrainModel, text, error );
 }
 
-bool MegaTextureCompileProject( const char *projectPath, int buildResolution, idStr &error ) {
+bool MegaTextureCompileProject( const char *projectPath, int buildResolution, bool bakeLighting, idStr &error ) {
+	return MegaTextureCompileProject( projectPath, buildResolution, bakeLighting, NULL, error );
+}
+
+bool MegaTextureCompileProject( const char *projectPath, int buildResolution, bool bakeLighting,
+		const idDict *worldSpawnOverride, idStr &error ) {
 	compilerState_t state;
 	if ( !state.project.Load( projectPath, error ) ) return false;
 	state.project.resolution = buildResolution;
+	state.project.bakeLighting = bakeLighting;
+	state.bakeLighting = bakeLighting;
 	if ( !state.project.Validate( error ) ) return false;
+	if ( !PrepareLightingBake( state, worldSpawnOverride, error ) ) return false;
 	if ( !PrepareLayerSources( state, error ) ) return false;
 	state.levels = state.project.NumLevels();
 	state.totalTiles = TotalTiles( state.project.resolution );
@@ -1093,12 +1329,16 @@ bool MegaTextureVerifyFile( const char *megaPath, idStr &error ) {
 }
 
 void MegaTextureCompile_f( const idCmdArgs &args ) {
-	if ( args.Argc() < 2 ) { common->Printf( "usage: megaCompile [-size 2048..32768] [-dmap] <project.megaproject>\n" ); return; }
+	if ( args.Argc() < 2 ) { common->Printf( "usage: megaCompile [-size 2048..32768] [-bake] <project.megaproject>\n" ); return; }
 	bool bake = false;
 	int buildResolution = 0;
 	const char *path = "";
 	for ( int i = 1; i < args.Argc(); ++i ) {
-		if ( !idStr::Icmp( args.Argv( i ), "-dmap" ) ) bake = true;
+		if ( !idStr::Icmp( args.Argv( i ), "-bake" ) ) bake = true;
+		else if ( !idStr::Icmp( args.Argv( i ), "-dmap" ) ) {
+			common->Warning( "megaCompile: -dmap is deprecated; performing the separate MegaTexture atmosphere bake" );
+			bake = true;
+		}
 		else if ( !idStr::Icmp( args.Argv( i ), "-size" ) && i + 1 < args.Argc() ) buildResolution = atoi( args.Argv( ++i ) );
 		else path = args.Argv( i );
 	}
@@ -1106,11 +1346,7 @@ void MegaTextureCompile_f( const idCmdArgs &args ) {
 	megaTextureProject_t compileProject;
 	if ( !path[0] || !compileProject.Load( path, error ) ) { common->Warning( "megaCompile: %s", error.c_str() ); return; }
 	if ( buildResolution == 0 ) buildResolution = compileProject.resolution;
-	if ( !MegaTextureCompileProject( path, buildResolution, error ) ) { common->Warning( "megaCompile: %s", error.c_str() ); return; }
-	if ( bake ) {
-		if ( compileProject.mapName.IsEmpty() ) { common->Warning( "megaCompile: project has no map for dmap" ); return; }
-		Dmap_f( idCmdArgs( va( "dmap %s", compileProject.mapName.c_str() ), false ) );
-	}
+	if ( !MegaTextureCompileProject( path, buildResolution, bake, error ) ) { common->Warning( "megaCompile: %s", error.c_str() ); return; }
 }
 
 void MegaTextureCreate_f( const idCmdArgs &args ) {

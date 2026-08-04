@@ -47,7 +47,8 @@ struct MegaTextureEditorState {
 	MegaTextureEditorState() : open( false ), loaded( false ), dirty( false ), projectDirty( false ), textureDirty( false ),
 		texture( 0 ), heightTexture( 0 ), megatileTexture( 0 ), stencilTexture( 0 ),
 		tileX( 0 ), tileY( 0 ), brushRadius( 8 ), painting( false ),
-		buildResolutionIndex( 0 ), newTerrainSamplesIndex( 2 ), newTerrainSize( 8192.0f ), terrainDirty( false ),
+		buildResolutionIndex( 0 ), newTerrainSamplesIndex( 2 ), newTerrainSize( 8192.0f ), buildStatusError( false ),
+		pendingCompile( false ), pendingCompileBake( false ), pendingCompileFrame( -1 ), terrainDirty( false ),
 		heightTextureDirty( false ), terrainPainting( false ), terrainBrushMode( TERRAIN_BRUSH_RAISE_LOWER ),
 		terrainBrushShape( TERRAIN_SHAPE_CIRCLE ), terrainBrushRadius( 8 ), terrainBrushStrength( 256.0f ),
 		terrainFlattenHeight( 0.0f ), terrainBrushFeather( 0.35f ), terrainBrushAspect( 2.0f ),
@@ -63,6 +64,7 @@ struct MegaTextureEditorState {
 		newTerrainOrigin[0] = newTerrainOrigin[1] = newTerrainOrigin[2] = 0.0f;
 		brushColor[0] = brushColor[1] = brushColor[2] = 0.5f; brushColor[3] = 1.0f;
 		idStr::Copynz( status, "Save the level, then open the MegaTexture tab.", sizeof( status ) );
+		buildStatus[0] = '\0';
 		tile.resize( MEGA_TEXTURE_TILE_SIZE * MEGA_TEXTURE_TILE_SIZE * 4, 128 );
 	}
 	bool open, loaded, dirty, projectDirty, textureDirty;
@@ -77,6 +79,11 @@ struct MegaTextureEditorState {
 	float newTerrainSize;
 	float newTerrainOrigin[3];
 	char status[1024];
+	char buildStatus[1024];
+	bool buildStatusError;
+	bool pendingCompile;
+	bool pendingCompileBake;
+	int pendingCompileFrame;
 	std::vector<byte> tile;
 	std::vector<byte> weights;
 	std::vector<megaTextureVertexTransform_t> transforms;
@@ -125,6 +132,11 @@ static char cachedLevelProjectMap[1024];
 static char cachedLevelProjectPath[1024];
 
 static void SetStatus( const char *text ) { idStr::Copynz( state.status, text ? text : "", sizeof( state.status ) ); }
+static void SetBuildStatus( const char *text, bool error ) {
+	idStr::Copynz( state.buildStatus, text ? text : "", sizeof( state.buildStatus ) );
+	state.buildStatusError = error;
+	SetStatus( text );
+}
 static bool SaveTerrain( bool reloadModel );
 
 static void RefreshTerrainInRadiant( entity_t *entity ) {
@@ -569,13 +581,15 @@ static bool AddOrUpdateTerrainEntity() {
 		SetKeyValue( entity, "model", state.project.terrainModel );
 		SetKeyValue( entity, "megaTextureTerrain", "1" );
 		SetKeyValue( entity, "megaTextureProject", state.project.projectPath );
-		SetKeyValue( entity, "bakeLightmap", state.project.bakeLightmap ? "1" : "0" );
+		// The model must still be inlined for proc collision and shadow casting,
+		// but its illumination is already in the MegaTexture RGB.
+		SetKeyValue( entity, "inline", "1" );
+		SetKeyValue( entity, "bakeLightmap", "0" );
 		SetKeyValue( entity, "origin", va( "%g %g %g", state.project.terrainOrigin[0], state.project.terrainOrigin[1], state.project.terrainOrigin[2] ) );
 		entity->origin.Set( state.project.terrainOrigin[0], state.project.terrainOrigin[1], state.project.terrainOrigin[2] );
 	} else {
-		idStr mapFragment = va( "Version 2\n{\n\"classname\" \"func_static\"\n\"name\" \"%s\"\n\"model\" \"%s\"\n\"megaTextureTerrain\" \"1\"\n\"megaTextureProject\" \"%s\"\n\"origin\" \"%g %g %g\"\n\"bakeLightmap\" \"%d\"\n}\n",
-			entityName.c_str(), state.project.terrainModel.c_str(), state.project.projectPath.c_str(), state.project.terrainOrigin[0], state.project.terrainOrigin[1], state.project.terrainOrigin[2],
-			state.project.bakeLightmap ? 1 : 0 );
+		idStr mapFragment = va( "Version 2\n{\n\"classname\" \"func_static\"\n\"name\" \"%s\"\n\"model\" \"%s\"\n\"megaTextureTerrain\" \"1\"\n\"megaTextureProject\" \"%s\"\n\"origin\" \"%g %g %g\"\n\"inline\" \"1\"\n\"bakeLightmap\" \"0\"\n}\n",
+			entityName.c_str(), state.project.terrainModel.c_str(), state.project.projectPath.c_str(), state.project.terrainOrigin[0], state.project.terrainOrigin[1], state.project.terrainOrigin[2] );
 		std::vector<char> buffer( mapFragment.Length() + 1 );
 		memcpy( buffer.data(), mapFragment.c_str(), mapFragment.Length() + 1 );
 		Map_ImportBuffer( buffer.data(), false );
@@ -1210,25 +1224,119 @@ static void RenderSculptProfileControls() {
 	}
 }
 
-static bool CompileProject( bool runDmap ) {
+static const idDecl *FindAtmosphereDecl( const char *name ) {
+	if ( !name || !name[0] ) return NULL;
+	const idDecl *decl = declManager->FindType( DECL_ATMOSPHERE, name, false );
+	return decl && decl->GetState() != DS_DEFAULTED ? decl : NULL;
+}
+
+static void RenderAtmosphereBakeSelector() {
+	if ( !world_entity ) {
+		ImGui::TextColored( ImVec4( 1.0f, 0.35f, 0.25f, 1.0f ), "No worldspawn is loaded." );
+		return;
+	}
+	const char *currentName = ValueForKey( world_entity, "atmosphere" );
+	const idDecl *currentDecl = FindAtmosphereDecl( currentName );
+	ImGui::SetNextItemWidth( 220.0f );
+	if ( ImGui::BeginCombo( "Bake atmosphere", currentName[0] ? currentName : "<select atmosphere>" ) ) {
+		for ( int declIndex = 0; declIndex < declManager->GetNumDecls( DECL_ATMOSPHERE ); ++declIndex ) {
+			const idDecl *decl = declManager->DeclByIndex( DECL_ATMOSPHERE, declIndex, false );
+			if ( !decl || decl->GetState() == DS_DEFAULTED || !decl->GetName()[0] ) continue;
+			const bool selected = !idStr::Icmp( currentName, decl->GetName() );
+			if ( ImGui::Selectable( decl->GetName(), selected ) ) {
+				SetKeyValue( world_entity, "atmosphere", decl->GetName() );
+				Sys_MarkMapModified();
+				SetBuildStatus( va( "Atmosphere '%s' selected. The MegaTexture bake can run now; save the map before dmap.",
+					decl->GetName() ), false );
+			}
+			if ( ImGui::IsItemHovered() ) ImGui::SetTooltip( "%s:%d", decl->GetFileName(), decl->GetLineNum() );
+			if ( selected ) ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+	currentName = ValueForKey( world_entity, "atmosphere" );
+	currentDecl = FindAtmosphereDecl( currentName );
+	if ( !currentDecl ) {
+		ImGui::TextColored( ImVec4( 1.0f, 0.35f, 0.25f, 1.0f ), currentName[0] ?
+			"'%s' is not an atmosphere declaration. Choose one from the list." :
+			"Choose an atmosphere declaration before baking.", currentName );
+	}
+}
+
+static void RenderBuildStatus() {
+	if ( !state.buildStatus[0] ) return;
+	const ImVec4 color = state.buildStatusError ? ImVec4( 1.0f, 0.35f, 0.25f, 1.0f ) :
+		ImVec4( 0.45f, 0.9f, 0.55f, 1.0f );
+	ImGui::TextColored( color, "Build: %s", state.buildStatus );
+}
+
+static bool CompileProject( bool bakeLighting ) {
+	if ( bakeLighting ) {
+		const char *atmosphereName = world_entity ? ValueForKey( world_entity, "atmosphere" ) : "";
+		if ( !FindAtmosphereDecl( atmosphereName ) ) {
+			SetBuildStatus( atmosphereName[0] ? va( "Cannot bake: '%s' is not an atmosphere declaration.", atmosphereName ) :
+				"Cannot bake: select a worldspawn atmosphere first.", true );
+			common->Warning( "MegaTexture bake: %s", state.buildStatus );
+			return false;
+		}
+	}
 	static const int buildResolutions[] = { 2048, 4096, 8192, 16384, 32768 };
 	state.project.resolution = buildResolutions[state.buildResolutionIndex];
+	state.project.bakeLighting = bakeLighting;
 	state.projectDirty = true;
-	if ( !SaveProject() ) return false;
+	if ( !SaveProject() ) {
+		SetBuildStatus( state.status, true );
+		return false;
+	}
 	idStr error;
-	SetStatus( va( "Compiling %dx%d MegaTexture from vertex layers...", state.project.resolution, state.project.resolution ) );
-	if ( !MegaTextureCompileProject( state.projectPath, state.project.resolution, error ) ) { SetStatus( error ); return false; }
+	SetBuildStatus( va( bakeLighting ? "Compiling and atmosphere-baking %dx%d MegaTexture..." :
+		"Compiling unlit %dx%d MegaTexture from vertex layers...", state.project.resolution, state.project.resolution ), false );
+	common->Printf( "MegaTexture editor: %s\n", state.buildStatus );
+	// The renderer keeps the streamed .mega file open while the terrain is visible.
+	// Purging also waits for any in-flight tile read before closing the handle, so
+	// the compiler can atomically replace the level's existing MegaTexture.
+	globalImages->PurgeAllMegaTextures();
+	const idDict *worldSpawnOverride = world_entity ? &world_entity->epairs : NULL;
+	if ( !MegaTextureCompileProject( state.projectPath, state.project.resolution, bakeLighting, worldSpawnOverride, error ) ) {
+		// The old final file is still intact when compilation or replacement fails.
+		// Restore it immediately so the editor viewport does not lose its terrain.
+		globalImages->ReloadAllMegaTextures();
+		SetBuildStatus( error, true );
+		common->Warning( "MegaTexture editor build failed: %s", error.c_str() );
+		return false;
+	}
 	globalImages->ReloadAllMegaTextures();
 	const idStr entityName = va( "terrain_%s", state.project.name.c_str() );
 	RefreshTerrainInRadiant( FindEntity( "name", entityName ) );
-	if ( runDmap ) {
-		if ( state.project.mapName.IsEmpty() ) { SetStatus( "MegaTexture compiled. Set a map path before running dmap." ); return false; }
-		SetStatus( "MegaTexture compiled; baking the project map with dmap..." );
-		Dmap_f( idCmdArgs( va( "dmap %s", state.project.mapName.c_str() ), false ) );
-	}
 	Sys_UpdateWindows( W_ALL );
-	SetStatus( runDmap ? "Compiled, validated, reloaded, and baked with dmap." : "Compiled, validated, and reloaded." );
+	SetBuildStatus( bakeLighting ? "Compiled, atmosphere-lit, validated, and reloaded. Dmap was not run." :
+		"Compiled unlit, validated, and reloaded.", false );
+	common->Printf( "MegaTexture editor: %s\n", state.buildStatus );
 	return true;
+}
+
+static void QueueCompileProject( bool bakeLighting ) {
+	if ( state.pendingCompile ) return;
+	if ( bakeLighting ) {
+		const char *atmosphereName = world_entity ? ValueForKey( world_entity, "atmosphere" ) : "";
+		if ( !FindAtmosphereDecl( atmosphereName ) ) {
+			SetBuildStatus( atmosphereName[0] ? va( "Cannot bake: '%s' is not an atmosphere declaration.", atmosphereName ) :
+				"Cannot bake: select a worldspawn atmosphere first.", true );
+			return;
+		}
+	}
+	state.pendingCompile = true;
+	state.pendingCompileBake = bakeLighting;
+	state.pendingCompileFrame = ImGui::GetFrameCount();
+	SetBuildStatus( bakeLighting ? "Atmosphere bake queued; compilation starts next frame." :
+		"Unlit compile queued; compilation starts next frame.", false );
+}
+
+static void ProcessPendingCompile() {
+	if ( !state.pendingCompile || ImGui::GetFrameCount() <= state.pendingCompileFrame ) return;
+	const bool bakeLighting = state.pendingCompileBake;
+	state.pendingCompile = false;
+	CompileProject( bakeLighting );
 }
 
 static void RenderNewProjectPopup() {
@@ -2276,6 +2384,7 @@ void MegaTextureEditorImGuiRenderInspector() {
 	EnsureLevelProject();
 	RenderNewProjectPopup();
 	ImGui::BeginChild( "MegaTextureInspectorScroll", ImVec2( 0, 0 ), false );
+	ProcessPendingCompile();
 	idStr levelMapPath, levelProjectPath, levelAssetName;
 	const bool savedLevel = GetLevelProjectInfo( levelMapPath, levelProjectPath, levelAssetName );
 	ImGui::TextWrapped( savedLevel ? "Level: %s\nTerrain project: %s" : "Level: <not saved>",
@@ -2314,16 +2423,17 @@ void MegaTextureEditorImGuiRenderInspector() {
 		ImGui::SameLine(); if ( ImGui::Button( "Undo" ) ) RoadUndo();
 		ImGui::SameLine(); if ( ImGui::Button( "Redo" ) ) RoadRedo();
 	}
-	ImGui::TextDisabled( "Light bake map: %s", state.project.mapName.c_str() );
-	if ( ImGui::Checkbox( "Receive baked lighting from dmap", &state.project.bakeLightmap ) ) state.projectDirty = true;
+	ImGui::TextDisabled( "Atmosphere bake level: %s", state.project.mapName.c_str() );
+	RenderAtmosphereBakeSelector();
 	const char *buildSizes[] = { "2048 x 2048", "4096 x 4096", "8192 x 8192", "16384 x 16384", "32768 x 32768" };
 	ImGui::SetNextItemWidth( -1.0f );
 	if ( ImGui::Combo( "Compiled MegaTexture size", &state.buildResolutionIndex, buildSizes, IM_ARRAYSIZE( buildSizes ) ) ) {
 		static const int buildResolutions[] = { 2048, 4096, 8192, 16384, 32768 };
 		state.project.resolution = buildResolutions[state.buildResolutionIndex]; state.projectDirty = true;
 	}
-	if ( ImGui::Button( "Compile MegaTexture" ) ) CompileProject( false );
-	ImGui::SameLine(); if ( ImGui::Button( "Compile + Bake dmap" ) ) CompileProject( true );
+	if ( ImGui::Button( "Compile MegaTexture (Unlit)" ) ) QueueCompileProject( false );
+	ImGui::SameLine(); if ( ImGui::Button( "Compile + Bake Atmosphere" ) ) QueueCompileProject( true );
+	RenderBuildStatus();
 	ImGui::Separator();
 	if ( state.editMode == MEGA_EDIT_SCULPT ) RenderSculptInspector();
 	else if ( state.editMode == MEGA_EDIT_PAINT ) RenderPaintInspector();
@@ -2347,13 +2457,14 @@ void MegaTextureEditorImGuiRender() {
 	EnsureLevelProject();
 	const char *title = state.dirty || state.projectDirty || state.terrainDirty || state.roadsDirty ? "MegaTexture Terrain Editor*" : "MegaTexture Terrain Editor";
 	if ( !ImGui::Begin( title, &state.open, ImGuiWindowFlags_MenuBar ) ) { ImGui::End(); return; }
+	ProcessPendingCompile();
 	if ( ImGui::BeginMenuBar() ) {
 		if ( ImGui::BeginMenu( "File" ) ) {
 			if ( ImGui::MenuItem( "Create terrain for this level", NULL, false, !state.loaded && state.projectPath[0] ) ) state.requestNewProjectPopup = true;
 			if ( ImGui::MenuItem( "Save", "Ctrl+S", false, state.loaded ) ) SaveProject();
 			ImGui::Separator();
-			if ( ImGui::MenuItem( "Compile", NULL, false, state.loaded ) ) CompileProject( false );
-			if ( ImGui::MenuItem( "Compile + Bake dmap", NULL, false, state.loaded ) ) CompileProject( true );
+			if ( ImGui::MenuItem( "Compile", NULL, false, state.loaded ) ) QueueCompileProject( false );
+			if ( ImGui::MenuItem( "Compile + Bake Atmosphere", NULL, false, state.loaded ) ) QueueCompileProject( true );
 			ImGui::EndMenu();
 		}
 		if ( ImGui::BeginMenu( "Edit" ) ) {
@@ -2379,20 +2490,21 @@ void MegaTextureEditorImGuiRender() {
 	ImGui::Text( "%s  |  terrain %d x %d / %.0f units  |  vertex layers %.2f MB",
 		state.project.material.c_str(), state.project.terrainSamples, state.project.terrainSamples, state.project.terrainSize,
 		authoringBytes / ( 1024.0f * 1024.0f ) );
-	ImGui::TextDisabled( "After compiling, use Camera Render mode (F3) to preview streaming and dmap lighting." );
+	ImGui::TextDisabled( "The atmosphere bake is merged into MegaTexture RGB; alpha keeps compact normal XY." );
 
-	ImGui::TextDisabled( "Light bake map: %s", state.project.mapName.c_str() );
-	if ( ImGui::Checkbox( "Receive baked lighting (dmap)", &state.project.bakeLightmap ) ) state.projectDirty = true;
+	ImGui::TextDisabled( "Bake level: %s", state.project.mapName.c_str() );
+	RenderAtmosphereBakeSelector();
 	const char *buildSizes[] = { "2048", "4096", "8192", "16384", "32768" };
-	ImGui::SameLine(); ImGui::SetNextItemWidth( 110.0f );
+	ImGui::SetNextItemWidth( 110.0f );
 	if ( ImGui::Combo( "Build size", &state.buildResolutionIndex, buildSizes, IM_ARRAYSIZE( buildSizes ) ) ) {
 		static const int buildResolutions[] = { 2048, 4096, 8192, 16384, 32768 };
 		state.project.resolution = buildResolutions[state.buildResolutionIndex]; state.projectDirty = true;
 	}
 	ImGui::SameLine();
-	if ( ImGui::Button( "Compile" ) ) CompileProject( false );
+	if ( ImGui::Button( "Compile" ) ) QueueCompileProject( false );
 	ImGui::SameLine();
-	if ( ImGui::Button( "Compile + Bake" ) ) CompileProject( true );
+	if ( ImGui::Button( "Compile + Bake" ) ) QueueCompileProject( true );
+	RenderBuildStatus();
 
 	ImGui::Separator();
 	if ( ImGui::BeginTabBar( "TerrainAuthoringTabs" ) ) {

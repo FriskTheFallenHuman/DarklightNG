@@ -53,7 +53,9 @@ struct megaTextureProject_t {
 	float terrainOrigin[3];
 	byte fill[4];
 	int quality[3];
-	bool bakeLightmap;
+	// Last compiler mode. MegaTexture lighting is baked into streamed RGB and
+	// never consumes dmap's lightmap atlas.
+	bool bakeLighting;
 };
 
 megaTextureVertexTransform_t MegaTextureEncodeVertexTransform( float scaleX, float scaleY, float rotation,
@@ -69,7 +71,9 @@ void MegaTextureInitializeTerrainTransforms( const megaTextureProject_t &project
 
 bool MegaTextureCreateProject( const char *name, int resolution, const char *mapName,
 							   megaTextureProject_t &project, idStr &error, const char *projectPath = NULL );
-bool MegaTextureCompileProject( const char *projectPath, int buildResolution, idStr &error );
+bool MegaTextureCompileProject( const char *projectPath, int buildResolution, bool bakeLighting, idStr &error );
+bool MegaTextureCompileProject( const char *projectPath, int buildResolution, bool bakeLighting,
+	const idDict *worldSpawnOverride, idStr &error );
 bool MegaTextureVerifyFile( const char *megaPath, idStr &error );
 bool MegaTextureLoadTileTGA( const megaTextureProject_t &project, int x, int y, byte *rgba, idStr &error );
 bool MegaTextureWriteTileTGA( const megaTextureProject_t &project, int x, int y, const byte *rgba, idStr &error );

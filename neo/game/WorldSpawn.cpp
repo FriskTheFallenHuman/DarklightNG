@@ -56,6 +56,26 @@ void idWorldspawn::Spawn( void ) {
 
 	g_gravity.SetFloat( spawnArgs.GetFloat( "gravity", va( "%f", DEFAULT_GRAVITY ) ) );
 
+	// A level-owned atmosphere belongs on worldspawn.  Spawn the existing
+	// atmosphere entity implementation so the renderer, weather, save games,
+	// dmap and the MegaTexture compiler all refer to the same declaration name.
+	const char *atmosphereName = spawnArgs.GetString( "atmosphere" );
+	if ( !atmosphereName[0] ) {
+		// Compatibility with maps that used the atmosphere entity's key name on
+		// worldspawn while this feature was being developed.
+		atmosphereName = spawnArgs.GetString( "atmospheredecl" );
+	}
+	if ( atmosphereName[0] ) {
+		idDict atmosphereArgs;
+		atmosphereArgs.Set( "classname", "atmosphere" );
+		atmosphereArgs.Set( "name", "world_atmosphere" );
+		atmosphereArgs.Set( "atmospheredecl", atmosphereName );
+		atmosphereArgs.Set( "origin", spawnArgs.GetString( "atmosphereOrigin", "0 0 0" ) );
+		if ( !gameLocal.SpawnEntityDef( atmosphereArgs ) ) {
+			gameLocal.Warning( "worldspawn could not create atmosphere '%s'", atmosphereName );
+		}
+	}
+
 	// disable stamina on hell levels
 	if ( spawnArgs.GetBool( "no_stamina" ) ) {
 		pm_stamina.SetFloat( 0.0f );
