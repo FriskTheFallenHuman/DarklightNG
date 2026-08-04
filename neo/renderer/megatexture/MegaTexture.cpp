@@ -835,7 +835,7 @@ void idMegaTexture::UpdateForViewOrigin( const idVec3 &origin, int time ) {
 void idMegaTexture::UpdateLevelForViewOrigin( idMegaTextureLevel *level, int index, int time ) {
 	if ( !level || index < 0 || index >= 7 ) return;
 	const float hidden[4] = { -2.0f, -2.0f, 0.0f, 1.0f };
-	R_SetGLSLProgramLocalParameter( GL_VERTEX_SHADER, index,
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, index,
 		level->ImageIsValid() ? level->GetParms() : hidden );
 	const int fadeMilliseconds = r_megaFadeTime.GetInteger();
 	shaderLevelOpacity[index] = fadeMilliseconds > 0 ?
@@ -875,8 +875,8 @@ void idMegaTexture::BindForViewOrigin( const idVec3 origin ) {
 		r_detailFade.GetFloat(),
 		0.0f
 	};
-	R_SetGLSLProgramLocalParameter( GL_VERTEX_SHADER, 7, shaderLevelOpacity + 1 );
-	R_SetGLSLProgramLocalParameter( GL_VERTEX_SHADER, 8, detailParms );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 7, shaderLevelOpacity + 1 );
+	R_SetGLSLProgramEnvParameter( GL_VERTEX_SHADER, 8, detailParms );
 }
 
 void idMegaTexture::Unbind() {

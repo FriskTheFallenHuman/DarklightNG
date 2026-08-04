@@ -2325,6 +2325,9 @@ void idCommonLocal::InitCommands( void ) {
 #if	!defined( ID_DEMO_BUILD ) && !defined( ID_DEDICATED )
 	// compilers
 	cmdSystem->AddCommand( "dmap", Dmap_f, CMD_FL_TOOL, "compiles a map", idCmdSystem::ArgCompletion_MapName );
+	cmdSystem->AddCommand( "megaCreate", MegaTextureCreate_f, CMD_FL_TOOL, "creates a sculptable MegaTexture terrain project" );
+	cmdSystem->AddCommand( "megaCompile", MegaTextureCompile_f, CMD_FL_TOOL, "compiles a .megaproject into a streamable MegaTexture" );
+	cmdSystem->AddCommand( "megaVerify", MegaTextureVerify_f, CMD_FL_TOOL, "validates and decodes samples from a MegaTexture" );
 	cmdSystem->AddCommand( "renderbump", RenderBump_f, CMD_FL_TOOL, "renders a bump map", idCmdSystem::ArgCompletion_ModelName );
 	cmdSystem->AddCommand( "renderbumpFlat", RenderBumpFlat_f, CMD_FL_TOOL, "renders a flat bump map", idCmdSystem::ArgCompletion_ModelName );
 	cmdSystem->AddCommand( "runAAS", RunAAS_f, CMD_FL_TOOL, "compiles an AAS file for a map", idCmdSystem::ArgCompletion_MapName );

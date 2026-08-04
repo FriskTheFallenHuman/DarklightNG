@@ -5,6 +5,8 @@
 #include "../af/AFEditorImGui.h"
 #include "../decl/DeclBrowserImGui.h"
 #include "../materialeditor/MaterialEditorImGui.h"
+#include "../radiant/MegaTextureEditorImGui.h"
+#include "../radiant/RadiantImGui.h"
 #include "../particle/ParticleEditorImGui.h"
 #include "../pda/PDAEditorImGui.h"
 #include "../script/ScriptEditorImGui.h"
@@ -19,6 +21,10 @@ void ToolEditorsImGuiShow( toolEditorImGui_t editor, const char *selection ) {
 		case TOOL_IMGUI_AF_EDITOR: AFEditorImGuiShow( selection ); break;
 		case TOOL_IMGUI_PDA_EDITOR: PDAEditorImGuiShow( selection ); break;
 		case TOOL_IMGUI_SCRIPT_EDITOR: ScriptEditorImGuiShow( selection ); break;
+		case TOOL_IMGUI_MEGA_TEXTURE_EDITOR:
+			MegaTextureEditorImGuiShow( selection );
+			RadiantImGuiShowMegaTextureInspector();
+			break;
 		default: break;
 	}
 }
@@ -32,6 +38,7 @@ void ToolEditorsImGuiHide( toolEditorImGui_t editor ) {
 		case TOOL_IMGUI_AF_EDITOR: AFEditorImGuiHide(); break;
 		case TOOL_IMGUI_PDA_EDITOR: PDAEditorImGuiHide(); break;
 		case TOOL_IMGUI_SCRIPT_EDITOR: ScriptEditorImGuiHide(); break;
+		case TOOL_IMGUI_MEGA_TEXTURE_EDITOR: MegaTextureEditorImGuiHide(); break;
 		default: break;
 	}
 }
@@ -45,6 +52,7 @@ bool ToolEditorsImGuiIsOpen( toolEditorImGui_t editor ) {
 		case TOOL_IMGUI_AF_EDITOR: return AFEditorImGuiIsOpen();
 		case TOOL_IMGUI_PDA_EDITOR: return PDAEditorImGuiIsOpen();
 		case TOOL_IMGUI_SCRIPT_EDITOR: return ScriptEditorImGuiIsOpen();
+		case TOOL_IMGUI_MEGA_TEXTURE_EDITOR: return MegaTextureEditorImGuiIsOpen();
 		default: return false;
 	}
 }
@@ -67,4 +75,5 @@ void ToolEditorsImGuiShutdown() {
 	AFEditorImGuiShutdown();
 	PDAEditorImGuiShutdown();
 	ScriptEditorImGuiShutdown();
+	MegaTextureEditorImGuiShutdown();
 }

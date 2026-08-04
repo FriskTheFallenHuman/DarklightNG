@@ -1,0 +1,34 @@
+Version 2
+// entity 0
+{
+"classname" "worldspawn"
+// primitive 0
+{
+ brushDef3
+ {
+  ( 0 0 -1 8 ) ( ( 0.0078125 0 0 ) ( 0 0.0078125 0 ) ) "textures/default" 0 0 0
+  ( -0 0 1 -72 ) ( ( 0.0078125 0 0 ) ( 0 0.0078125 0 ) ) "textures/default" 0 0 0
+  ( -0 -1 -0 2112 ) ( ( 0.0078125 0 0 ) ( 0 0.0078125 0 ) ) "textures/default" 0 0 0
+  ( 0.9999999404 0 0 4575.9995117188 ) ( ( 0.0078125 0 0 ) ( 0 0.0078125 0 ) ) "textures/default" 0 0 0
+  ( -0 1 0 -2440 ) ( ( 0.0078125 0 0 ) ( 0 0.0078125 0 ) ) "textures/default" 0 0 0
+  ( -0.9999999404 0 0 -4879.9995117188 ) ( ( 0.0078125 0 0 ) ( 0 0.0078125 0 ) ) "textures/default" 0 0 0
+ }
+}
+}
+// entity 1
+{
+"classname" "info_player_start"
+"name" "info_player_start_1"
+"origin" "-1480 -3800 8"
+"angle" "90"
+}
+// entity 2
+{
+"classname" "func_static"
+"name" "terrain_test_terrain_000437b5"
+"model" "models/terrain/test_terrain_000437b5.terrain"
+"megaTextureTerrain" "1"
+"megaTextureProject" "megatextures/levels/test_terrain.megaproject"
+"origin" "0 0 0"
+"bakeLightmap" "1"
+}

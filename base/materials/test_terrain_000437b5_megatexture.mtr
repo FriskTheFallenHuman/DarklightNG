@@ -1,0 +1,8 @@
+megatextures/test_terrain_000437b5
+{
+	qer_editorImage megatextures/test_terrain_preview.tga
+	bakeLightmap
+	{
+		megaTexture megatextures/test_terrain.mega
+	}
+}

@@ -6,6 +6,7 @@
 #include "LightDlg.h"
 #include "RadiantImGui.h"
 #include "SurfaceDlg.h"
+#include "MegaTextureEditorImGui.h"
 #include "../common/ToolEditorsImGui.h"
 
 #include "imgui.h"
@@ -179,6 +180,7 @@ public:
 	void Focus();
 	void Frame();
 	void ShowInspectorTab( int mode );
+	void ShowMegaTextureInspector();
 	void ShowLightEditor();
 	void RefreshLightEditor();
 	void ShowSurfaceInspector();
@@ -255,6 +257,8 @@ private:
 	bool saveMapRegion;
 	bool saveOverwritePending;
 	int requestedInspector;
+	bool requestMegaTextureInspector;
+	bool cameraInputHovered;
 	float uiScale;
 	LegacyViewportTexture cameraSurface;
 	LegacyViewportTexture xySurface;
@@ -319,7 +323,7 @@ RadiantImGuiHost::RadiantImGuiHost() :
 	requestLightFocus( false ),
 	requestSurfaceRefresh( false ), requestLightRefresh( false ), requestPatchRefresh( false ), requestOpenMapDialog( false ),
 	requestSaveMapDialog( false ), saveMapRegion( false ), saveOverwritePending( false ),
-	requestedInspector( 0 ),
+	requestedInspector( 0 ), requestMegaTextureInspector( false ), cameraInputHovered( false ),
 	uiScale( 1.0f ), toolbarAtlas( 0 ), toolbarImageList( NULL ), toolbarAtlasWidth( 0 ), toolbarAtlasHeight( 0 ),
 	toolbarIconWidth( 0 ), toolbarIconHeight( 0 ), toolbarAtlasColumns( 0 ), toolbarIconCount( 0 ),
 	capturedView( 0 ), contextPressView( NULL ), contextMenuRequestView( NULL ), contextPressX( 0 ), contextPressY( 0 ),
@@ -707,6 +711,13 @@ void RadiantImGuiHost::ShowInspectorTab( int mode ) {
 	Focus();
 }
 
+void RadiantImGuiHost::ShowMegaTextureInspector() {
+	showInspector = true;
+	radiant_imguiShowInspector.SetBool( true );
+	requestMegaTextureInspector = true;
+	Focus();
+}
+
 void RadiantImGuiHost::SyncSurfaceInspector() {
 	g_dlgSurface.SetTexMods();
 	idStr::Copynz( surfaceMaterial, (LPCSTR)g_dlgSurface.m_strMaterial, sizeof( surfaceMaterial ) );
@@ -824,6 +835,7 @@ void RadiantImGuiHost::RenderShell() {
 					case TOOL_IMGUI_AF_EDITOR: label = "Articulated Figure Editor..."; break;
 					case TOOL_IMGUI_PDA_EDITOR: label = "PDA Editor..."; break;
 					case TOOL_IMGUI_SCRIPT_EDITOR: label = "Script Editor..."; break;
+					case TOOL_IMGUI_MEGA_TEXTURE_EDITOR: label = "MegaTexture Terrain Editor..."; break;
 					default: break;
 				}
 				if ( ImGui::MenuItem( label, NULL, isOpen ) ) {
@@ -1484,6 +1496,7 @@ void RadiantImGuiHost::RenderZPanel( const ImVec2 &requestedSize ) {
 }
 
 void RadiantImGuiHost::RenderInspectorPanel() {
+	bool megaTextureSelected = false;
 	ImGui::BeginChild( "InspectorPanel", ImVec2( 0, 0 ), true,
 		ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
 	if ( ImGui::BeginTabBar( "InspectorTabs" ) ) {
@@ -1548,9 +1561,18 @@ void RadiantImGuiHost::RenderInspectorPanel() {
 			ImGui::EndChild();
 			ImGui::EndTabItem();
 		}
+		if ( ImGui::BeginTabItem( "MegaTexture", NULL,
+			requestMegaTextureInspector ? ImGuiTabItemFlags_SetSelected : 0 ) ) {
+			megaTextureSelected = true;
+			MegaTextureEditorImGuiSetModeActive( true );
+			MegaTextureEditorImGuiRenderInspector();
+			ImGui::EndTabItem();
+		}
 		ImGui::EndTabBar();
 		requestedInspector = 0;
+		requestMegaTextureInspector = false;
 	}
+	if ( !megaTextureSelected ) MegaTextureEditorImGuiSetModeActive( false );
 	ImGui::EndChild();
 }
 
@@ -2427,13 +2449,64 @@ UINT RadiantImGuiHost::MouseButtons() const {
 
 void RadiantImGuiHost::HandleCameraInput( CCamWnd *view, bool hovered, const ImVec2 &minimum ) {
 	const int captureId = 2;
+	cameraInputHovered = hovered;
 	if ( view == NULL || ( !hovered && capturedView != captureId ) ) {
 		return;
 	}
 	ImGuiIO &io = ImGui::GetIO();
 	int x = (int)( io.MousePos.x - minimum.x );
 	int y = (int)( io.MousePos.y - minimum.y );
+	const bool rightClicked = hovered && ImGui::IsMouseClicked( ImGuiMouseButton_Right );
+	if ( rightClicked ) capturedView = captureId;
+	const bool freeFly = capturedView == captureId && io.MouseDown[ImGuiMouseButton_Right];
+	const bool pageVertical = ( hovered || capturedView == captureId ) &&
+		( ImGui::IsKeyDown( ImGuiKey_PageUp ) || ImGui::IsKeyDown( ImGuiKey_PageDown ) );
+	if ( freeFly || pageVertical ) {
+		camera_t &camera = view->Camera();
+		bool changed = false;
+		const float boost = io.KeyShift ? 4.0f : 1.0f;
+		if ( freeFly && io.KeyCtrl ) {
+			if ( io.MouseDelta.y != 0.0f ) {
+				camera.origin[2] -= io.MouseDelta.y * boost;
+				changed = true;
+			}
+		} else if ( freeFly && ( io.MouseDelta.x != 0.0f || io.MouseDelta.y != 0.0f ) ) {
+			camera.angles[YAW] -= io.MouseDelta.x * 0.25f;
+			camera.angles[PITCH] = idMath::ClampFloat( -89.0f, 89.0f,
+				camera.angles[PITCH] - io.MouseDelta.y * 0.25f );
+			changed = true;
+		}
+
+		float forwardInput = 0.0f, strafeInput = 0.0f, verticalInput = 0.0f;
+		if ( freeFly ) {
+			if ( ImGui::IsKeyDown( ImGuiKey_W ) ) forwardInput += 1.0f;
+			if ( ImGui::IsKeyDown( ImGuiKey_S ) ) forwardInput -= 1.0f;
+			if ( ImGui::IsKeyDown( ImGuiKey_D ) ) strafeInput += 1.0f;
+			if ( ImGui::IsKeyDown( ImGuiKey_A ) ) strafeInput -= 1.0f;
+		}
+		if ( ImGui::IsKeyDown( ImGuiKey_PageUp ) ) verticalInput += 1.0f;
+		if ( ImGui::IsKeyDown( ImGuiKey_PageDown ) ) verticalInput -= 1.0f;
+		const float planarLength = idMath::Sqrt( forwardInput * forwardInput + strafeInput * strafeInput );
+		if ( planarLength > 1.0f ) { forwardInput /= planarLength; strafeInput /= planarLength; }
+		if ( forwardInput != 0.0f || strafeInput != 0.0f || verticalInput != 0.0f ) {
+			idVec3 forward, right;
+			idAngles( -camera.angles[PITCH], camera.angles[YAW], 0.0f ).ToVectors( &forward, &right, NULL );
+			const float frameTime = idMath::ClampFloat( 0.001f, 0.1f, io.DeltaTime );
+			const float distance = g_PrefsDlg.m_nMoveSpeed * boost * frameTime;
+			camera.origin += forward * ( forwardInput * distance );
+			camera.origin += right * ( strafeInput * distance );
+			camera.origin[2] += verticalInput * distance;
+			changed = true;
+		}
+		if ( changed ) Sys_UpdateWindows( W_CAMERA | W_XY_OVERLAY | W_Z );
+	}
+	const bool megaTextureConsumesLeft = MegaTextureEditorImGuiHandleCameraInput( view, x, y, hovered,
+		hovered && ImGui::IsMouseClicked( ImGuiMouseButton_Left ),
+		io.MouseDown[ImGuiMouseButton_Left], ImGui::IsMouseReleased( ImGuiMouseButton_Left ), io.KeyCtrl );
+	if ( megaTextureConsumesLeft && hovered && ImGui::IsMouseClicked( ImGuiMouseButton_Left ) ) capturedView = captureId;
 	for ( int button = 0; button < 3; button++ ) {
+		if ( button == ImGuiMouseButton_Left && megaTextureConsumesLeft ) continue;
+		if ( button == ImGuiMouseButton_Right ) continue;
 		if ( hovered && ImGui::IsMouseClicked( button ) ) {
 			capturedView = captureId;
 			view->HandleMouseButton( button, true, x, y, MouseButtons() );
@@ -2442,8 +2515,12 @@ void RadiantImGuiHost::HandleCameraInput( CCamWnd *view, bool hovered, const ImV
 	if ( capturedView != captureId ) {
 		return;
 	}
-	view->HandleMouseMove( x, y, MouseButtons() );
+	UINT legacyButtons = MouseButtons() & ~MK_RBUTTON;
+	if ( megaTextureConsumesLeft ) legacyButtons &= ~MK_LBUTTON;
+	view->HandleMouseMove( x, y, legacyButtons );
 	for ( int button = 0; button < 3; button++ ) {
+		if ( button == ImGuiMouseButton_Left && megaTextureConsumesLeft ) continue;
+		if ( button == ImGuiMouseButton_Right ) continue;
 		if ( ImGui::IsMouseReleased( button ) ) {
 			view->HandleMouseButton( button, false, x, y, MouseButtons() );
 		}
@@ -2622,8 +2699,18 @@ LRESULT RadiantImGuiHost::WindowProc( HWND window, UINT message, WPARAM wParam, 
 	}
 	if ( ( message == WM_KEYDOWN || message == WM_KEYUP || message == WM_SYSKEYDOWN || message == WM_SYSKEYUP ) &&
 		g_pParentWnd != NULL && imguiContext != NULL && !ImGui::GetIO().WantTextInput ) {
-		g_pParentWnd->HandleKey( (UINT)wParam, LOWORD( lParam ), HIWORD( lParam ),
-			message == WM_KEYDOWN || message == WM_SYSKEYDOWN );
+		const bool keyDown = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
+		const bool controlDown = ( GetAsyncKeyState( VK_CONTROL ) & 0x8000 ) != 0;
+		const bool repeat = ( lParam & ( 1u << 30 ) ) != 0;
+		if ( MegaTextureEditorImGuiHandleKey( (int)wParam, keyDown, controlDown, repeat ) ) return 0;
+		const bool rightMouseDown = ( GetAsyncKeyState( VK_RBUTTON ) & 0x8000 ) != 0;
+		const bool cameraFlyKey = rightMouseDown &&
+			( wParam == 'W' || wParam == 'A' || wParam == 'S' || wParam == 'D' );
+		const bool cameraVerticalKey = ( cameraInputHovered || capturedView == 2 ) &&
+			( wParam == VK_PRIOR || wParam == VK_NEXT );
+		if ( !cameraFlyKey && !cameraVerticalKey ) {
+			g_pParentWnd->HandleKey( (UINT)wParam, LOWORD( lParam ), HIWORD( lParam ), keyDown );
+		}
 		return 0;
 	}
 	if ( imguiHandled ) {
@@ -2759,6 +2846,10 @@ void RadiantImGuiShowInspector( int mode ) {
 		}
 		radiantImGuiHost->ShowInspectorTab( mode );
 	}
+}
+
+void RadiantImGuiShowMegaTextureInspector() {
+	if ( radiantImGuiHost != NULL ) radiantImGuiHost->ShowMegaTextureInspector();
 }
 
 void RadiantImGuiShowLightEditor() {

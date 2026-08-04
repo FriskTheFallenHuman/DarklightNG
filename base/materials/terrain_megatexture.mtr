@@ -1,0 +1,8 @@
+megatextures/terrain
+{
+	qer_editorImage megatextures/terrain_preview.tga
+	bakeLightmap
+	{
+		megaTexture megatextures/terrain.mega
+	}
+}

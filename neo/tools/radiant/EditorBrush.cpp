@@ -24,6 +24,7 @@ GNU General Public License for more details.
 #pragma hdrstop
 
 #include "qe3.h"
+#include "MegaTextureEditorImGui.h"
 #include <GL/glu.h>
 
 #include "../../renderer/tr_local.h"
@@ -47,6 +48,14 @@ DrawRenderModel
 ================
 */
 void DrawRenderModel( idRenderModel *model, idVec3 &origin, idMat3 &axis, bool cameraView ) {
+	idVec4 savedColor;
+	qglGetFloatv( GL_CURRENT_COLOR, savedColor.ToFloatPtr() );
+	const int drawMode = g_pParentWnd->GetCamera()->Camera().draw_mode;
+	if ( cameraView && ( drawMode == cd_texture || drawMode == cd_light ) &&
+		 MegaTextureEditorImGuiDrawLayeredTerrain( model, origin, axis ) ) {
+		qglColor4fv( savedColor.ToFloatPtr() );
+		return;
+	}
 	for ( int i = 0; i < model->NumSurfaces(); i++ ) {
 		const modelSurface_t *surf = model->Surface( i );
 		const idMaterial *material = surf->shader;
@@ -54,6 +63,9 @@ void DrawRenderModel( idRenderModel *model, idVec3 &origin, idMat3 &axis, bool c
 		int nDrawMode = g_pParentWnd->GetCamera()->Camera().draw_mode;
 
 		if ( cameraView && (nDrawMode == cd_texture || nDrawMode == cd_light) ) {
+			// Entity-class colors are useful in solid/wire modes, but modulating a
+			// textured model by func_static blue hides its editor material preview.
+			qglColor4f( 1.0f, 1.0f, 1.0f, 1.0f );
 			material->GetEditorImage()->Bind();
 		}
 
@@ -73,6 +85,7 @@ void DrawRenderModel( idRenderModel *model, idVec3 &origin, idMat3 &axis, bool c
 
 		qglEnd();
 	}
+	qglColor4fv( savedColor.ToFloatPtr() );
 }
 
 /*

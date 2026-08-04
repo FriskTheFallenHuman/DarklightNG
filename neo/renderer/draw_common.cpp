@@ -792,7 +792,9 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 				continue;
 			}
 
-			bool usesBakedAtlas = false;
+			// MegaTexture materials are ordinary dmap lightmap receivers.  Their
+			// lightmap sampler is implicit (unit zero), rather than a material image.
+			bool usesBakedAtlas = newStage->megaTexture != NULL;
 			for ( int imageIndex = 0; imageIndex < newStage->numFragmentProgramImages; imageIndex++ ) {
 				idImage *image = newStage->fragmentProgramImages[imageIndex];
 				if ( image == globalImages->bakedLightmapImage || image == globalImages->bakedDeluxemapImage ) {
@@ -827,6 +829,14 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 				idVec3	localViewer;
 				R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewDef->renderView.vieworg, localViewer );
 				newStage->megaTexture->BindForViewOrigin( localViewer );
+				// BindForViewOrigin reserves unit zero.  Replace its neutral image with
+				// dmap's atlas for this surface; the shader gates it with bakedParms.w.
+				GL_SelectTexture( 0 );
+				( hasBakedAtlas ? tri->bakedLightmap : globalImages->whiteImage )->Bind();
+				// The streamed MegaTexture's alpha carries its compact tangent-space
+				// normal. Unit six supplies dmap's matching light direction.
+				GL_SelectTexture( 6 );
+				( hasBakedAtlas ? tri->bakedDeluxemap : globalImages->flatNormalMap )->Bind();
 			}
 
 			for ( int i = 0 ; i < newStage->numVertexParms ; i++ ) {

@@ -1,0 +1,8 @@
+terrainModel 1
+{
+	heightMap megatextures/test_terrain_000437b5.height
+	weightMap megatextures/test_terrain_000437b5.weights
+	material megatextures/test_terrain_000437b5
+	samples 129
+	worldSize 8192
+}

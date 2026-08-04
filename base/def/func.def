@@ -258,7 +258,7 @@ entityDef func_static {
 	"editor_gui gui"			"gui attached to this static, gui2 and gui3 also work"
 	"editor_gui gui_demonic"	"demonic gui attached to this statit, gui_demonic2 and gui_demonic3 also work"
 	"editor_bool gui_noninteractive" "any gui attached will not be interactive"
-	"editor_bool noclipmodel"	"0 by default. Sets whether or not to generate a collision model for an ASE/LWO func_static at level load. (Set to 1 for stuff the player can't interact with. This will save memory.)"
+	"editor_bool noclipmodel"	"0 by default. Sets whether or not to generate a collision model for an ASE/LWO/MA/terrain func_static at level load. (Set to 1 for stuff the player can't interact with. This will save memory.)"
 	"editor_bool inline"		"If true, turn the model into map geometry at dmap time"
 
 	"spawnclass"				"idStaticEntity"

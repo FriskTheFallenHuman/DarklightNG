@@ -84,6 +84,7 @@ public:
 	bool						LoadASE( const char *fileName );
 	bool						LoadLWO( const char *fileName );
 	bool						LoadFLT( const char *fileName );
+	bool						LoadTerrain( const char *fileName );
 	bool						LoadMA( const char *filename );
 
 	bool						ConvertASEToModelSurfaces( const struct aseModel_s *ase );

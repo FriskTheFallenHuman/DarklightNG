@@ -2980,9 +2980,12 @@ cm_model_t *idCollisionModelManagerLocal::LoadRenderModel( const char *fileName 
 	bool collisionSurface;
 	idStr extension;
 
-	// only load ASE and LWO models
+	// Convert supported static render meshes into collision models. Editable
+	// MegaTexture terrain uses the renderer's .terrain model loader and needs
+	// the same polygon conversion as ASE/LWO/MA func_static models.
 	idStr( fileName ).ExtractFileExtension( extension );
-	if ( ( extension.Icmp( "ase" ) != 0 ) && ( extension.Icmp( "lwo" ) != 0 ) && ( extension.Icmp( "ma" ) != 0 ) ) {
+	if ( ( extension.Icmp( "ase" ) != 0 ) && ( extension.Icmp( "lwo" ) != 0 ) &&
+		 ( extension.Icmp( "ma" ) != 0 ) && ( extension.Icmp( "terrain" ) != 0 ) ) {
 		return NULL;
 	}
 
@@ -3540,7 +3543,7 @@ cmHandle_t idCollisionModelManagerLocal::LoadModel( const char *modelName, const
 		return 0;
 	}
 
-	// try to load a .ASE or .LWO model and convert it to a collision model
+	// Try to load a supported static render model and convert it to collision.
 	models[numModels] = LoadRenderModel( modelName );
 	if ( models[numModels] != NULL ) {
 		numModels++;

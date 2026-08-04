@@ -1,0 +1,8 @@
+terrainModel 1
+{
+	heightMap megatextures/terrain.height
+	weightMap megatextures/terrain.weights
+	material megatextures/terrain
+	samples 129
+	worldSize 16384
+}

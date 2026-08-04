@@ -34,6 +34,11 @@ GNU General Public License for more details.
 // map processing
 void Dmap_f( const idCmdArgs &args );
 
+// MegaTexture authoring and validation
+void MegaTextureCreate_f( const idCmdArgs &args );
+void MegaTextureCompile_f( const idCmdArgs &args );
+void MegaTextureVerify_f( const idCmdArgs &args );
+
 // bump map generation
 void RenderBump_f( const idCmdArgs &args );
 void RenderBumpFlat_f( const idCmdArgs &args );

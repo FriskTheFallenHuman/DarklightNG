@@ -456,6 +456,215 @@ bool idBareDctDecoder::DecompressLuminanceEnhancement_MMX( const byte *a, byte *
 bool idBareDctDecoder::DecompressLuminanceEnhancement_SSE2( const byte *a, byte *b, int c, int d, int e ) { return DecompressLuminanceEnhancement_Generic( a, b, c, d, e ); }
 bool idBareDctDecoder::DecompressLuminanceEnhancement_Xenon( const byte *a, byte *b, int c, int d, int e ) { return DecompressLuminanceEnhancement_Generic( a, b, c, d, e ); }
 
+idBareDctEncoder::idBareDctEncoder() :
+	output( NULL ), capacity( 0 ), offset( 0 ), pendingByte( 0 ), pendingBits( 0 ), overflow( false ),
+	dcY( 0 ), dcCo( 0 ), dcCg( 0 ), dcA( 0 ) {
+	BuildCodeTable( codeYDC, bitsYDC, valuesDC );
+	BuildCodeTable( codeYAC, bitsYAC, valuesYAC );
+	BuildCodeTable( codeCoCgDC, bitsCoCgDC, valuesDC );
+	BuildCodeTable( codeCoCgAC, bitsCoCgAC, valuesCoCgAC );
+}
+
+void idBareDctEncoder::BuildCodeTable( huffmanCode_t table[256], const byte *bits, const byte *values ) {
+	memset( table, 0, sizeof( huffmanCode_t ) * 256 );
+	unsigned int code = 0;
+	int valueIndex = 0;
+	for ( int length = 1; length <= 16; ++length ) {
+		for ( int i = 0; i < bits[length]; ++i ) {
+			table[values[valueIndex]].code = (unsigned short)code;
+			table[values[valueIndex]].bits = (byte)length;
+			++valueIndex;
+			++code;
+		}
+		code <<= 1;
+	}
+}
+
+int idBareDctEncoder::Category( int value ) {
+	unsigned int magnitude = value < 0 ? (unsigned int)-value : (unsigned int)value;
+	int category = 0;
+	while ( magnitude ) {
+		++category;
+		magnitude >>= 1;
+	}
+	return category;
+}
+
+bool idBareDctEncoder::PutBits( unsigned int value, int count ) {
+	for ( int bit = count - 1; bit >= 0; --bit ) {
+		pendingByte = ( pendingByte << 1 ) | ( ( value >> bit ) & 1u );
+		if ( ++pendingBits == 8 ) {
+			if ( offset >= capacity ) {
+				overflow = true;
+				return false;
+			}
+			output[offset++] = (byte)pendingByte;
+			pendingByte = 0;
+			pendingBits = 0;
+		}
+	}
+	return true;
+}
+
+bool idBareDctEncoder::FlushBits() {
+	if ( pendingBits ) {
+		pendingByte <<= 8 - pendingBits;
+		if ( offset >= capacity ) {
+			overflow = true;
+			return false;
+		}
+		output[offset++] = (byte)pendingByte;
+		pendingByte = 0;
+		pendingBits = 0;
+	}
+	return !overflow;
+}
+
+void idBareDctEncoder::ForwardDCT( const short *input, const unsigned short *quant, short *coefficients ) const {
+	static bool initialized = false;
+	static double basis[8][8];
+	if ( !initialized ) {
+		const double pi = 3.14159265358979323846;
+		for ( int frequency = 0; frequency < 8; ++frequency ) {
+			const double scale = frequency == 0 ? 0.7071067811865475244 : 1.0;
+			for ( int position = 0; position < 8; ++position ) {
+				basis[frequency][position] = scale * cos( ( ( 2 * position + 1 ) * frequency * pi ) / 16.0 );
+			}
+		}
+		initialized = true;
+	}
+
+	double horizontal[64];
+	for ( int y = 0; y < 8; ++y ) {
+		for ( int u = 0; u < 8; ++u ) {
+			double sum = 0.0;
+			for ( int x = 0; x < 8; ++x ) sum += input[y * 8 + x] * basis[u][x];
+			horizontal[y * 8 + u] = sum;
+		}
+	}
+	for ( int v = 0; v < 8; ++v ) {
+		for ( int u = 0; u < 8; ++u ) {
+			double sum = 0.0;
+			for ( int y = 0; y < 8; ++y ) sum += horizontal[y * 8 + u] * basis[v][y];
+			const double value = 0.25 * sum / quant[v * 8 + u];
+			const int rounded = (int)( value < 0.0 ? ceil( value - 0.5 ) : floor( value + 0.5 ) );
+			coefficients[v * 8 + u] = (short)idMath::ClampInt( -32767, 32767, rounded );
+		}
+	}
+}
+
+bool idBareDctEncoder::EncodeBlock( const short *input, const unsigned short *quant,
+									const huffmanCode_t dcTable[256], const huffmanCode_t acTable[256], int &lastDC ) {
+	short coefficients[64];
+	ForwardDCT( input, quant, coefficients );
+	const int difference = coefficients[0] - lastDC;
+	lastDC = coefficients[0];
+	const int dcCategory = Category( difference );
+	if ( dcCategory > 11 || dcTable[dcCategory].bits == 0 ) return false;
+	if ( !PutBits( dcTable[dcCategory].code, dcTable[dcCategory].bits ) ) return false;
+	if ( dcCategory ) {
+		const unsigned int encoded = difference < 0 ?
+			(unsigned int)( difference + ( 1 << dcCategory ) - 1 ) : (unsigned int)difference;
+		if ( !PutBits( encoded, dcCategory ) ) return false;
+	}
+
+	int zeroRun = 0;
+	for ( int index = 1; index < 64; ++index ) {
+		const int value = coefficients[jpegNaturalOrder[index]];
+		if ( value == 0 ) {
+			++zeroRun;
+			continue;
+		}
+		while ( zeroRun >= 16 ) {
+			const huffmanCode_t &zrl = acTable[0xF0];
+			if ( zrl.bits == 0 || !PutBits( zrl.code, zrl.bits ) ) return false;
+			zeroRun -= 16;
+		}
+		const int category = Category( value );
+		if ( category > 15 ) return false;
+		const int symbol = ( zeroRun << 4 ) | category;
+		const huffmanCode_t &entry = acTable[symbol];
+		if ( entry.bits == 0 || !PutBits( entry.code, entry.bits ) ) return false;
+		const unsigned int encoded = value < 0 ?
+			(unsigned int)( value + ( 1 << category ) - 1 ) : (unsigned int)value;
+		if ( !PutBits( encoded, category ) ) return false;
+		zeroRun = 0;
+	}
+	if ( zeroRun ) {
+		const huffmanCode_t &eob = acTable[0];
+		if ( eob.bits == 0 || !PutBits( eob.code, eob.bits ) ) return false;
+	}
+	return true;
+}
+
+bool idBareDctEncoder::CompressColorImage( const byte *inBuf, byte *outBuf, int width, int height,
+									   int outputCapacity, int &outputBytes, bool alpha ) {
+	outputBytes = 0;
+	if ( !inBuf || !outBuf || width <= 0 || height <= 0 || outputCapacity <= 0 ) return false;
+	output = outBuf;
+	capacity = outputCapacity;
+	offset = pendingBits = 0;
+	pendingByte = 0;
+	overflow = false;
+	dcY = dcCo = dcCg = dcA = 0;
+
+	for ( int originY = 0; originY < height; originY += 16 ) {
+		for ( int originX = 0; originX < width; originX += 16 ) {
+			short yBlocks[4][64];
+			short coBlock[64];
+			short cgBlock[64];
+			short aBlocks[4][64];
+			for ( int y = 0; y < 16; ++y ) {
+				for ( int x = 0; x < 16; ++x ) {
+					const int sx = idMath::ClampInt( 0, width - 1, originX + x );
+					const int sy = idMath::ClampInt( 0, height - 1, originY + y );
+					const byte *pixel = inBuf + 4 * ( sy * width + sx );
+					const int block = ( y >= 8 ? 2 : 0 ) + ( x >= 8 ? 1 : 0 );
+					const int blockIndex = ( y & 7 ) * 8 + ( x & 7 );
+					const int yy = ( pixel[0] + 2 * pixel[1] + pixel[2] + 2 ) >> 2;
+					yBlocks[block][blockIndex] = (short)( yy - 128 );
+					aBlocks[block][blockIndex] = (short)( pixel[3] - 128 );
+				}
+			}
+			for ( int y = 0; y < 8; ++y ) {
+				for ( int x = 0; x < 8; ++x ) {
+					int co = 0, cg = 0;
+					for ( int oy = 0; oy < 2; ++oy ) for ( int ox = 0; ox < 2; ++ox ) {
+						const int sx = idMath::ClampInt( 0, width - 1, originX + x * 2 + ox );
+						const int sy = idMath::ClampInt( 0, height - 1, originY + y * 2 + oy );
+						const byte *pixel = inBuf + 4 * ( sy * width + sx );
+						co += ( (int)pixel[0] - pixel[2] ) >> 1;
+						cg += ( -(int)pixel[0] + 2 * pixel[1] - pixel[2] + 2 ) >> 2;
+					}
+					coBlock[y * 8 + x] = (short)( ( co >= 0 ? co + 2 : co - 2 ) / 4 );
+					cgBlock[y * 8 + x] = (short)( ( cg >= 0 ? cg + 2 : cg - 2 ) / 4 );
+				}
+			}
+			for ( int block = 0; block < 4; ++block ) {
+				if ( !EncodeBlock( yBlocks[block], quantTableY, codeYDC, codeYAC, dcY ) ) return false;
+			}
+			if ( !EncodeBlock( coBlock, quantTableCoCg, codeCoCgDC, codeCoCgAC, dcCo ) ||
+				 !EncodeBlock( cgBlock, quantTableCoCg, codeCoCgDC, codeCoCgAC, dcCg ) ) return false;
+			if ( alpha ) for ( int block = 0; block < 4; ++block ) {
+				if ( !EncodeBlock( aBlocks[block], quantTableA, codeYDC, codeYAC, dcA ) ) return false;
+			}
+		}
+	}
+	if ( !FlushBits() ) return false;
+	outputBytes = offset;
+	return true;
+}
+
+bool idBareDctEncoder::CompressImageRGB( const byte *inBuf, byte *outBuf, int width, int height,
+									 int outputCapacity, int &outputBytes ) {
+	return CompressColorImage( inBuf, outBuf, width, height, outputCapacity, outputBytes, false );
+}
+
+bool idBareDctEncoder::CompressImageRGBA( const byte *inBuf, byte *outBuf, int width, int height,
+									  int outputCapacity, int &outputBytes ) {
+	return CompressColorImage( inBuf, outBuf, width, height, outputCapacity, outputBytes, true );
+}
+
 idDxtEncoder::idDxtEncoder() {
 }
 

@@ -120,6 +120,50 @@ private:
 	int dcA;
 };
 
+// Encoder for the headerless DCT stream consumed by idBareDctDecoder.  The
+// three quality bytes are deliberately not written here; MegaTexture records
+// store those immediately before the compressed payload.
+class idBareDctEncoder : public idBareDctBase {
+public:
+	idBareDctEncoder();
+
+	bool CompressImageRGB( const byte *inBuf, byte *outBuf, int width, int height,
+						int outputCapacity, int &outputBytes );
+	bool CompressImageRGBA( const byte *inBuf, byte *outBuf, int width, int height,
+						 int outputCapacity, int &outputBytes );
+
+private:
+	struct huffmanCode_t {
+		unsigned short code;
+		byte bits;
+	};
+
+	void BuildCodeTable( huffmanCode_t table[256], const byte *bits, const byte *values );
+	bool CompressColorImage( const byte *inBuf, byte *outBuf, int width, int height,
+						 int outputCapacity, int &outputBytes, bool alpha );
+	void ForwardDCT( const short *input, const unsigned short *quant, short *coefficients ) const;
+	bool EncodeBlock( const short *input, const unsigned short *quant,
+					  const huffmanCode_t dcTable[256], const huffmanCode_t acTable[256], int &lastDC );
+	bool PutBits( unsigned int value, int count );
+	bool FlushBits();
+	static int Category( int value );
+
+	huffmanCode_t codeYDC[256];
+	huffmanCode_t codeYAC[256];
+	huffmanCode_t codeCoCgDC[256];
+	huffmanCode_t codeCoCgAC[256];
+	byte *output;
+	int capacity;
+	int offset;
+	unsigned int pendingByte;
+	int pendingBits;
+	bool overflow;
+	int dcY;
+	int dcCo;
+	int dcCg;
+	int dcA;
+};
+
 class idDxtEncoder {
 public:
 	idDxtEncoder();

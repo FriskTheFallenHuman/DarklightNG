@@ -9,6 +9,7 @@ void RadiantImGuiFrame();
 void RadiantImGuiPumpMessages();
 HWND RadiantImGuiWindow();
 void RadiantImGuiShowInspector( int mode );
+void RadiantImGuiShowMegaTextureInspector();
 void RadiantImGuiShowLightEditor();
 void RadiantImGuiRefreshLightEditor();
 void RadiantImGuiShowSurfaceInspector();

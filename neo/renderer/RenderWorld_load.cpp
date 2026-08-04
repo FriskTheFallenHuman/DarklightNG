@@ -784,6 +784,15 @@ bool idRenderWorldLocal::InitFromMap( const char *name ) {
 				manifestText.Find( "atlasFormat DDS_DXT1" ) >= 0 &&
 				manifestText.Find( "lightingComplete 1" ) >= 0 &&
 				manifestText.Find( va( "procFileId %s", PROC_FILE_ID ) ) >= 0;
+			// A zero-light archive only contains the low dmap sampling floor. It
+			// is not a useful lighting result and makes custom ambient receivers,
+			// such as MegaTexture terrain, appear black. Leave it unmounted so the
+			// material uses its normal unbaked/realtime fallback until the map has
+			// at least one light marked for baking.
+			if ( validManifest && manifestText.Find( "numBakedLights 0" ) >= 0 ) {
+				common->Warning( "Map lightmap archive %s contains no baked lights; using realtime lighting", archiveName.c_str() );
+				validManifest = false;
+			}
 			if ( validManifest && !glConfig.textureCompressionAvailable ) {
 				common->Warning( "Map lightmap archive %s requires DXT1 texture support; using realtime lights", archiveName.c_str() );
 				validManifest = false;

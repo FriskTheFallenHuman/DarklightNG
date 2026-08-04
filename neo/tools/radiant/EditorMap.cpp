@@ -25,6 +25,7 @@ GNU General Public License for more details.
 
 #include "qe3.h"
 #include "RadiantImGui.h"
+#include "MegaTextureEditorImGui.h"
 
 int			mapModified;			// for quit confirmation (0 = clean, 1 = unsaved,
 
@@ -426,6 +427,10 @@ void Map_LoadFile(const char *filename) {
 	CWaitDlg dlg;
 	idStr fileStr, status;
 	idMapFile mapfile;
+	// Some legacy reload paths can pass currentmap itself. Map_Free resets that
+	// global to unnamed.map, so retain an owned copy before freeing the old map.
+	idStr stableFilename = filename ? filename : "";
+	filename = stableFilename.c_str();
 
 	Sys_BeginWait();
 	Select_Deselect();
@@ -451,7 +456,7 @@ void Map_LoadFile(const char *filename) {
 	Map_Free();
 
 	g_qeglobals.d_parsed_brushes = 0;
-	strcpy( currentmap, filename );
+	idStr::Copynz( currentmap, filename, sizeof( currentmap ) );
 
 	if(mapfile.Parse(filename, true, true)) {
 		g_qeglobals.bNeedConvert = false;
@@ -556,6 +561,7 @@ void Map_LoadFile(const char *filename) {
 
 	Sys_EndWait();
 	Sys_UpdateWindows(W_ALL);
+	MegaTextureEditorImGuiOnMapLoaded();
 	common->Printf( "Map_LoadFile complete: %s\n", fileStr.c_str() );
 }
 
@@ -666,6 +672,7 @@ bool Map_SaveFile(const char *filename, bool use_region, bool autosave) {
 	int			count;
 	brush_t		*b;
 	idStr status;
+	const bool sourceWasBlank = !idStr::Icmp( currentmap, "unnamed.map" );
 
 	int len = strlen(filename);
 	WIN32_FIND_DATA FileData;
@@ -687,6 +694,9 @@ bool Map_SaveFile(const char *filename, bool use_region, bool autosave) {
 			return false;
 		}
 	}
+	const DWORD targetAttributes = GetFileAttributesA( filename );
+	const bool blankMapOverwrite = sourceWasBlank && !use_region && !autosave &&
+		targetAttributes != INVALID_FILE_ATTRIBUTES && ( targetAttributes & FILE_ATTRIBUTE_DIRECTORY ) == 0;
 
 	MEMORYSTATUSEX statex;
 	statex.dwLength = sizeof (statex);
@@ -805,6 +815,7 @@ bool Map_SaveFile(const char *filename, bool use_region, bool autosave) {
 	}
 
 	Sys_Status("Saved.\n", 0);
+	if ( blankMapOverwrite ) MegaTextureEditorImGuiOnBlankMapOverwrite( filename );
 
 	return true;
 }

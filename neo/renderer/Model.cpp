@@ -287,6 +287,9 @@ void idRenderModelStatic::InitFromFile( const char *fileName ) {
 	} else if ( extension.Icmp( "flt" ) == 0 ) {
 		loaded		= LoadFLT( name );
 		reloadable	= true;
+	} else if ( extension.Icmp( "terrain" ) == 0 ) {
+		loaded		= LoadTerrain( name );
+		reloadable	= true;
 	} else if ( extension.Icmp( "ma" ) == 0 ) {
 		loaded		= LoadMA( name );
 		reloadable	= true;
@@ -2064,6 +2067,112 @@ bool idRenderModelStatic::LoadFLT( const char *fileName ) {
 
 	this->AddSurface( surface );
 
+	return true;
+}
+
+/*
+=================
+idRenderModelStatic::LoadTerrain
+
+Loads the editable heightfield descriptor written by the MegaTexture terrain
+editor.  The height file contains world-space Z values so editor regeneration,
+dmap, rendering, and collision all consume the same geometry.
+=================
+*/
+bool idRenderModelStatic::LoadTerrain( const char *fileName ) {
+	idLexer lexer;
+	lexer.SetFlags( LEXFL_NOSTRINGCONCAT | LEXFL_NOSTRINGESCAPECHARS | LEXFL_ALLOWPATHNAMES | LEXFL_NOFATALERRORS );
+	if ( !lexer.LoadFile( fileName ) ) return false;
+	idToken token;
+	if ( !lexer.ReadToken( &token ) || token.Icmp( "terrainModel" ) ||
+		 !lexer.ReadToken( &token ) || token.GetIntValue() != 1 || !lexer.ExpectTokenString( "{" ) ) return false;
+	idStr heightMap;
+	idStr weightMap;
+	idStr materialName;
+	int samples = 0;
+	float worldSize = 0.0f;
+	while ( lexer.ReadToken( &token ) && token != "}" ) {
+		if ( !token.Icmp( "heightMap" ) ) { lexer.ReadToken( &token ); heightMap = token; }
+		else if ( !token.Icmp( "weightMap" ) ) { lexer.ReadToken( &token ); weightMap = token; }
+		else if ( !token.Icmp( "material" ) ) { lexer.ReadToken( &token ); materialName = token; }
+		else if ( !token.Icmp( "samples" ) ) samples = lexer.ParseInt();
+		else if ( !token.Icmp( "worldSize" ) ) worldSize = lexer.ParseFloat();
+		else lexer.ReadToken( &token );
+	}
+	if ( lexer.HadError() || heightMap.IsEmpty() || materialName.IsEmpty() || samples < 3 || samples > 513 || worldSize <= 0.0f ) return false;
+
+	static const int TERRAIN_HEIGHT_MAGIC = 1213482316; // little-endian "DLHT"
+	idFile *heightFile = fileSystem->OpenFileRead( heightMap );
+	if ( !heightFile ) return false;
+	int magic = 0, version = 0, fileSamples = 0;
+	bool okay = heightFile->ReadInt( magic ) == 4 && heightFile->ReadInt( version ) == 4 &&
+		heightFile->ReadInt( fileSamples ) == 4 && magic == TERRAIN_HEIGHT_MAGIC && version == 1 && fileSamples == samples;
+	idList<float> heights;
+	heights.SetNum( samples * samples );
+	for ( int i = 0; okay && i < heights.Num(); ++i ) okay &= heightFile->ReadFloat( heights[i] ) == 4;
+	fileSystem->CloseFile( heightFile );
+	if ( !okay ) return false;
+
+	// Four normalized layer weights are stored directly in vertex colors. Version
+	// two and later append editor/compiler-only per-vertex paint mappings after these bytes.
+	// Older terrain descriptors without a weight map remain valid and use layer zero.
+	idList<byte> weights;
+	weights.SetNum( samples * samples * 4 );
+	memset( weights.Ptr(), 0, weights.Num() );
+	for ( int i = 0; i < samples * samples; ++i ) weights[i * 4] = 255;
+	if ( !weightMap.IsEmpty() ) {
+		static const int TERRAIN_WEIGHT_MAGIC = 1415007300; // little-endian "DLWT"
+		idFile *weightFile = fileSystem->OpenFileRead( weightMap );
+		if ( weightFile ) {
+			int weightMagic = 0, weightVersion = 0, weightSamples = 0, channels = 0;
+			const bool validWeights = weightFile->ReadInt( weightMagic ) == 4 && weightFile->ReadInt( weightVersion ) == 4 &&
+				weightFile->ReadInt( weightSamples ) == 4 && weightFile->ReadInt( channels ) == 4 &&
+				weightMagic == TERRAIN_WEIGHT_MAGIC && weightVersion >= 1 && weightVersion <= 4 && weightSamples == samples && channels == 4 &&
+				weightFile->Read( weights.Ptr(), weights.Num() ) == weights.Num();
+			fileSystem->CloseFile( weightFile );
+			if ( !validWeights ) {
+				memset( weights.Ptr(), 0, weights.Num() );
+				for ( int i = 0; i < samples * samples; ++i ) weights[i * 4] = 255;
+			}
+		}
+	}
+
+	srfTriangles_t *tri = R_AllocStaticTriSurf();
+	tri->numVerts = samples * samples;
+	tri->numIndexes = ( samples - 1 ) * ( samples - 1 ) * 6;
+	R_AllocStaticTriSurfVerts( tri, tri->numVerts );
+	R_AllocStaticTriSurfIndexes( tri, tri->numIndexes );
+	tri->generateNormals = true;
+	const float spacing = worldSize / ( samples - 1 );
+	const float halfSize = worldSize * 0.5f;
+	for ( int y = 0; y < samples; ++y ) {
+		for ( int x = 0; x < samples; ++x ) {
+			idDrawVert &vertex = tri->verts[y * samples + x];
+			vertex.Clear();
+			// Doom model indexes are clockwise when viewed from the front.  Run the
+			// image rows from +Y to -Y so the generated top surface faces upward and
+			// is visible with the editor/runtime front-face culling convention.
+			vertex.xyz.Set( x * spacing - halfSize, halfSize - y * spacing, heights[y * samples + x] );
+			vertex.st.Set( x / (float)( samples - 1 ), 1.0f - y / (float)( samples - 1 ) );
+			memcpy( vertex.color, weights.Ptr() + ( y * samples + x ) * 4, 4 );
+		}
+	}
+	int index = 0;
+	for ( int y = 0; y < samples - 1; ++y ) {
+		for ( int x = 0; x < samples - 1; ++x ) {
+			const int v0 = y * samples + x;
+			const int v1 = v0 + 1;
+			const int v3 = v0 + samples;
+			const int v2 = v3 + 1;
+			tri->indexes[index++] = v0; tri->indexes[index++] = v1; tri->indexes[index++] = v2;
+			tri->indexes[index++] = v0; tri->indexes[index++] = v2; tri->indexes[index++] = v3;
+		}
+	}
+	modelSurface_t surface;
+	surface.id = 0;
+	surface.geometry = tri;
+	surface.shader = declManager->FindMaterial( materialName );
+	AddSurface( surface );
 	return true;
 }
 
