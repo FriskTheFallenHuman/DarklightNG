@@ -43,6 +43,7 @@ const char *r_rendererArgs[] = { "best", "glsl", NULL };
 
 idCVar r_inhibitGLSL( "r_inhibitGLSL", "0", CVAR_RENDERER | CVAR_BOOL, "disable the GLSL renderer" );
 idCVar r_glDriver( "r_glDriver", "", CVAR_RENDERER, "\"opengl32\", etc." );
+idCVar r_glIntelDriverHack( "r_glIntelDriverHack", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "enables/disables intel specific shader hacks." );
 idCVar r_multiSamples( "r_multiSamples", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "number of antialiasing samples" );
 idCVar r_weaponFovOffset( "r_weaponFovOffset", "10", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "horizontal FOV added to the first-person weapon view", 0.0f, 30.0f );
 idCVar r_mode( "r_mode", "3", CVAR_ARCHIVE | CVAR_RENDERER | CVAR_INTEGER, "video mode number" );

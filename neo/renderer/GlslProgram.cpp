@@ -137,6 +137,14 @@ GLuint idGLSLProgram::CompileShader( GLenum type, const char *shaderName, const 
 	// Static surfaces leave u_gpuSkinning disabled, while MD5 surfaces bind
 	// their per-mesh joint UBO and packed joint stream immediately before draw.
 	if ( type == GL_VERTEX_SHADER && glConfig.gpuSkinningAvailable ) {
+		if ( r_glIntelDriverHack.GetBool() ) {
+			// layout(std140)/UBO grammar is native to GLSL 140+; Intel's compiler
+			// rejects it under #version 120 even with GL_ARB_uniform_buffer_object
+			// enabled. Bump the version and restore deprecated built-ins via
+			// GL_ARB_compatibility so gl_Vertex/attribute/ftransform() still work.
+			sourceText.Replace( "#version 120", "#version 140" );
+		}
+
 		sourceText.Replace( "attribute vec3 attr_Tangent;\r\n", "" );
 		sourceText.Replace( "attribute vec3 attr_Tangent;\n", "" );
 		sourceText.Replace( "attribute vec3 attr_Bitangent;\r\n", "" );
@@ -167,7 +175,13 @@ GLuint idGLSLProgram::CompileShader( GLenum type, const char *shaderName, const 
 			common->Printf( ": missing #version line\n" );
 			return 0;
 		}
-		idStr injected = "\n";
+
+		idStr injected;
+		if ( r_glIntelDriverHack.GetBool() ) {
+			injected = "\n#extension GL_ARB_compatibility : enable\n";
+		} else {
+			injected = "\n";
+		}
 		injected += skinningSource;
 		injected += "\n";
 		sourceText.Insert( injected.c_str(), versionEnd + 1 );
