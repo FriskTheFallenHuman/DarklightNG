@@ -20,8 +20,8 @@ GNU General Public License for more details.
 ===========================================================================
 */
 
-#define IDB_BITMAP_LOGO                          4000
-#define IDI_ICON1                                4001
+#define IDI_ICON1                                0
+#define IDB_BITMAP_LOGO                          1
 
 
 

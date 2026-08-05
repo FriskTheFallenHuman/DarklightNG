@@ -233,9 +233,12 @@ list(REMOVE_ITEM IDLIB_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/idlib/math/Simd_AltiVec.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/idlib/precompiled.cpp"
 )
+
 if(WIN32)
 	list(REMOVE_ITEM IDLIB_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/idlib/bv/Frustum_gcc.cpp")
 endif()
+
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX neo FILES ${IDLIB_SOURCES})
 
 add_library(idlib STATIC ${IDLIB_SOURCES})
 target_compile_definitions(idlib PRIVATE __IDLIB__ __DOOM__ ID_DISABLE_TOOLS ID_ENABLE_CURL=0)
@@ -251,6 +254,9 @@ list(REMOVE_ITEM GAME_SOURCES
 if(WIN32)
 	list(APPEND GAME_SOURCES "game/Game.def")
 endif()
+
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX neo FILES ${GAME_SOURCES})
+
 add_library(game SHARED ${GAME_SOURCES})
 add_dependencies(game darklight_typeinfo)
 set_source_files_properties("game/gamesys/TypeInfo.cpp" PROPERTIES
@@ -384,11 +390,14 @@ list(REMOVE_ITEM ENGINE_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/ui/GameWindow.cpp"
 )
 
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX neo FILES ${ENGINE_SOURCES})
+
 if(WIN32)
 	add_executable(doom3 WIN32 ${ENGINE_SOURCES})
 else()
 	add_executable(doom3 ${ENGINE_SOURCES})
 endif()
+
 # Dmap's offline light baker is a compute kernel.  Keep the rest of the Debug
 # engine fully debuggable, but compile this translation unit with optimization
 # and frame pointers so SIMD packet tracing does not spill every lane to the
@@ -444,14 +453,14 @@ else()
 endif()
 darklight_target_defaults(doom3)
 set_target_properties(doom3 PROPERTIES
-	OUTPUT_NAME Doom3
+	OUTPUT_NAME DarklightNG
 	FOLDER "Engine"
 )
 if(WIN32)
 	set_target_properties(doom3 PROPERTIES
 		VS_GLOBAL_UseOfMfc Static
 		VS_DEBUGGER_WORKING_DIRECTORY "${DARKLIGHT_ROOT}"
-		VS_DEBUGGER_COMMAND_ARGUMENTS "+set fs_game d3xp"
+		VS_DEBUGGER_COMMAND_ARGUMENTS "+set developer 1 +set com_showFPS 1 +set con_noPrint 0 +set win_outputDebugString 1 +set win_viewlog 1"
 	)
 else()
 	set_target_properties(doom3 PROPERTIES BUILD_RPATH "$ORIGIN" INSTALL_RPATH "$ORIGIN")
