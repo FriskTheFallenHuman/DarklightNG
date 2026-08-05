@@ -283,10 +283,7 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
 	"decllib/*.cpp"
 	"framework/*.cpp"
 	"renderer/*.cpp"
-	"renderer/jpeg-6/*.c"
 	"sound/*.cpp"
-	"sound/OggVorbis/oggsrc/*.c"
-	"sound/OggVorbis/vorbissrc/*.c"
 	"tools/compilers/*.cpp"
 	"ui/*.cpp"
 )
@@ -371,16 +368,6 @@ else()
 	)
 endif()
 list(REMOVE_ITEM ENGINE_SOURCES
-	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/jpeg-6/jcapistd.c"
-	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/jpeg-6/jctrans.c"
-	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/jpeg-6/jload.c"
-	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/jpeg-6/jmemansi.c"
-	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/jpeg-6/jmemdos.c"
-	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/jpeg-6/jmemname.c"
-	"${CMAKE_CURRENT_SOURCE_DIR}/renderer/jpeg-6/jpegtran.c"
-	"${CMAKE_CURRENT_SOURCE_DIR}/sound/OggVorbis/vorbissrc/barkmel.c"
-	"${CMAKE_CURRENT_SOURCE_DIR}/sound/OggVorbis/vorbissrc/psytune.c"
-	"${CMAKE_CURRENT_SOURCE_DIR}/sound/OggVorbis/vorbissrc/tone.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/ui/GameWindow.cpp"
 )
 
@@ -415,10 +402,7 @@ target_compile_definitions(doom3 PRIVATE
 	ID_ENABLE_CURL=0
 	SDL_MAIN_HANDLED
 )
-target_include_directories(doom3 PRIVATE
-	"${CMAKE_CURRENT_SOURCE_DIR}/sound/OggVorbis"
-	"${CMAKE_CURRENT_SOURCE_DIR}/sound/OggVorbis/vorbissrc"
-)
+
 if(WIN32)
 	target_include_directories(doom3 PRIVATE
 		"${CMAKE_CURRENT_SOURCE_DIR}/imgui"
