@@ -15,9 +15,9 @@ varying vec4 megaLevelOpacity;
 varying vec4 megaDetailST;
 
 vec2 decodeMegaNormalXY( float alpha ) {
-	float packed = floor( alpha * 255.0 + 0.5 );
-	float packedX = mod( packed, 16.0 );
-	float packedY = floor( packed / 16.0 );
+	float packedValue = floor( alpha * 255.0 + 0.5 );
+	float packedX = mod( packedValue, 16.0 );
+	float packedY = floor( packedValue / 16.0 );
 	return vec2( ( packedX - 8.0 ) / ( packedX < 8.0 ? 8.0 : 7.0 ),
 		( packedY - 8.0 ) / ( packedY < 8.0 ? 8.0 : 7.0 ) );
 }
