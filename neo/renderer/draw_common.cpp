@@ -773,11 +773,13 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 				continue;
 			}
 			qglColorPointer( 4, GL_UNSIGNED_BYTE, sizeof( idDrawVert ), (void *)&ac->color );
+			qglVertexAttribPointer( 8, 2, GL_FLOAT, false, sizeof( idDrawVert ), ac->st.ToFloatPtr() );
 			qglVertexAttribPointer( 9, 3, GL_FLOAT, false, sizeof( idDrawVert ), ac->tangents[0].ToFloatPtr() );
 			qglVertexAttribPointer( 10, 3, GL_FLOAT, false, sizeof( idDrawVert ), ac->tangents[1].ToFloatPtr() );
 			qglNormalPointer( GL_FLOAT, sizeof( idDrawVert ), ac->normal.ToFloatPtr() );
 
 			qglEnableClientState( GL_COLOR_ARRAY );
+			qglEnableVertexAttribArray( 8 );
 			qglEnableVertexAttribArray( 9 );
 			qglEnableVertexAttribArray( 10 );
 			qglEnableClientState( GL_NORMAL_ARRAY );
@@ -871,6 +873,7 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 			R_UnbindGLSLProgram();
 
 			qglDisableClientState( GL_COLOR_ARRAY );
+			qglDisableVertexAttribArray( 8 );
 			qglDisableVertexAttribArray( 9 );
 			qglDisableVertexAttribArray( 10 );
 			qglDisableClientState( GL_NORMAL_ARRAY );
